@@ -1,4 +1,4 @@
-ants.resels <- function(mask, smooth) {
+ants.resels <- function(mask, fwhm) {
 
   P<-labelGeometryMeasures(mask)[2,2]
   dimx <- dim(mask)[1]
@@ -38,12 +38,4 @@ ants.resels <- function(mask, smooth) {
   r4 <- (cubes*rx*ry*rz)
   resel<-c(r1,r2,r3,r4)
   return(resel)
-  }
-  if(rescalc=F){
-    cat("Will continue without calculating resels")
-    if(missing(resels))
-      stop("Must specify resels or change rescalc to T")
-
-ec<-c(0,0,0,0)
-lmat<-ncol(mat)
-padjust<-matrix(nrow=1,ncol=lmat)
+}
