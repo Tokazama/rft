@@ -1,30 +1,30 @@
 est.smooth<-function(ilist,field){
-
-dimx <- dim(ilist[1])[1]
-dimy <- dim(ilist[1])[2]
-dimz <- dim(ilist[1])[3]
 n<-length(ilist)
+imglist<-list()
+for (i in 1:n){
+	imglist[i]<-antsImageRead(ilist[i])
+	}
+dimx <- dim(imglist[[1]])[1]
+dimy <- dim(imglist[[1]])[2]
+dimz <- dim(imglist[[1]])[3]
 N<-length(field)
-Zxp<-0
-Zyp<-0
-Zzp<-0
+Zxx<-0
+Zyy<-0
+Zzz<-0
 Zxy<-0
 Zyz<-0
 Zxz<-0
 for (i in 1:n){
-	ilist[i]<-antsImageRead(ilist[i])
-	}
-for (i in 1:n){
 	for (x in 1:(dimx)){
 		for (y in 1:(dimy)){
 			for (z in 1:(dimz)){
-				vox<-getPixels(ilist[i],x,y,z)[1]
-				Zxx<-Zxx+(((getPixels(ilist[i],x+1,y,z)[1]-vox)^2)/(N*(n-1)))
-				Zyy<-Zyy+(((getPixels(ilist[i],x,y+1,z)[1]-vox)^2)/(N*(n-1)))
-				Zzz<-Zzz+(((getPixels(ilist[i],x,y,z+1)[1]-vox)^2)/(N*(n-1)))
-				Zxy<-Zxy+(((vox+getPixels(ilist[i],x,y+1,z)[1])*(vox+getPixels(ilist[i],x+1,y,z)[1]))/(4*N*(n-1)))
-				Zxz<-Zxz+(((vox+getPixels(ilist[i],x,y,z+1)[1])*(vox+getPixels(ilist[i],x+1,y,z)[1]))/(4*N*(n-1)))
-				Zyz<-Zyz+(((vox+getPixels(ilist[i],x,y+1,z)[1])*(vox+getPixels(ilist[i],x,y,z+1)[1]))/(4*N*(n-1)))		}
+				vox<-getPixels(imglist[[i]],x,y,z)[1]
+				Zxx<-Zxx+(((getPixels(imglist[[i]],x+1,y,z)[1]-vox)^2)/(N*(n-1)))
+				Zyy<-Zyy+(((getPixels(imglist[[i]],x,y+1,z)[1]-vox)^2)/(N*(n-1)))
+				Zzz<-Zzz+(((getPixels(imglist[[i]],x,y,z+1)[1]-vox)^2)/(N*(n-1)))
+				Zxy<-Zxy+(((vox+getPixels(imglist[[i]],x,y+1,z)[1])*(vox+getPixels(imglist[[i]],x+1,y,z)[1]))/(4*N*(n-1)))
+				Zxz<-Zxz+(((vox+getPixels(imglist[[i]],x,y,z+1)[1])*(vox+getPixels(imglist[[i]],x+1,y,z)[1]))/(4*N*(n-1)))
+				Zyz<-Zyz+(((vox+getPixels(imglist[[i]],x,y+1,z)[1])*(vox+getPixels(imglist[[i]],x,y,z+1)[1]))/(4*N*(n-1)))		}
 			}
 		}
 	}
