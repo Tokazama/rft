@@ -24,7 +24,8 @@ for (i in 1:n){
 				Zzz<-Zzz+(((getPixels(imglist[[i]],x,y,z+1)[1]-vox)^2)/(N*(n-1)))
 				Zxy<-Zxy+(((vox+getPixels(imglist[[i]],x,y+1,z)[1])*(vox+getPixels(imglist[[i]],x+1,y,z)[1]))/(4*N*(n-1)))
 				Zxz<-Zxz+(((vox+getPixels(imglist[[i]],x,y,z+1)[1])*(vox+getPixels(imglist[[i]],x+1,y,z)[1]))/(4*N*(n-1)))
-				Zyz<-Zyz+(((vox+getPixels(imglist[[i]],x,y+1,z)[1])*(vox+getPixels(imglist[[i]],x,y,z+1)[1]))/(4*N*(n-1)))		}
+				Zyz<-Zyz+(((vox+getPixels(imglist[[i]],x,y+1,z)[1])*(vox+getPixels(imglist[[i]],x,y,z+1)[1]))/(4*N*(n-1)))
+				}
 			}
 		}
 	}
