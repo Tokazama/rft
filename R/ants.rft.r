@@ -10,7 +10,11 @@ ants.rft<-function(D,k,lmfit,mat,fieldtype,mask){
 	thresh.imgs<-thresh.rft(D,fwhm,k,df,stat,fieldtype,mask)
 	limg<-length(thresh.img)
 	for (i in 1:limg){
-	  res<-paste("res",i, sep="")
+		res<-paste("res",i, sep="")
     res<-ants.resels(thesh.img[i],fwhm)
-    ec<-ants.ec(mat,fieldtype,df,res)
+    cluster.fwhm<-est.smooth(mat,tresh.img[i],psdf)
+    pval[i]<-ants.ec(mat,fieldtype,df,res)
+  }
+  
+   return(pval
 }
