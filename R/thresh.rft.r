@@ -1,4 +1,4 @@
-thresh.rft<-function(FWHM,k,D,df,stat,fieldtype=T,mask){
+thresh.rft<-function(D,fwhm,k,df,stat,fieldtype,mask){
   #S-voxels in image
   #k-expected voxels in uperthreshold of cluster
   #alpha-p value
@@ -10,7 +10,7 @@ thresh.rft<-function(FWHM,k,D,df,stat,fieldtype=T,mask){
     while(ka > k){
       u<-u+.01
       EN<-S*(1-pt(u,df))
-      W<-FWHM/((4*log(2))^(1/2))
+      W<-fwhm/((4*log(2))^(1/2))
       Em<-S*(2*pi)^(-(D+1)/2)*(W^(-D))*(u^(D-1))*(exp((-u^2)/2))
       beta<-(gamma((D/2)+1)*Em/EN)^(2/D)
       ka<-(log(-Em/log(1-alpha))/beta)^(D/2)
@@ -19,7 +19,7 @@ thresh.rft<-function(FWHM,k,D,df,stat,fieldtype=T,mask){
     while(ka > k){
       u<-u+.01      
       EN<-S*(1-pf(u, df[1],df[2]))
-      W<-FWHM/((4*log(2))^(1/2))
+      W<-fwhm/((4*log(2))^(1/2))
       Em<-S*(2*pi)^(-(D+1)/2)*(W^(-D))*(u^(D-1))*(exp((-u^2)/2))
       beta<-(gamma((D/2)+1)*Em/EN)^(2/D)
       ka<-(log(-Em/log(1-alpha))/beta)^(D/2)
@@ -28,7 +28,7 @@ thresh.rft<-function(FWHM,k,D,df,stat,fieldtype=T,mask){
     while(ka > k){
       u<-u+.01
       EN<-S*(1-pchisq(u, df[1],df[2]))
-      W<-FWHM/((4*log(2))^(1/2))
+      W<-fwhm/((4*log(2))^(1/2))
       Em<-S*(2*pi)^(-(D+1)/2)*(W^(-D))*(u^(D-1))*(exp((-u^2)/2))
       beta<-(gamma((D/2)+1)*Em/EN)^(2/D)
       ka<-(log(-Em/log(1-alpha))/beta)^(D/2)
@@ -37,7 +37,7 @@ thresh.rft<-function(FWHM,k,D,df,stat,fieldtype=T,mask){
     while(ka > k){
       u<-u+.01
       EN<-S*(1-qnorm(u))
-      W<-FWHM/((4*log(2))^(1/2))
+      W<-fwhm/((4*log(2))^(1/2))
       Em<-S*(2*pi)^(-(D+1)/2)*(W^(-D))*(u^(D-1))*(exp((-u^2)/2))
       beta<-(gamma((D/2)+1)*Em/EN)^(2/D)
       ka<-(log(-Em/log(1-alpha))/beta)^(D/2)
