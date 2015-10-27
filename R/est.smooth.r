@@ -1,9 +1,6 @@
-est.smooth<-function(lmfit,mat,mask){
-	res<-residuals(lmfit)
-	res2<-colSums(res^2)
-	rdf<-lmfit$df.residual
-	S2<-res2/redf
-	S<-sqrt(S2)
+#psdf-pooled standard deviation
+#
+est.smooth<-function(mat,mask,psdf){
 	voxels<-ncol(mat)
 	subs<-length(mat)
 	Mmat<-matrix(nrow=1,ncol=voxels)
@@ -52,7 +49,7 @@ est.smooth<-function(lmfit,mat,mask){
 	fwhm<-c(fwhmx,fwhmy,fwhmz)
 	lambda<-dim(nrow=3,ncol=3)
 ##Tpdf<-probability density function of a t-distribution with v degress of freedom
-	vintegral<-function(t){((((t^2)+subs-1)^2)/((v-1)*(v-2)))*((Tpdf(t)^3)/(p(t)^2))}
+	vintegral<-function(t){((((t^2)+subs-1)^2)/((v-1)*(v-2)))*((dt(t,df)^3)/(p(t)^2))}
 	lambdav<-integrate(vintegral,Inf,Inf)
 	lambdaz<-lambdav*lambdae
 	return(fwhm)
