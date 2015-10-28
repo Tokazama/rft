@@ -30,14 +30,18 @@ for(i in varlist){
 ###################
 #Linear Regression#
 ###################
+voxels<-ncol(varmat)
+regpval<-matrix(nrow=1,ncol=voxels)
+regtstat<-matrix(nrow=1,ncol=voxels)
 
-regfit<-lm(varmat~var1)
-
-##Extract statistical values
-regsum<-summary(regfit)
-regpval<-regsum$coefficients[3,4]
-regtstat<-regsum$coefficients[3,3]
-
+for (i in 1:voxels){
+  vox<-varmat[,i]
+  regfit<-lm(vox~var1)
+  ##Extract statistical values
+  regsum<-summary(regfit)
+  regpval[,i]<-regsum$coefficients[3,4]
+  regtstat[,i]<-regsum$coefficients[3,3]
+  }
 #Convert to statistical images to view
 i.regpval<-makeImage(mask,regpval)
 antsImageWrite(i.regpval,file="/path/to/directory/regpval.nii.gz")
