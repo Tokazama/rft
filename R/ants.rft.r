@@ -3,7 +3,7 @@ ants.rft<-function(D,k,lmfit,mat,fieldtype,mask){
 	res2<-colSums(res^2)
 	rdf<-lmfit$df.residual
 	S2<-res2/rdf
-	psdf<-sqrt(S2)
+	psd<-sqrt(S2)
 	
 	
 	fwhm<-est.smooth(mat,mask,psdf)
@@ -12,7 +12,7 @@ ants.rft<-function(D,k,lmfit,mat,fieldtype,mask){
 	for (i in 1:limg){
 		res<-paste("res",i, sep="")
     res<-ants.resels(thesh.img[i],fwhm)
-    cluster.fwhm<-est.smooth(mat,tresh.img[i],psdf)
+    cluster.fwhm<-est.smooth(mat,tresh.img[i],psd)
     pval[i]<-ants.ec(mat,fieldtype,df,res)
   }
   
