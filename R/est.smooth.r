@@ -1,6 +1,25 @@
-#psdf-pooled standard deviation
-#
-est.smooth<-function(mat,mask,psdf){
+#' Estimates the smoothness/fwhm of an image matrix
+#'
+#'
+#' @param mat-image matrix used for the fitted analysis
+#' @param mask-mask image for the image matrix
+#' @param psdf-pooled standard deviation obtained from fitted analysis
+#' @return Outputs the estimated fwhm and covariance matrix that was used to estimate it
+#' @examples
+#'	
+#'	mask<-getMask(imglist[[1]])
+#'	mat <- imageListToMatrix(imglist, mask)
+#'	var1<-c(1:nrow(mat))
+#'  lmfit <- lm(mat~var1)
+#'	res<-residuals(lmfit)
+#'  res2<-colSums(res^2)
+#'  rdf<-lmfit$df.residual
+#'  S2<-res2/rdf
+#'  psd<-sqrt(S2)
+#'	fwhm<-est.smooth(mat,mask,psd)
+#'
+#' @export est.smooth
+est.smooth<-function(mat,mask,psd){
 	voxels<-ncol(mat)
 	subs<-length(mat)
 	Mmat<-colMeans(mat)
@@ -8,15 +27,15 @@ est.smooth<-function(mat,mask,psdf){
 	dimy<-dim(mask)[2]
 	dimz<-dim(mask)[3]
 	for (i in 1:subs){
-		Zmat[i,]<-(mat[i,]-Mmat)/psdf
+		Zmat[i,]<-(mat[i,]-Mmat)/psd
 		}
-	lambda<-matrix(nrow=3,ncol=3)
+	lambda<-matrix(0L,nrow=3,ncol=3)
 	for (i in 1:subs){
 		img<-makeImage(mask,Zmat[i,]
 		for (x in 1:(dimx)){
 			for (y in 1:(dimy)){
 				for (z in 1:(dimz)){
-					suppressWarnings(warning("index not inside the image : "[ x, y, z, ]))
+					suppressWarnings(warning("index not inside the image : [",x,", ",y,", ",z,"]",sep=""))
 					vox<-getPixels(img,x,y,z)[1]
 					lambda[1,1]<-lambda[1,1]+(((getPixels(img,x+1,y,z)[1]-vox)^2)/(voxels*(subs-1)))
 					lambda[2,2]<-lambda[2,2]+(((getPixels(img,x,y+1,z)[1]-vox)^2)/(voxels*(subs-1)))
