@@ -35,14 +35,30 @@ est.smooth<-function(mat,mask,psd){
 		for (x in 1:(dimx)){
 			for (y in 1:(dimy)){
 				for (z in 1:(dimz)){
-					suppressWarnings(warning("index not inside the image : [",x,", ",y,", ",z,"]",sep=""))
 					vox<-getPixels(img,x,y,z)[1]
-					lambda[1,1]<-lambda[1,1]+(((getPixels(img,x+1,y,z)[1]-vox)^2)/(voxels*(subs-1)))
-					lambda[2,2]<-lambda[2,2]+(((getPixels(img,x,y+1,z)[1]-vox)^2)/(voxels*(subs-1)))
-					lambda[3,3]<-lambda[3,3]+(((getPixels(img,x,y,z+1)[1]-vox)^2)/(voxels*(subs-1)))
-					lambda[1,2]<-lambda[1,2]+(((vox+getPixels(img,x,y+1,z)[1])*(vox+getPixels(img,x+1,y,z)[1]))/(4*voxels*(subs-1)))
-					lambda[1,3]<-lambda[1,3]+(((vox+getPixels(img,x,y,z+1)[1])*(vox+getPixels(img,x+1,y,z)[1]))/(4*voxels*(subs-1)))
-					lambda[3,2]<-lambda[3,2]+(((vox+getPixels(img,x,y+1,z)[1])*(vox+getPixels(img,x,y,z+1)[1]))/(4*voxels*(subs-1)))		
+						if(!is.na(vox){
+							xvox<-getPixels(img,x+1,y,z)[1]
+							yvox<-getPixels(img,x,y+1,z)[1]
+							zvox<-getPixels(img,x,y,z+1)[1]
+							if(!is.na(xvox){
+								lambda[1,1]<-lambda[1,1]+(((xvox-vox)^2)/(voxels*(subs-1)))
+								}
+							if(!is.na(yvox){
+								lambda[2,2]<-lambda[2,2]+(((yvox-vox)^2)/(voxels*(subs-1)))
+								}
+							if(!is.na(zvox){
+								lambda[3,3]<-lambda[3,3]+(((-vox)^2)/(voxels*(subs-1)))
+								}
+							if(!is.na(xvox) && !is.na(yvox)){	
+								lambda[1,2]<-lambda[1,2]+(((vox+getPixels(img,x,y+1,z)[1])*(vox+getPixels(img,x+1,y,z)[1]))/(4*voxels*(subs-1)))
+								}
+							if(!is.na(xvox) && !is.na(zvox){
+								lambda[1,3]<-lambda[1,3]+(((vox+getPixels(img,x,y,z+1)[1])*(vox+getPixels(img,x+1,y,z)[1]))/(4*voxels*(subs-1)))
+								}
+							if(!is.na(yvox) && !is.na(zvox){
+								lambda[3,2]<-lambda[3,2]+(((vox+getPixels(img,x,y+1,z)[1])*(vox+getPixels(img,x,y,z+1)[1]))/(4*voxels*(subs-1))
+								}
+						}	
 					}
 				}
 			}
