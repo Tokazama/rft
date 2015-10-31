@@ -30,33 +30,36 @@ est.smooth<-function(mat,mask,psd){
 		Zmat[i,]<-(mat[i,]-Mmat)/psd
 		}
 	lambda<-matrix(0L,nrow=3,ncol=3)
-	partial.derivative<-function(img,x,y,z,lambda){	
+	partial.derivative<-function(img,x,y,z,lambda){
 		vox<-getPixels(img,x,y,z)[1]
 		if(!is.na(vox)){
-			xvox<-getPixels(img,x+1,y,z)[1]
-			yvox<-getPixels(img,x,y+1,z)[1]
-			zvox<-getPixels(img,x,y,z+1)[1]
-			if(!is.na(xvox)){
-				lambda[1,1]<-lambda[1,1]+(((xvox-vox)^2)/(voxels*(subs-1)))
-				}
-			if(!is.na(yvox)){
-				lambda[2,2]<-lambda[2,2]+(((yvox-vox)^2)/(voxels*(subs-1)))
-				}
-			if(!is.na(zvox)){
-				lambda[3,3]<-lambda[3,3]+(((zvox-vox)^2)/(voxels*(subs-1)))
-				}
-			if(!is.na(xvox) && !is.na(yvox)){	
-				lambda[1,2]<-lambda[1,2]+(((vox+yvox)*(vox+xvox))/(4*voxels*(subs-1)))
-				}
-			if(!is.na(xvox) && !is.na(zvox)){
-				lambda[1,3]<-lambda[1,3]+(((vox+zvox)*(vox+xvox))/(4*voxels*(subs-1)))
-				}
-			if(!is.na(yvox) && !is.na(zvox)){
-				lambda[3,2]<-lambda[3,2]+(((vox+yvox)*(vox+zvox))/(4*voxels*(subs-1)))
-				}
+			X<-getpixels(img,x+1,y,z)[1]
+			}
+		if(!is.na(xvox)){
+			lambda[1,1]<-((X-vox)^2)/(N*(n-1))
+			}
+		Y<-getpixels(img,x,y+1,z)[1]
+		if(!is.na(Y)){
+			lambda[2,2]<-((Y-vox)^2)/(N*(n-1))
+			}
+		Z<-getpixels(img,x,y,z+1)[1]
+		if(!is.na(Z)){
+			lambda[3,3]<-((Z-vox)^2)/(N*(n-1))
+			}
+		XY<-getPixels(img,x+1,y+1,z)[1]
+		if(!is.na(X) && !is.na(Y) && !is.na(XY)){
+			lambda[1,2]<-(((X-vox)+(Y-XY))*((Y-vox)+(X-XY)))/(4*N*(n-1))
+			}
+		XZ<-getPixels(img,x+1,y,z+1)[1]
+		if(!is.na(X) && !is.na(Z) && !is.na(XZ)){
+			lambda[1,3]<-(((X-vox)+(Z-XZ))*((Z-vox)+(X-XZ)))/(4*N*(n-1))
+			}
+		YZ<-getPixels(img,x,y+1,z+1)[1]
+		if(!is.na(Y) && !is.na(Z) && !is.na(YZ)){
+			lambda[2,3]<-(((Y-vox)+(Y-YZ))*((Z-vox)+(Y-YZ)))/(4*N*(n-1))
+			}
 		}
-	return(lambda)
-}
+
 	for (i in 1:subs){
 		img<-makeImage(mask,Zmat[i,]
 		for (x in 1:(dimx)){
@@ -67,7 +70,6 @@ est.smooth<-function(mat,mask,psd){
 				}
 			}
 		}
-	
 	lambda[2,1]<-lambda[1,2]
 	lambda[3,1]<-lambda[1,3]
 	lambda[2,3]<-lambda[3,2]
