@@ -1,12 +1,13 @@
 ants.rft<-function(D,k,lmfit,mat,fieldtype,mask){
-	res<-residuals(lmfit)
-	res2<-colSums(res^2)
 	rdf<-lmfit$df.residual
-	S2<-res2/rdf
-	psd<-sqrt(S2)
-	
-	
-	fwhm<-est.smooth(mat,mask,psdf)
+	res<-residuals(lmfit)
+	sumres<-(rowSums(res)^2)/rdf
+	sqres<-rowSums(res^2)
+	ssq<-sumres-sqres
+	for (i in 1:nrow(res)){
+		res[i,]<-res[i,]/sqrt(ssq[i,])
+		}
+	fwhm<-est.smooth(Sres,mask,psdf)
 	thresh.imgs<-thresh.rft(D,fwhm,k,df,stat,fieldtype,mask)
 	limg<-length(thresh.img)
 	for (i in 1:limg){
