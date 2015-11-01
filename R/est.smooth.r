@@ -19,49 +19,37 @@
 #'	fwhm<-est.smooth(mat,mask,psd)
 #'
 #' @export est.smooth
-est.smooth<-function(mat,mask,psd){
-	voxels<-ncol(mat)
-	subs<-length(mat)
-	Mmat<-colMeans(mat)
+est.smooth<-function(Sres,mask,psd){
+	voxels<-ncol(Sres)
+	subs<-nrow(Sres)
 	dimx<-dim(mask)[1]
 	dimy<-dim(mask)[2]
 	dimz<-dim(mask)[3]
-	for (i in 1:subs){
-		Zmat[i,]<-(mat[i,]-Mmat)/psd
-		}
-	lambda<-matrix(0L,nrow=3,ncol=3)
-	partial.derivative<-function(img,x,y,z,lambda){
+	fwhm<-matrix(0L,nrow=1,ncol=3)
+	
+#Estimate partial derivatives of Znot at a voxel in x, y, and z direction
+	partial.derivative<-function(img,x,y,z,lambda){	
 		vox<-getPixels(img,x,y,z)[1]
 		if(!is.na(vox)){
-			X<-getpixels(img,x+1,y,z)[1]
+			xvox<-getPixels(img,x+1,y,z)[1]
+			if(!is.na(xvox)){
+				fwhm[1]<-fwhm[1]+(((xvox-vox)^2)/(voxels*(subs-1)))
+				}
+			yvox<-getPixels(img,x,y+1,z)[1]
+			if(!is.na(yvox)){
+				fwhm[2]<-fwhm[2]+(((yvox-vox)^2)/(voxels*(subs-1)))
+				}
+			zvox<-getPixels(img,x,y,z+1)[1]
+			if(!is.na(zvox)){
+				fwhm[3]<-fwhm[3]+(((zvox-vox)^2)/(voxels*(subs-1)))
+				}
 			}
-		if(!is.na(xvox)){
-			lambda[1,1]<-((X-vox)^2)/(N*(n-1))
-			}
-		Y<-getpixels(img,x,y+1,z)[1]
-		if(!is.na(Y)){
-			lambda[2,2]<-((Y-vox)^2)/(N*(n-1))
-			}
-		Z<-getpixels(img,x,y,z+1)[1]
-		if(!is.na(Z)){
-			lambda[3,3]<-((Z-vox)^2)/(N*(n-1))
-			}
-		XY<-getPixels(img,x+1,y+1,z)[1]
-		if(!is.na(X) && !is.na(Y) && !is.na(XY)){
-			lambda[1,2]<-(((X-vox)+(Y-XY))*((Y-vox)+(X-XY)))/(4*N*(n-1))
-			}
-		XZ<-getPixels(img,x+1,y,z+1)[1]
-		if(!is.na(X) && !is.na(Z) && !is.na(XZ)){
-			lambda[1,3]<-(((X-vox)+(Z-XZ))*((Z-vox)+(X-XZ)))/(4*N*(n-1))
-			}
-		YZ<-getPixels(img,x,y+1,z+1)[1]
-		if(!is.na(Y) && !is.na(Z) && !is.na(YZ)){
-			lambda[2,3]<-(((Y-vox)+(Y-YZ))*((Z-vox)+(Y-YZ)))/(4*N*(n-1))
-			}
+		return(lambda)
 		}
 
+#Estimate partial derivatives of standardized residuals from the fitted model
 	for (i in 1:subs){
-		img<-makeImage(mask,Zmat[i,]
+		img<-makeImage(mask,Sres[i,])
 		for (x in 1:(dimx)){
 			for (y in 1:(dimy)){
 				for (z in 1:(dimz)){
@@ -70,17 +58,10 @@ est.smooth<-function(mat,mask,psd){
 				}
 			}
 		}
-	lambda[2,1]<-lambda[1,2]
-	lambda[3,1]<-lambda[1,3]
-	lambda[2,3]<-lambda[3,2]
 
-	fwhmx<-(4*log(2/lambda[1,1]))^(1/2)
-	fwhmy<-(4*log(2/lambda[2,2]))^(1/2)
-	fwhmz<-(4*log(2/lambda[3,3]))^(1/2)
-	fwhm<-c(fwhmx,fwhmy,fwhmz)
-##Tpdf<-probability density function of a t-distribution with v degress of freedom
-	vintegral<-function(t){((((t^2)+subs-1)^2)/((v-1)*(v-2)))*((dt(t,df)^3)/(p(t)^2))}
-	lambdav<-integrate(vintegral,Inf,Inf)
-	lambdaz<-lambdav*lambdae
-	return(fwhm,lambda)
+
+	vintegral<-function(t){((((t^2)+subs-1)^2)/((v-1)*(v-2)))*((dt(t,df)^3)/(dnorm(t,df)^2))}
+	lamv<-integrate(vintegral,Inf,Inf)
+	fwhm<-sqrt(4*log(2)/fwhm)*lamv
+	return(fwhm)
 	}
