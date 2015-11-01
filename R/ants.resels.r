@@ -4,9 +4,9 @@ ants.resels <- function(mask, fwhm) {
   dimx <- dim(mask)[1]
   dimy <- dim(mask)[2]
   dimz <- dim(mask)[3]
-  rx <- (dimx)/(fwhm)
-  ry <- (dimy)/(fwhm)
-  rz <- (dimz)/(fwhm)
+  rx <- (dimx)/(fwhm[1])
+  ry <- (dimy)/(fwhm[2])
+  rz <- (dimz)/(fwhm[2])
 
   Ex <- 0
   Ey <- 0
