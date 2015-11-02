@@ -44,16 +44,18 @@ est.smooth<-function(Sres,mask,psd){
 				fwhm[3]<-fwhm[3]+(((zvox-vox)^2)/(voxels*(subs-1)))
 				}
 			}
-		return(lambda)
+		return(fwhm)
 		}
 
 #Estimate partial derivatives of standardized residuals from the fitted model
+	fwhm2<-matrix(0L,nrow=1,ncol=3)
 	for (i in 1:subs){
 		img<-makeImage(mask,Sres[i,])
 		for (x in 1:(dimx)){
 			for (y in 1:(dimy)){
 				for (z in 1:(dimz)){
 					lambda<-partial.derivative(img,x,y,z,lambda)
+					fwhm2<-fwhm2+fwhm
 					}
 				}
 			}
@@ -62,6 +64,6 @@ est.smooth<-function(Sres,mask,psd){
 
 	vintegral<-function(t){((((t^2)+subs-1)^2)/((v-1)*(v-2)))*((dt(t,df)^3)/(dnorm(t,df)^2))}
 	lamv<-integrate(vintegral,Inf,Inf)
-	fwhm<-sqrt(4*log(2)/fwhm)*lamv
-	return(fwhm)
+	fwhm2<-sqrt(4*log(2)/fwhm2)*lamv
+	return(fwhm2)
 	}
