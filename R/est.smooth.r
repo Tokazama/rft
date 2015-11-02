@@ -55,7 +55,7 @@ est.smooth<-function(Sres,mask,psd){
 		for (x in 1:(dimx)){
 			for (y in 1:(dimy)){
 				for (z in 1:(dimz)){
-					lambda<-partial.derivative(img,x,y,z,lambda)
+					lambda<-capture.output(suppressMessages(partial.derivative(img,x,y,z,lambda)))
 					fwhm2<-fwhm2+fwhm
 					}
 				}
