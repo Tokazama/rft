@@ -49,18 +49,21 @@ est.smooth<-function(Sres,mask,psd){
 
 #Estimate partial derivatives of standardized residuals from the fitted model
 	fwhm2<-matrix(0L,nrow=1,ncol=3)
+	bar<-subs*dimx*dimy*dimz
+	update<-0
 	for (i in 1:subs){
-		progress <- txtProgressBar(min = 0, max = subs, style = 3)
+		progress <- txtProgressBar(min = 0, max = bar, style = 3)
 		img<-makeImage(mask,Sres[i,])
 		for (x in 1:(dimx)){
 			for (y in 1:(dimy)){
 				for (z in 1:(dimz)){
 					lambda<-capture.output(suppressMessages(partial.derivative(img,x,y,z,lambda)))
 					fwhm2<-fwhm2+fwhm
+					update<-update+1
+					setTxtProgressBar(progress, update)
 					}
 				}
 			}
-		setTxtProgressBar(progress, i)
 		}
 
 	close(progress)
