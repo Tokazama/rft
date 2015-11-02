@@ -50,6 +50,7 @@ est.smooth<-function(Sres,mask,psd){
 #Estimate partial derivatives of standardized residuals from the fitted model
 	fwhm2<-matrix(0L,nrow=1,ncol=3)
 	for (i in 1:subs){
+		progress <- txtProgressBar(min = 0, max = subs, style = 3)
 		img<-makeImage(mask,Sres[i,])
 		for (x in 1:(dimx)){
 			for (y in 1:(dimy)){
@@ -59,6 +60,7 @@ est.smooth<-function(Sres,mask,psd){
 					}
 				}
 			}
+		setTxtProgressBar(progress, i)
 		}
 
 
