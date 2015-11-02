@@ -63,8 +63,8 @@ est.smooth<-function(Sres,mask,psd){
 		setTxtProgressBar(progress, i)
 		}
 
-
-	vintegral<-function(t){((((t^2)+subs-1)^2)/((v-1)*(v-2)))*((dt(t,df)^3)/(dnorm(t,df)^2))}
+	close(progress)
+	vintegral<-function(t){((((t^2)+subs-1)^2)/((df-1)*(df-2)))*((dt(t,df)^3)/(dnorm(t,df)^2))}
 	lamv<-integrate(vintegral,Inf,Inf)
 	fwhm2<-sqrt(4*log(2)/fwhm2)*lamv
 	return(fwhm2)
