@@ -19,7 +19,7 @@
 #'	fwhm<-est.smooth(mat,mask,psd)
 #'
 #' @export est.smooth
-est.smooth<-function(Sres,mask,psd){
+est.smooth<-function(Sres,mask,df){
 	voxels<-ncol(Sres)
 	subs<-nrow(Sres)
 	dimx<-dim(mask)[1]
