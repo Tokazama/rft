@@ -1,4 +1,4 @@
-#' Estimates the smoothness/fwhm of an image matrix
+#' Estimates the smoothness/fwhm of a single image or image list
 #'
 #'
 #' @param mat-image matrix used for the fitted analysis
@@ -7,68 +7,75 @@
 #' @return Outputs the estimated fwhm and covariance matrix that was used to estimate it
 #' @examples
 #'	
-#'	mask<-getMask(imglist[[1]])
-#'	mat <- imageListToMatrix(imglist, mask)
-#'	var1<-c(1:nrow(mat))
-#'  lmfit <- lm(mat~var1)
-#'	res<-residuals(lmfit)
-#'  res2<-colSums(res^2)
-#'  rdf<-lmfit$df.residual
-#'  S2<-res2/rdf
-#'  psd<-sqrt(S2)
-#'	fwhm<-est.smooth(mat,mask,psd)
+#'   mask<-getMask(imglist[[1]])
+#'   mat <- imageListToMatrix(imglist, mask)
+#'   var1<-c(1:nrow(mat))
+#'   lmfit <- lm(mat~var1)
+#'   res<-residuals(lmfit)
+#'   res2<-colSums(res^2)
+#'   rdf<-lmfit$df.residual
+#'   S2<-res2/rdf
+#'   psd<-sqrt(S2)
+#'   Mmat<-colMeans(res)
+#'   Zmat<-res
+#'   fwhm<-matrix(0L,nrow=1,ncol=3)
+#'   subs<-nrow(res)
+#'   for (i in 1:subs){
+#'      Zmat[i,]<-(res[i,]-Mmat[1])/psd
+#'      img<-makeImage(mask,Zmat[i,])
+#'      smooth<-est.smooth(img,mask,1,1,1)
+#'      fwhm<-fwhm+smooth[[2]]
+#'      }
+#'   fwhm<-sqrt(4*log(2)/(fwhm/(subs-1))
 #'
 #' @export est.smooth
-est.smooth<-function(Sres,mask,df){
-	voxels<-ncol(Sres)
-	subs<-nrow(Sres)
-	dimx<-dim(mask)[1]
-	dimy<-dim(mask)[2]
-	dimz<-dim(mask)[3]
-	fwhm<-matrix(0L,nrow=1,ncol=3)
+est.smooth<-function(img,mask,xvox,yvox,zvox){
+
+    dimx <- dim(img)[1]
+    dimy <- dim(img)[2]
+    dimz <- dim(img)[3]
+    d1 <- array(0, dim = dim(img) + 2)
+    d2 <- array(0, dim = dim(img) + 2)
+    m1 <- array(0, dim = dim(img) + 2)
+    m2 <- array(0, dim = dim(img) + 2)
+    maskar<-as.array(mask)
+    voxels<-sum(maskar)
+    imgar<-as.array(img)
+    fwhm<-matrix(0L,nrow=1,ncol=3)
+    lambda<-matrix(0L,nrow=1,ncol=3)
+
+    #calculate partial derivatives x
+    d1[2:(dimx+1), 2:(dimy+1), 2:(dimz+1)] <- imgar
+    d2[1:(dimx), 2:(dimy+1), 2:(dimz+1)] <- imgar
+    m1[2:(dimx+1), 2:(dimy+1), 2:(dimz+1)] <- maskar
+    m2[1:(dimx), 2:(dimy+1), 2:(dimz+1)] <- maskar
+    m3 <- (m1 + m2) == 2
+    Zxx <- ((d1 - d2)[m3 == 1])/(xvox)
+    #variances of partial derivatives x
+    lambda[1,1] <- sum(Zxx^2)/(voxels)
 	
-#Estimate partial derivatives of Znot at a voxel in x, y, and z direction
-	partial.derivative<-function(img,x,y,z,lambda){	
-		vox<-getPixels(img,x,y,z)[1]
-		if(!is.na(vox)){
-			xvox<-getPixels(img,x+1,y,z)[1]
-			if(!is.na(xvox)){
-				fwhm[1]<-fwhm[1]+(((xvox-vox)^2)/(voxels*(subs-1)))
-				}
-			yvox<-getPixels(img,x,y+1,z)[1]
-			if(!is.na(yvox)){
-				fwhm[2]<-fwhm[2]+(((yvox-vox)^2)/(voxels*(subs-1)))
-				}
-			zvox<-getPixels(img,x,y,z+1)[1]
-			if(!is.na(zvox)){
-				fwhm[3]<-fwhm[3]+(((zvox-vox)^2)/(voxels*(subs-1)))
-				}
-			}
-		return(fwhm)
-		}
-
-#Estimate partial derivatives of standardized residuals from the fitted model
-	fwhm2<-matrix(0L,nrow=1,ncol=3)
-	bar<-subs*dimx*dimy*dimz
-	update<-0
-	progress <- txtProgressBar(min = 0, max = bar, style = 3)
-	for (i in 1:subs){
-		img<-makeImage(mask,Sres[i,])
-		for (x in 1:(dimx)){
-			for (y in 1:(dimy)){
-				for (z in 1:(dimz)){
-					lambda<-partial.derivative(img,x,y,z,lambda)
-					fwhm2<-fwhm2+fwhm
-					update<-update+1
-					setTxtProgressBar(progress, update)
-					}
-				}
-			}
-		}
-
-	close(progress)
-	vintegral<-function(t){((((t^2)+subs-1)^2)/((df-1)*(df-2)))*((dt(t,df)^3)/(dnorm(t,df)^2))}
-	lamv<-integrate(vintegral,Inf,Inf)
-	fwhm2<-sqrt(4*log(2)/fwhm2)*lamv
-	return(fwhm2)
-	}
+    #calculate partial derivatives y
+    d1[2:(dimx+1), 2:(dimy+1), 2:(dimz+1)] <- imgar 
+    d2[2:(dimx+1), 1:(dimy), 2:(dimz+1)] <- imgar
+    m1[2:(dimx+1), 2:(dimy+1), 2:(dimz+1)] <- maskar
+    m2[2:(dimx+1), 1:(dimy), 2:(dimz+1)] <- maskar
+    m3 <- (m1 + m2) == 2
+    Zyy <- ((d1 - d2)[m3 == 1])/(yvox)
+    #variances of partial derivatives y
+    lambda[1,2] <- sum(Zyy^2)/(voxels)
+    
+    #calculate partial derivatives z
+    d1[2:(dimx+1), 2:(dimy+1), 2:(dimz+1)] <- imgar 
+    d2[2:(dimx+1), 2:(dimy+1), 1:(dimz)] <- imgar
+    m1[2:(dimx+1), 2:(dimy+1), 2:(dimz+1)] <- maskar
+    m2[2:(dimx+1), 2:(dimy+1), 1:(dimz)] <- maskar
+    m3 <- (m1 + m2) == 2
+    Zzz <- ((d1 - d2)[m3 == 1])/(yvox)  
+    #variances of partial derivatives z
+    lambda[1,3] <- sum(Zzz^2)/(voxels)
+	
+    #calculate fwhm from lambda
+    fwhm<-sqrt(4*log(2)/lambda)
+    smooth<-list(fwhm,lambda)
+    return(smooth)
+    }
