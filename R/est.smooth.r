@@ -20,12 +20,15 @@
 #'   Zmat<-res
 #'   fwhm<-matrix(0L,nrow=1,ncol=3)
 #'   subs<-nrow(res)
+#'   progress <- txtProgressBar(min = 0, max = subs, style = 3)
 #'   for (i in 1:subs){
 #'      Zmat[i,]<-(res[i,]-Mmat[1])/psd
 #'      img<-makeImage(mask,Zmat[i,])
 #'      smooth<-est.smooth(img,mask,1,1,1)
 #'      fwhm<-fwhm+smooth[[2]]
+#'	setTxtProgressBar(progress, i)
 #'      }
+#'   close(progress)
 #'   fwhm<-sqrt(4*log(2)/(fwhm/(subs-1))
 #'
 #' @export est.smooth
