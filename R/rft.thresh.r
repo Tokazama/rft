@@ -14,15 +14,12 @@
 rft.thresh<-function(pval,fwhm,mask,df,fieldtype,ka){
 	voxels<-sum(as.array(mask))
 	D<-length(dim(mask))
-	
-	if(ka<2){
-		Resel<-voxels/(fwhm^3)
-		alpha<-pval -1
-		stat<-10
-		while(alpha < pval){
-			stat<-stat-.01
-			ec<-ants.ec(stat,fieldtype,df)
-			alpha<-Resel*ec[4]
-			}
+	fwhm<-mean(fwhm)
+	alpha<-pval-1
+	stat<-10
+	while(alpha < pval){
+		stat<-stat-.01
+		alpha<-rft.cluster(cMask,bMask,fwhm,stat,df,fieldtype="T",D)
 		}
+	return(stat)
 	}
