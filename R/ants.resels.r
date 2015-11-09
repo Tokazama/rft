@@ -1,12 +1,12 @@
 ants.resels <- function(mask, fwhm) {
 
-  P<-labelGeometryMeasures(mask)[2,2]
+  P<-sum(as.array(mask))
   dimx <- dim(mask)[1]
   dimy <- dim(mask)[2]
   dimz <- dim(mask)[3]
-  rx <- (dimx)/(fwhm[1])
-  ry <- (dimy)/(fwhm[2])
-  rz <- (dimz)/(fwhm[3])
+  rx <- 1/(fwhm[1])
+  ry <- 1/(fwhm[2])
+  rz <- 1/(fwhm[3])
 
   Ex <- 0
   Ey <- 0
@@ -19,14 +19,14 @@ ants.resels <- function(mask, fwhm) {
   for (i in 1:(dimx)){
       for (j in 1:(dimy)){
           for (k in 1:(dimz)){
-              if(getPixels(mask,i,j,k)[1]==1){
-                  Ex <- ifelse(getPixels(mask,i+1,j,k)[1]==1,Ex+1,Ex)
-                  Ey <- ifelse(getPixels(mask,i,j+1,k)[1]==1,Ey+1,Ey)
-                  Ez <- ifelse(getPixels(mask,i,j,k+1)[1]==1,Ez+1,Ez)
-                  Fxy <- ifelse(getPixels(mask,i+1,j,k)[1]==1 && getPixels(mask,i,j+1,k)[1]==1 && getPixels(mask,i+1,j+1,k)[1]==1,Fxy+1,Fxy)
-                  Fxz <- ifelse(getPixels(mask,i+1,j,k)[1]==1 && getPixels(mask,i,j,k+1)[1]==1 && getPixels(mask,i+1,j,k+1)[1]==1,Fxz+1,Fxz)
-                  Fyz <- ifelse(getPixels(mask,i,j+1,k)[1]==1 && getPixels(mask,i,j,k+1)[1]==1 && getPixels(mask,i,j+1,k+1)[1]==1,Fyz+1,Fyz)
-                  cubes <- ifelse(getPixels(mask,i,j,k)[1]==1 && getPixels(mask,i+1,j,k)[1]==1 && getPixels(mask,i,j+1,k)[1]==1 && getPixels(mask,i+1,j+1,k)[1]==1 && getPixels(mask,i,j,k+1)[1]==1 && getPixels(mask,i+1,j,k+1)[1]==1 && getPixels(mask,i,j+1,k+1)[1]==1 && getPixels(mask,i+1,j+1,k+1)[1]==1,cubes+1,cubes)
+              if(mask[i,j,k]==1){
+                  Ex <- ifelse(mask[i+1,j,k]==1,Ex+1,Ex)
+                  Ey <- ifelse(mask[i,j+1,k]==1,Ey+1,Ey)
+                  Ez <- ifelse(mask[i,j,k+1]==1,Ez+1,Ez)
+                  Fxy <- ifelse(mask[i+1,j,k]==1 && mask[i,j+1,k]==1 && mask[i+1,j+1,k]==1,Fxy+1,Fxy)
+                  Fxz <- ifelse(mask[i+1,j,k]==1 && mask[,j,k+1]==1 && mask[i+1,j,k+1]==1,Fxz+1,Fxz)
+                  Fyz <- ifelse(mask[i,j+1,k]==1 && mask[i,j,k+1]==1 && mask[i,j+1,k+1]==1,Fyz+1,Fyz)
+                  cubes <- ifelse(mask[i,j,k]==1 && mask[i+1,j,k]==1 && mask[i,j+1,k]==1 && mask[i+1,j+1,k]==1 && mask[i,j,k+1]==1 && mask[i+1,j,k+1]==1 && mask[i,j+1,k+1]==1 && mask[i+1,j+1,k+1]==1,cubes+1,cubes)
               }
           }
       }
