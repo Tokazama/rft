@@ -1,4 +1,4 @@
-ants.ec<-function(stat,fieldtype=T,df){
+ants.ec<-function(stat,fieldtype,df){
   ec<-c(0,0,0,0)
   t<-stat
   if(fieldtype=="T"){
