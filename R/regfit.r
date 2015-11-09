@@ -56,6 +56,7 @@ antsImageWrite(timg,file="Timg.nii.gz")
 ###This might be where I could start a complete rft function
 #ants.rft<-function(resmat,statmat,mask,df,StatType,statdir){
 
+rft.results<-function(timg,res,rdf,ka){
 res2<-colSums(res^2)
 rdf<-regfit$df.residual
 S2<-res2/rdf
@@ -105,7 +106,7 @@ for (i in 1:length(posclust)){
 	cat("Determing negative cluster level statistics:",i,sep=" ")
 	cmask<-getMask(negclust[[i]])
 	cvoxs<-sum(as.array(cmask))
-	pclust<-rft.pcluster(posclust[[i]],mask,fwhm,thresh,df,fieldtype)
+	pclust<-rft.pcluster(negclust[[i]],mask,fwhm,thresh,df,fieldtype)
 	peak<-max(posclust[[i]])
 	loc<-labelImageCentroids(posclust[[i]])
 	resel <-ants.resel(mask,fwhm)
@@ -116,8 +117,6 @@ for (i in 1:length(posclust)){
 	rownames(postable[i,])<-c(clustername)
 	}
 cluster.table<-rbind(postable,negtable)
-
-	
 }
 	
 
