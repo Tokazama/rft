@@ -11,15 +11,18 @@
 #'	
 #'
 #' @export est.smooth
-rft.thresh<-function(pval,fwhm,mask,df,fieldtype,ka){
-	voxels<-sum(as.array(mask))
+rft.thresh<-function(pval,ka,fwhm,mask,df,fieldtype){
+	voxels <-sum(as.array(mask))
+	bMask <-mask
+	cMask <- ka
 	D<-length(dim(mask))
 	fwhm<-mean(fwhm)
 	alpha<-pval-1
 	stat<-10
+	
 	while(alpha < pval){
-		stat<-stat-.01
-		alpha<-rft.cluster(cMask,bMask,fwhm,stat,df,fieldtype="T",D)
+		stat <-stat-.01
+		alpha <-rft.cluster(cMask,bMask,fwhm,stat,df,fieldtype="T",D)
 		}
 	return(stat)
 	}
