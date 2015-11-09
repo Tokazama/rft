@@ -9,21 +9,26 @@
 #' 
 #'
 rft.cluster<-function(cMask,bMask,fwhm,stat,df,fieldtype="T",D){
-	bvox<-sum(as.array(bmask))
-	cvox<-sum(as.array(cmask))
-	#Expected number of voxels above a threshold (friston 1994; equation 3)
+	voxels<-sum(as.array(mask))
+	D<-length(dim(mask))
+	if(class(cMask)=="numeric"){
+		ka<-cMask
+	}else{
+		ka<-sum(as.array(mask))
+		}
+	fwhm<-mean(fwhm)
+	
 	if (fieldtype=="T"){
-		EN<-bvox*(1-pt(stat,df))
+		EN<-voxels*(1-pt(stat,df))
 	}else if(fieldtype=="F"){
-		EN<-bvox*(1-pf(stat, df[1],df[2]))
+		EN<-voxels*(1-pf(stat, df[1],df[2]))
 	}else if(fieldtype=="X"){
-		EN<-bvox*(1-pchisq(stat, df[1],df[2]))
+		EN<-voxels*(1-pchisq(stat, df[1],df[2]))
 	}else if(fieldtype=="G"){
-		EN<-bvox*(1-qnorm(stat))
+		EN<-voxels*(1-qnorm(stat))
 	}else{
 		stop("A correct fieldtype is required")
 		}
-	
 	#Based upon the fwhm values or the covariance matrix 
 	#of a fields partial derivatives(friston 1994)
 	W<-fwhm/((4*log(2))^(1/2))
@@ -35,8 +40,10 @@ rft.cluster<-function(cMask,bMask,fwhm,stat,df,fieldtype="T",D){
 	#voxel (friston 1996;equation 3)
 	rfB<-(gamma((D/2)+1)*Em/EN)^(2/D)
 	
-	Pnk<-exp(-rfB*cvox^(2/D))
+	#Equation 4 (friston 1996) The probability of getting a
+	#cluster of the size 'ka' or more above a threshold 'stat'
+	#for a single cluster
+	Pnk<-exp(-rfB*(ka^(2/D)))
 	alpha<-1-exp(-Em*Pnk)
-		
 	return(alpha)
 	}
