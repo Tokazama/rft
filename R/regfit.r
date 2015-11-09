@@ -68,37 +68,57 @@ subs<-nrow(res)
 cat("Estimating fwhm/smoothing")
 progress <- txtProgressBar(min = 0, max = subs, style = 3)
 for (i in 1:subs){
-     Zmat[i,]<-(res[i,]-Mmat[1])/psd
-     img<-makeImage(mask,Zmat[i,])
-     smooth<-est.smooth(img,mask,1,1,1)
-     fwhm<-fwhm+smooth[[2]]
-	 setTxtProgressBar(progress, i)
-     }
+  Zmat[i,]<-(res[i,]-Mmat[1])/psd
+  img<-makeImage(mask,Zmat[i,])
+	smooth<-est.smooth(img,mask,1,1,1)
+	fwhm<-fwhm+smooth[[2]]
+	setTxtProgressBar(progress, i)
+	}
 close(progress)
 fwhm2<-sqrt(4*log(2)/(fwhm/(subs-1)))
 
-####fwhm=11.94888, 12.38161, 12.07079
-
 cat("Determing clustering threshold using RFT")
-thresh<-rft.thresh(
-posclust<-image2ClusterImages(timg,150,thresh,Inf)
-negclust<-image2ClusterImages(timg,150,-Inf,-thresh)
+thresh<-rft.thresh(pval,ka,fwhm,mask,df,fieldtype)
 
-clusters<-rft.cluster(D,fwhm,k,df,stat,fieldtype,mask)
-nclusters<-length(clusters)
-rft.table<-as.table(c("Cluster Pval",
-for (i in 1:nclusters){
-	cat("Determing cluser level statistics:",i,sep=" ")
-	pclust<-past("cluster",i,sep="")
-	pclust<-rft.pcluster(clusters[i])
-	
-	cat("Determing voxel level statistics:",i,sep=" ")
-	resels<-rft.resel(clusters[i],fwhm)
-	ec<-rft.euler(cluster[i],mask)
-	pvox<-paste("pvox",i,sep="")
-    pvox<-rft.voxel(mat,fieldtype,df,res)
-	
+posclust<-image2ClusterImages(timg,150,thresh,Inf)
+postable<-matrix(ncol=5)
+colnames(postable)<-c("Voxels", "Cluster-Probability", "Peak-Height", "Voxel-Probability", "Coordinates")
+for (i in 1:length(posclust)){
+	cat("Determing positive cluster level statistics:",i,sep=" ")
+	cmask<-getMask(posclust[[i]])
+	cvoxs<-sum(as.array(cmask))
+	pclust<-rft.pcluster(posclust[[i]],mask,fwhm,thresh,df,fieldtype)
+	peak<-max(posclust[[i]])
+	loc<-labelImageCentroids(posclust[[i]])
+	resel <-ants.resel(mask,fwhm)
+	ec<-ants.ec(stat,fieldtype,df)
+	pval<-(resel[1]*ec[1])+(resel[2]*ec[2])+(resel[3]*ec[3])+(resel[4]*ec[4])
+	postable[i,]<-c(cvox, pclust, peak, pval, loc)
+	clustername<-paste("P-Cluster:",i,sep="")
+	rownames(postable[i,])<-c(clustername)
 	}
+
+negclust<-image2ClusterImages(timg,150,-Inf,-thresh)
+negtable<-matrix(ncol=5)
+colnames(postable)<-c("Voxels", "Cluster-Probability", "Peak-Height", "Voxel-Probability", "Coordinates")
+for (i in 1:length(posclust)){
+	cat("Determing negative cluster level statistics:",i,sep=" ")
+	cmask<-getMask(negclust[[i]])
+	cvoxs<-sum(as.array(cmask))
+	pclust<-rft.pcluster(posclust[[i]],mask,fwhm,thresh,df,fieldtype)
+	peak<-max(posclust[[i]])
+	loc<-labelImageCentroids(posclust[[i]])
+	resel <-ants.resel(mask,fwhm)
+	ec<-ants.ec(stat,fieldtype,df)
+	pval<-(resel[1]*ec[1])+(resel[2]*ec[2])+(resel[3]*ec[3])+(resel[4]*ec[4])
+	negtable[i,]<-c(cvox, pclust, peak, pval, loc)
+	clustername<-paste("N-Cluster:",i,sep="")
+	rownames(postable[i,])<-c(clustername)
+	}
+cluster.table<-rbind(postable,negtable)
+
+	
+}
 	
 
 
