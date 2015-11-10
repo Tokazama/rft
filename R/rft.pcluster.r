@@ -56,7 +56,7 @@
 #'
 #' @export rft.pcluster
 rft.pcluster<-function(cMask,bMask,fwhm,stat,df,fieldType){
-	voxels<-sum(as.array(mask))
+	bvox<-sum(as.array(mask))
 	D<-length(dim(mask))
 	if(class(cMask)=="numeric"){
 		ka<-cMask
@@ -66,13 +66,13 @@ rft.pcluster<-function(cMask,bMask,fwhm,stat,df,fieldType){
 	fwhm<-mean(fwhm)
 	
 	if (fieldType=="T"){
-		EN<-voxels*(1-pt(stat,df))
+		EN<-bvox*(1-pt(stat,df))
 	}else if(fieldType=="F"){
-		EN<-voxels*(1-pf(stat, df[1],df[2]))
+		EN<-bvox*(1-pf(stat, df[1],df[2]))
 	}else if(fieldType=="X"){
-		EN<-voxels*(1-pchisq(stat, df[1],df[2]))
+		EN<-bvox*(1-pchisq(stat, df[1],df[2]))
 	}else if(fieldType=="G"){
-		EN<-voxels*(1-qnorm(stat))
+		EN<-bvox*(1-qnorm(stat))
 	}else{
 		stop("A correct fieldtype is required")
 		}
