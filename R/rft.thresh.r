@@ -14,6 +14,8 @@
 #'	"X"- Chi squar field
 #'	"Z"- Gaussian field
 #' @return Outputs a statistical value to be used for threshold a SPM
+#' @reference Friston K.J., (1996) Detecting Activations in PET and fMRI: Levels of Inference and Power
+#' @
 #' @examples
 #'
 #'  var1<-vardata[,10]
@@ -63,7 +65,7 @@ rft.thresh<-function(pval,ka,fwhm,mask,df,fieldType){
 	
 	while(alpha < pval){
 		stat <-stat-.01
-		alpha <-rft.cluster(cMask,bMask,fwhm,stat,df,fieldType,D)
+		alpha <-rft.pcluster(cMask,bMask,fwhm,stat,df,fieldType)
 		}
 	return(stat)
 	}
