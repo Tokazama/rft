@@ -56,12 +56,12 @@
 #'
 #' @export rft.pcluster
 rft.pcluster<-function(cMask,bMask,fwhm,stat,df,fieldType){
-	bvox<-sum(as.array(mask))
-	D<-length(dim(mask))
+	bvox<-sum(as.array(bMask))
+	D<-length(dim(bMask))
 	if(class(cMask)=="numeric"){
 		ka<-cMask
 	}else{
-		ka<-sum(as.array(mask))
+		ka<-sum(as.array(cMask))
 		}
 	fwhm<-mean(fwhm)
 	
