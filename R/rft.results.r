@@ -25,8 +25,8 @@ rft.results<-function(timg,fwhm,ka,pval,df,fileDir){
 	cat("Determing clustering threshold using RFT, selected pval, and ka")
 	thresh<-rft.thresh(pval,ka,fwhm,mask,df,fieldType)
 	posclust<-image2ClusterImages(timg,150,thresh,Inf)
-	postable<-matrix(ncol=5)
-	colnames(postable)<-c("Voxels", "Cluster-Probability", "Peak-Height", "Voxel-Probability", "Coordinates")
+	postable<-matrix(ncol=7)
+	colnames(postable)<-c("Voxels", "Cluster-Probability", "Peak-Height", "Voxel-Probability", "xc", "yc", "zc")
 	for (i in 1:length(posclust)){
 		cat("Determing positive cluster level statistics:",i,sep=" ")
 		cmask<-getMask(posclust[[i]])
@@ -45,8 +45,8 @@ rft.results<-function(timg,fwhm,ka,pval,df,fileDir){
 		}
 		
 	negclust<-image2ClusterImages(timg,150,-Inf,-thresh)
-	negtable<-matrix(ncol=5)
-	colnames(postable)<-c("Voxels", "Cluster-Probability", "Peak-Height", "Voxel-Probability", "Coordinates")
+	negtable<-matrix(ncol=7)
+	colnames(postable)<-c("Voxels", "Cluster-Probability", "Peak-Height", "Voxel-Probability", "xc", "yc", "zc")
 	for (i in 1:length(posclust)){
 		cat("Determing negative cluster level statistics:",i,sep=" ")
 		cmask<-getMask(negclust[[i]])
