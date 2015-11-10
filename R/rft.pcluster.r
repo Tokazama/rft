@@ -65,13 +65,13 @@ rft.pcluster<-function(cMask,bMask,fwhm,stat,df,fieldType){
 		}
 	fwhm<-mean(fwhm)
 	
-	if (fieldtype=="T"){
+	if (fieldType=="T"){
 		EN<-voxels*(1-pt(stat,df))
-	}else if(fieldtype=="F"){
+	}else if(fieldType=="F"){
 		EN<-voxels*(1-pf(stat, df[1],df[2]))
-	}else if(fieldtype=="X"){
+	}else if(fieldType=="X"){
 		EN<-voxels*(1-pchisq(stat, df[1],df[2]))
-	}else if(fieldtype=="G"){
+	}else if(fieldType=="G"){
 		EN<-voxels*(1-qnorm(stat))
 	}else{
 		stop("A correct fieldtype is required")
