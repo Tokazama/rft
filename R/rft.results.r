@@ -13,8 +13,8 @@
 #'	"Z"- Gaussian field
 #' @return A list containing:
 #'	cluster.table-A data table with cluster level and voxel level statistics
-	posclust-A list of positive images that survive thresholding 
-	negclust-A list of negative images that survive thresholding 
+#'	posclust-A list of positive images that survive thresholding 
+#'	negclust-A list of negative images that survive thresholding 
 #' @details
 #'
 #' @examples
