@@ -8,7 +8,7 @@
 #' 
 #' 
 #'
-rft.cluster<-function(cMask,bMask,fwhm,stat,df,fieldtype="T",D){
+rft.pcluster<-function(cMask,bMask,fwhm,stat,df,fieldtype="T",D){
 	voxels<-sum(as.array(mask))
 	D<-length(dim(mask))
 	if(class(cMask)=="numeric"){
