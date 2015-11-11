@@ -1,10 +1,14 @@
-#' Estimates the smoothness/fwhm of a single image or image list
+#' @name est.smooth
+#' @title Estimates FWHM for input image
 #'
 #'
 #' @param mat-image matrix used for the fitted analysis
 #' @param mask-mask image for the image matrix
 #' @param psdf-pooled standard deviation obtained from fitted analysis
 #' @return Outputs the estimated fwhm and covariance matrix that was used to estimate it
+#' @references
+#'	Worsley K.J., (1992) A Three-Dimensional Statistical Analysis for CBF Activation Studies in Human Brain.
+#'
 #' @examples
 #'	
 #'   mask<-getMask(imglist[[1]])
@@ -76,9 +80,10 @@ est.smooth<-function(img,mask,xvox,yvox,zvox){
     Zzz <- ((d1 - d2)[m3 == 1])/(yvox)  
     #variances of partial derivatives z
     lambda[1,3] <- sum(Zzz^2)/(voxels)
-	
+	tint<-function(t){(((t^2)+subs-1)/((df-1)*(df-2)))*((dt(t,df)^3)*(dnorm(t,df)^2))}
+	lamv<-integrate(tint,Inf,Inf)
     #calculate fwhm from lambda
-    fwhm<-sqrt(4*log(2)/lambda)
-    smooth<-list(fwhm,lambda)
+    fwhm<-sqrt(4*log(2)/lambv)
+    smooth<-list(fwhm,lambv)
     return(smooth)
     }
