@@ -59,23 +59,27 @@ ants.resel <- function(mask, fwhm) {
   Fxz <- 0
   Fyz <- 0
   cubes <- 0
-
+  
+  voxels<-(dimx*dimy*dimz)
+  set<-0
+  progress <- txtProgressBar(min = 0, max = voxels, style = 3)
   for (i in 1:(dimx)){
       for (j in 1:(dimy)){
           for (k in 1:(dimz)){
               if(mask[i,j,k]==1){
-                  Ex <- ifelse(mask[i+1,j,k]==1,Ex+1,Ex)
-                  Ey <- ifelse(mask[i,j+1,k]==1,Ey+1,Ey)
-                  Ez <- ifelse(mask[i,j,k+1]==1,Ez+1,Ez)
-                  Fxy <- ifelse(mask[i+1,j,k]==1 && mask[i,j+1,k]==1 && mask[i+1,j+1,k]==1,Fxy+1,Fxy)
-                  Fxz <- ifelse(mask[i+1,j,k]==1 && mask[,j,k+1]==1 && mask[i+1,j,k+1]==1,Fxz+1,Fxz)
-                  Fyz <- ifelse(mask[i,j+1,k]==1 && mask[i,j,k+1]==1 && mask[i,j+1,k+1]==1,Fyz+1,Fyz)
-                  cubes <- ifelse(mask[i,j,k]==1 && mask[i+1,j,k]==1 && mask[i,j+1,k]==1 && mask[i+1,j+1,k]==1 && mask[i,j,k+1]==1 && mask[i+1,j,k+1]==1 && mask[i,j+1,k+1]==1 && mask[i+1,j+1,k+1]==1,cubes+1,cubes)
-              }
-          }
-      }
-  }
-
+                  Ex <-ifelse(mask[i+1,j,k]==1,Ex+1,Ex)
+                  Ey <-ifelse(mask[i,j+1,k]==1,Ey+1,Ey)
+                  Ez <-ifelse(mask[i,j,k+1]==1,Ez+1,Ez)
+                  Fxy <-ifelse(mask[i+1,j,k]==1 && mask[i,j+1,k]==1 && mask[i+1,j+1,k]==1,Fxy+1,Fxy)
+                  Fxz <-ifelse(mask[i+1,j,k]==1 && mask[,j,k+1]==1 && mask[i+1,j,k+1]==1,Fxz+1,Fxz)
+                  Fyz <-ifelse(mask[i,j+1,k]==1 && mask[i,j,k+1]==1 && mask[i,j+1,k+1]==1,Fyz+1,Fyz)
+                  cubes <-ifelse(mask[i,j,k]==1 && mask[i+1,j,k]==1 && mask[i,j+1,k]==1 && mask[i+1,j+1,k]==1 && mask[i,j,k+1]==1 && mask[i+1,j,k+1]==1 && mask[i,j+1,k+1]==1 && mask[i+1,j+1,k+1]==1,cubes+1,cubes)
+                  set<-set+1
+                  setTxtProgressBar(progress, set)
+                }
+            }
+        }
+    }
   r1 <- (P-(Ex+Ey+Ez)+(Fyz+Fxz+Fxy)-cubes)
   r2 <- (((Ex-Fxy-Fxz+cubes)*rx)+((Ey-Fxy-Fyz+cubes)*ry)+((Ez-Fxz-Fyz+cubes)*rz))
   r3 <- (((Fxy-cubes)*rx*ry)+((Fxz-cubes)*rx*rz)+((Fyz-cubes)*ry*rz))
