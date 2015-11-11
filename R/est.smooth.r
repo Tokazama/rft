@@ -80,10 +80,8 @@ est.smooth<-function(img,mask,xvox,yvox,zvox){
     Zzz <- ((d1 - d2)[m3 == 1])/(yvox)  
     #variances of partial derivatives z
     lambda[1,3] <- sum(Zzz^2)/(voxels)
-	tint<-function(t){(((t^2)+subs-1)/((df-1)*(df-2)))*((dt(t,df)^3)*(dnorm(t,df)^2))}
-	lamv<-integrate(tint,Inf,Inf)
     #calculate fwhm from lambda
-    fwhm<-sqrt(4*log(2)/lambv)
-    smooth<-list(fwhm,lambv)
+    fwhm<-sqrt(4*log(2)/lambda)
+    smooth<-list(fwhm,lambda)
     return(smooth)
     }
