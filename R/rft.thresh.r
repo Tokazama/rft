@@ -15,20 +15,29 @@
 #'	"Z"- Gaussian field
 #' @return Outputs a statistical value to be used for threshold a SPM
 #' @description
-#'	A statistical threshold level is predicted using a p-value (pval) and suprathreshold cluster
-#'	level (ka). The input statistical parametric map (SPM) is then thresholded and clusters
-#'	are extracted to produce the cluster-level statistics. Random field theory (RFT) is
-#'	utilized to produce these statistics (Friston et al., 1996). 
+#'	A statistical threshold level is predicted using a p-value (pval) and 
+#'	suprathreshold cluster level (ka). The input statistical parametric map (SPM) 
+#'	is then thresholded and clusters are extracted. Random field theory (RFT) is 
+#'	used to produce the cluster-level statistics.  
 #'	
 #'	It is important to note that there is an inverse relationships between the 
 #'	'pval' and 'ka' input and the calculated threshold. Calculating the actual
 #'	cluster-level statistics utilizes the 'ka' and the threshold value. Therefore,
-#'	the 'pval' and 'ka' should be used according to the type of analysis (fMRI, PET,
-#'	or VBM). 
-#'	
+#'	the 'pval' and 'ka' should be used according to the type of analysis (fMRI,
+#'	PET, or VBM) and region of interest. This has been validated with a power analysis
+#'	that utilizes the peviously discussed values herein and signal characteristics 
+#'	(Friston et al., 1996). Therefore, if the ultimate goal of an analysis is to 
+#'	produce cluster-level statistics then lower thresholds may ultimately lead to  
+#'	higher statistical power. Alternatively, voxel-level statistics have increased
+#'	power with higher thresholds.
+#'
+#'	Consult provided reference material for further details concerning how to produce
+#'	apropriate thesholds for your analysis.
 #'
 #'	
-#' @reference Friston K.J., (1996) Detecting Activations in PET and fMRI: Levels of Inference and Power
+#' @reference 
+#'	Friston K.J., (1994) Assessing the Significance of Focal Activations Using Their Spatial Extent
+#'	Friston K.J., (1996) Detecting Activations in PET and fMRI: Levels of Inference and Power
 #'
 #' @examples
 #'
