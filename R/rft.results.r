@@ -21,7 +21,7 @@
 #'	
 #' @references
 #' @export rft.results
-rft.results<-function(timg,fwhm,ka,pval,df,fileDir){
+rft.results<-function(timg,fwhm,ka,pval,df,fieldType){
 	cat("Determing clustering threshold using RFT, selected pval, and ka")
 	thresh<-rft.thresh(pval,ka,fwhm,mask,df,fieldType)
 	posclust<-image2ClusterImages(timg,150,thresh,Inf)
@@ -40,7 +40,7 @@ rft.results<-function(timg,fwhm,ka,pval,df,fileDir){
 		postable[i,]<-c(cvox, pclust, peak, pval, loc$vertices[1],loc$vertices[2],loc$vertices[3])
 		clustername<-paste("P-Cluster:",i,sep="")
 		rownames(postable[i,])<-c(clustername)
-		image<-paste(fileDir,"Plcuster",i,".nii.gz",sep="")
+		image<-paste("Plcuster",i,".nii.gz",sep="")
 		antsImageWrite(posclust[[i]],file=image)
 		}
 		
@@ -60,7 +60,7 @@ rft.results<-function(timg,fwhm,ka,pval,df,fileDir){
 		negtable[i,]<-c(cvox, pclust, peak, pval, loc$vertices[1],loc$vertices[2],loc$vertices[3])
 		clustername<-paste("N-Cluster:",i,sep="")
 		rownames(postable[i,])<-c(clustername)
-		image<-paste(fileDir,"Nlcuster",i,".nii.gz",sep="")
+		image<-paste("Nlcuster",i,".nii.gz",sep="")
 		antsImageWrite(negclust[[i]],file=image)
 		}
 	cluster.table<-rbind(postable,negtable)
