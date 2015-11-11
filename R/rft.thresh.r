@@ -54,7 +54,7 @@
 #'	  }
 #'
 #' @export rft.thresh
-rft.thresh<-function(pval,ka,fwhm,mask,df,fieldType){
+rft.thresh<-function(img,pval,ka,fwhm,mask,df,fieldType){
 	voxels <-sum(as.array(mask))
 	bMask <-mask
 	cMask <- ka
@@ -63,9 +63,45 @@ rft.thresh<-function(pval,ka,fwhm,mask,df,fieldType){
 	alpha<-pval-1
 	stat<-10
 	
+	cat("Determing threshold value based on pval, ka, brain volume")
 	while(alpha < pval){
 		stat <-stat-.01
 		alpha <-rft.pcluster(cMask,bMask,fwhm,stat,df,fieldType)
 		}
-	return(stat)
+
+	posclust<-image2ClusterImages(img,150,stat,Inf)
+	lclust<-labelClusters(
+	postable<-matrix(ncol=5)
+	colnames(postable)<-c("Voxels", "Cluster-Probability", "xc", "yc", "zc")
+	for (i in 1:length(posclust)){
+		cat("Determing positive cluster level statistics:",i,sep=" ")
+		cMask<-getMask(posclust[[i]])
+		cvoxs<-sum(as.array(cMask))
+		pclust<-rft.pcluster(cMask,mask,fwhm,thresh,df,fieldType)
+		peak<-max(posclust[[i]])
+		loc<-labelImageCentroids(cMask)[2]
+		postable[i,]<-c(cvox, pclust, loc$vertices[1],loc$vertices[2],loc$vertices[3])
+		clustername<-paste("P-Cluster:",i,sep="")
+		rownames(postable[i,])<-c(clustername)
+		image<-paste("Plcuster",i,".nii.gz",sep="")
+		}
+	
+	negclust<-image2ClusterImages(img,150,stat,Inf)
+	negtable<-matrix(ncol=5)
+	colnames(postable)<-c("Voxels", "Cluster-Probability", "xc", "yc", "zc")
+	for (i in 1:length(negclust)){
+		cat("Determing positive cluster level statistics:",i,sep=" ")
+		cMask<-getMask(negclust[[i]])
+		cvoxs<-sum(as.array(cMask))
+		pclust<-rft.pcluster(cMask,mask,fwhm,thresh,df,fieldType)
+		peak<-max(negclust[[i]])
+		loc<-labelImageCentroids(cMask)[2]
+		negtable[i,]<-c(cvox, pclust, loc$vertices[1],loc$vertices[2],loc$vertices[3])
+		clustername<-paste("P-Cluster:",i,sep="")
+		rownames(postable[i,])<-c(clustername)
+		image<-paste("Plcuster",i,".nii.gz",sep="")
+		}
+	cluster.table<-rbind(postable,negtable)
+	
+	return(list(cluster.table,posclust,negclust,stat))
 	}
