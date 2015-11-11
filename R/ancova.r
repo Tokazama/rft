@@ -10,7 +10,7 @@ mask<-getMask(antsImageRead(ilist[1]))
 mat<-imagesToMatrix(ilist, mask)
 
 #Load data table
-sobik<-read.table("/path/to/directory/sobik.csv", header=TRUE,sep=",")
+sobik<-read.table("/Users/zach8769/data/SOBIK.csv", header=TRUE,sep=",")
 
 #Subset data to demographics and desired variable columns
 vardata<-sobik[c(1:9,12)]
@@ -25,9 +25,15 @@ var1<-vardata[,10]
 #data table to line up. Later I'll demonstrate how to call subject
 #labels from a data table so that one doesn't need to copy images
 #into a single file and use more memory.
-for(i in varlist){
-  varmat<-subset(mat[i,])
-  }
+imglist<-list()
+nimgs<-length(ilist)
+for (i in 1:nimgs){
+	imglist[i]<-smoothImage(antsImageRead(ilist[i]), 2)
+	}
+mat<-imageListToMatrix(imglist,mask)
+for (i in varlist){
+	varmat<-subset(mat[i,])
+	}
 
 ##############
 #ANCOVA Model#
