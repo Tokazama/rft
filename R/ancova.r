@@ -14,12 +14,13 @@ sobik<-read.table("/path/to/directory/sobik.csv", header=TRUE,sep=",")
 
 #Subset data to demographics and desired variable columns
 vardata<-sobik[c(1:9,12)]
-var1<-vardata[,10]
+
 
 #Get rid of of rows missing data and create list noting which rows to keep
 vardata<-na.omit(vardata)
 varlist<-list(as.numeric(rownames(vardata)))
 
+var1<-vardata[,10]
 #This is my lazy way of getting the image matrix and variable 
 #data table to line up. Later I'll demonstrate how to call subject
 #labels from a data table so that one doesn't need to copy images
