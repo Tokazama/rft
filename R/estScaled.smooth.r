@@ -1,6 +1,5 @@
 estScaled.smooth<-function(res,rdf,mask){
 	res2<-colSums(res^2)
-	rdf<-regfit$df.residual
 	S2<-res2/rdf
 	psd<-sqrt(S2)
 	Mmat<-colMeans(res)
