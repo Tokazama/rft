@@ -57,7 +57,7 @@
 #' @export rft.pcluster
 rft.pcluster<-function(cMask,bMask,fwhm,stat,df,fieldType){
 	bvox<-sum(as.array(bMask))
-	D<-length(dim(bMask))
+	bMask@dimension
 	if(class(cMask)=="numeric"){
 		ka<-cMask
 	}else{
