@@ -63,20 +63,24 @@ rft.thresh<-function(img,pval,ka,fwhm,mask,df,fieldType){
 	voxels <-sum(as.array(mask))
 	bMask <-mask
 	cMask <- ka
-	D<-as.numeric(length(dim(img)))
+	D<-mask@dimension
 	fwhm<-mean(fwhm)
 	alpha<-pval-1
 	stat<-10
-	
-	cat("Determing threshold value based on pval, ka, brain volume")
+	Clusters<-list()
+	cat("Determing threshold value based on pval, ka, brain volume
+	")
 	while(alpha < pval){
 		stat <-stat-.01
 		alpha <-rft.pcluster(cMask,bMask,fwhm,stat,df,fieldType)
 		}
+	Clusters<-lappend(Clusters,stat)
+	names(Clusters)[1]<-"Threshold Value"
 	
 	posclust <- labelClusters(img, ka, stat, Inf)
 	if(max(posclust) < 1){
-  		cat("No positive clusters survive threshold")
+  		cat("No positive clusters survive threshold
+  		")
   	}else{
 		labs <- unique(posclust[posclust > 0])
 		posclustlist <- list()
@@ -86,11 +90,13 @@ rft.thresh<-function(img,pval,ka,fwhm,mask,df,fieldType){
 			posclustlist <- lappend(posclustlist, labimg)
 			}
 
+		Clusters<-lappend(Clusters,posclustlist)
 		postable<-matrix(nrow=length(posclustlist),ncol=5)
 		colnames(postable)<-c("Voxels", "Cluster-Probability", "xc", "yc", "zc")
 		cnames<-rep(1,nrow=5)
 		for (i in 1:length(posclustlist)){
-			cat("Determing positive cluster level statistics:",i,sep=" ")
+			cat("Determing positive cluster level statistics:",i,"
+			",sep=" ")
 			cMask<-getMask(posclustlist[[i]])
 			cvoxs<-sum(as.array(cMask))
 			pclust<-rft.pcluster(cMask,mask,fwhm,stat,df,fieldType)
@@ -100,35 +106,38 @@ rft.thresh<-function(img,pval,ka,fwhm,mask,df,fieldType){
 			cnames[i]<-clustername
 			}
 		rownames(postable)<-cnames
+		Clusters<-lappend(Clusters,postable)
 	}
 	
 	negclust <- labelClusters(img, ka, -Inf, -stat)
 	if(max(negclust) < 1){
-  		cat("No negative clusters survive threshold")
+  		cat("No negative clusters survive threshold
+  		")
 	}else{
 		labs <- unique(negclust[negclust > 0])
 		negclustlist <- list()
 		for (i in 1:length(labs)) {
 			labimg <- antsImageClone(img)
 			labimg[negclust != labs[i]] <- 0
-			posclustlist <- lappend(negclustlist, labimg)
+			negclustlist <- lappend(negclustlist, labimg)
 			}
-			
+		Clusters<-lappend(Clusters,negclustlist)
 		negtable<-matrix(nrow=length(negclustlist),ncol=5)
 		colnames(postable)<-c("Voxels", "Cluster-Probability", "xc", "yc", "zc")
 		for (i in 1:length(negclustlist)){
-			cat("Determing positive cluster level statistics:",i,sep=" ")
-			cMask<-getMask(posclustlist[[i]])
+			cat("Determing positive cluster level statistics:",i,"
+			",sep=" ")
+			cMask<-getMask(negclustlist[[i]])
 			cvoxs<-sum(as.array(cMask))
 			pclust<-rft.pcluster(cMask,mask,fwhm,stat,df,fieldType)
 			loc<-labelImageCentroids(cMask)[2]
-			postable[i,]<-c(cvoxs, pclust, loc$vertices[1],loc$vertices[2],loc$vertices[3])
-			clustername<-paste("P-Cluster:",i,sep="")
-			rownames(postable[i,])<-c(clustername)
+			negtable[i,]<-c(cvoxs, pclust, loc$vertices[1],loc$vertices[2],loc$vertices[3])
+			clustername<-paste("N-Cluster:",i,sep="")
+			cnames[i]<-clustername
 			}
-		rownames(postable)<-cnames
-
+		rownames(negtable)<-cnames
+		Clusters<-lappend(Clusters,negtable)
 	}
 	
-	return(list(postable,posclustlist,negtable,negclustlist,stat))
+	return(Clusters)
 	}
