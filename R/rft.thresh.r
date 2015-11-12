@@ -77,7 +77,7 @@ rft.thresh<-function(img,pval,ka,fwhm,mask,df,fieldType){
 	Clusters<-lappend(Clusters,stat)
 	names(Clusters)[1]<-"Threshold Value"
 	
-	posclust <- labelClusters(img, ka, stat, Inf)
+	posclust <- labelClusters(img, 0, stat, Inf)
 	if(max(posclust) < 1){
   		cat("No positive clusters survive threshold
   		")
@@ -91,7 +91,7 @@ rft.thresh<-function(img,pval,ka,fwhm,mask,df,fieldType){
 			}
 
 		Clusters<-lappend(Clusters,posclustlist)
-		names(Clusters)[length(Clusters)]<-"Positive Clusters"
+		names(Clusters)[length(Clusters)]<-"PositiveClusters"
 		postable<-matrix(nrow=length(posclustlist),ncol=5)
 		colnames(postable)<-c("Voxels", "Cluster-Probability", "xc", "yc", "zc")
 		cnames<-rep(1,nrow=5)
@@ -108,10 +108,10 @@ rft.thresh<-function(img,pval,ka,fwhm,mask,df,fieldType){
 			}
 		rownames(postable)<-cnames
 		Clusters<-lappend(Clusters,postable)
-		names(Clusters)[length(Clusters)]<-"Positive Cluster Statistics"
+		names(Clusters)[length(Clusters)]<-"PositiveClusterStatistics"
 	}
 	
-	negclust <- labelClusters(img, ka, -Inf, -stat)
+	negclust <- labelClusters(img, 0, -Inf, -stat)
 	if(max(negclust) < 1){
   		cat("No negative clusters survive threshold
   		")
@@ -125,7 +125,7 @@ rft.thresh<-function(img,pval,ka,fwhm,mask,df,fieldType){
 			}
 	
 		Clusters<-lappend(Clusters,negclustlist)
-		names(Clusters)[length(Clusters)]<-"Negative Clusters"
+		names(Clusters)[length(Clusters)]<-"NegativeClusters"
 		negtable<-matrix(nrow=length(negclustlist),ncol=5)
 		colnames(postable)<-c("Voxels", "Cluster-Probability", "xc", "yc", "zc")
 		for (i in 1:length(negclustlist)){
@@ -141,7 +141,7 @@ rft.thresh<-function(img,pval,ka,fwhm,mask,df,fieldType){
 			}
 		rownames(negtable)<-cnames
 		Clusters<-lappend(Clusters,negtable)
-		names(Clusters)[length(Clusters)]<-"Negative Cluster Statistics"
+		names(Clusters)[length(Clusters)]<-"NegativeClusterStatistics"
 	}
 	
 	return(Clusters)
