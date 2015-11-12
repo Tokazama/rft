@@ -42,9 +42,9 @@
 #'	  }
 #'
 #' @export ants.resel
-ants.resel <- function(mask, fwhm) {
-
-  P<-sum(as.array(mask))
+ants.resel <- function(cMask, fwhm) {
+  mask<-as.array(cMask)
+  P<-sum(mask)
   dimx <- dim(mask)[1]
   dimy <- dim(mask)[2]
   dimz <- dim(mask)[3]
