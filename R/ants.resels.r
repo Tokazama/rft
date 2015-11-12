@@ -70,7 +70,7 @@ ants.resel <- function(cMask, fwhm) {
                   Ey <-ifelse(mask[i,j+1,k]==1,Ey+1,Ey)
                   Ez <-ifelse(mask[i,j,k+1]==1,Ez+1,Ez)
                   Fxy <-ifelse(mask[i+1,j,k]==1 && mask[i,j+1,k]==1 && mask[i+1,j+1,k]==1,Fxy+1,Fxy)
-                  Fxz <-ifelse(mask[i+1,j,k]==1 && mask[,j,k+1]==1 && mask[i+1,j,k+1]==1,Fxz+1,Fxz)
+                  Fxz <-ifelse(mask[i+1,j,k]==1 && mask[i,j,k+1]==1 && mask[i+1,j,k+1]==1,Fxz+1,Fxz)
                   Fyz <-ifelse(mask[i,j+1,k]==1 && mask[i,j,k+1]==1 && mask[i,j+1,k+1]==1,Fyz+1,Fyz)
                   cubes <-ifelse(mask[i,j,k]==1 && mask[i+1,j,k]==1 && mask[i,j+1,k]==1 && mask[i+1,j+1,k]==1 && mask[i,j,k+1]==1 && mask[i+1,j,k+1]==1 && mask[i,j+1,k+1]==1 && mask[i+1,j+1,k+1]==1,cubes+1,cubes)
                 }
