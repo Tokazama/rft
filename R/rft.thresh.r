@@ -63,7 +63,7 @@ rft.thresh<-function(img,pval,ka,fwhm,mask,df,fieldType){
 	voxels <-sum(as.array(mask))
 	bMask <-mask
 	cMask <- ka
-	D<-img@dimension
+	D<-as.numeric(length(dim(img)))
 	fwhm<-mean(fwhm)
 	alpha<-pval-1
 	stat<-10
@@ -75,7 +75,7 @@ rft.thresh<-function(img,pval,ka,fwhm,mask,df,fieldType){
 		}
 	
 	posclust <- labelClusters(img, ka, stat, Inf)
-	if(sum(as.array(posclust)==0){
+	if(sum(as.array(posclust)==0)){
   		cat("No positive clusters survive threshold")
   	}else{
 		labs <- unique(posclust[posclust > 0])
@@ -101,7 +101,7 @@ rft.thresh<-function(img,pval,ka,fwhm,mask,df,fieldType){
 	}
 	
 	negclust <- labelClusters(img, ka, -Inf, -stat)
-	if(sum(as.array(negclust)==0){
+	if(sum(as.array(negclust)==0)){
   		cat("No negative clusters survive threshold")
 	}else{
 		labs <- unique(negclust[negclust > 0])
