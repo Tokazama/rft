@@ -91,6 +91,7 @@ rft.thresh<-function(img,pval,ka,fwhm,mask,df,fieldType){
 			}
 
 		Clusters<-lappend(Clusters,posclustlist)
+		names(Clusters)[length(Clusters)]<-"Positive Clusters"
 		postable<-matrix(nrow=length(posclustlist),ncol=5)
 		colnames(postable)<-c("Voxels", "Cluster-Probability", "xc", "yc", "zc")
 		cnames<-rep(1,nrow=5)
@@ -107,6 +108,7 @@ rft.thresh<-function(img,pval,ka,fwhm,mask,df,fieldType){
 			}
 		rownames(postable)<-cnames
 		Clusters<-lappend(Clusters,postable)
+		names(Clusters)[length(Clusters)]<-"Positive Cluster Statistics"
 	}
 	
 	negclust <- labelClusters(img, ka, -Inf, -stat)
@@ -121,7 +123,9 @@ rft.thresh<-function(img,pval,ka,fwhm,mask,df,fieldType){
 			labimg[negclust != labs[i]] <- 0
 			negclustlist <- lappend(negclustlist, labimg)
 			}
+	
 		Clusters<-lappend(Clusters,negclustlist)
+		names(Clusters)[length(Clusters)]<-"Negative Clusters"
 		negtable<-matrix(nrow=length(negclustlist),ncol=5)
 		colnames(postable)<-c("Voxels", "Cluster-Probability", "xc", "yc", "zc")
 		for (i in 1:length(negclustlist)){
@@ -137,6 +141,7 @@ rft.thresh<-function(img,pval,ka,fwhm,mask,df,fieldType){
 			}
 		rownames(negtable)<-cnames
 		Clusters<-lappend(Clusters,negtable)
+		names(Clusters)[length(Clusters)]<-"Negative Cluster Statistics"
 	}
 	
 	return(Clusters)
