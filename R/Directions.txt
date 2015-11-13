@@ -1,0 +1,12 @@
+In conjunction with the ANTsR library, the following functions from this directory are necessary to perform RFT analyses:
+  ants.ec.r
+  ants.resels.r
+  est.smooth.r
+  estScaled.smooth.r
+  rft.pcluster.r
+  rft.results.r
+  rft.thresh.r
+  
+The following provide the R code and commentary on how to perform the analysis:
+  ancova.r - RFT ANCOVA
+  linearReg.r - simple linear regression
