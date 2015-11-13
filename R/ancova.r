@@ -10,7 +10,7 @@ mask<-getMask(antsImageRead(ilist[1]))
 mat<-imagesToMatrix(ilist, mask)
 
 #Load data table
-sobik<-read.table("/Users/zach8769/data/SOBIK.csv", header=TRUE,sep=",")
+sobik<-read.table("/Users/zach8769/data/SOBIK-demographic-data.csv", header=TRUE,sep=",")
 
 #Subset data to demographics and desired variable columns
 vardata<-sobik[c(1:9,12)]
@@ -67,7 +67,10 @@ for (i in 1:voxels){
   setTxtProgressBar(progress, i)
   }
 close(progress)
+rdf<-fit$df.residuals
 
+#Use the extracted statistical information for each contrast and create a statistical parametric map (SPM)
+#in an antsImage format and then save it as a nifti file
 tmild<-makeImage(mask,tstat.mild)
 antsImageWrite(tmild,file='/Users/zach8769/Desktop/rsobik/BASCtAggression/tmild.nii.gz')
 tmod<-makeImage(mask,tstat.mod)
@@ -75,10 +78,35 @@ antsImageWrite(tmod,file='/Users/zach8769/Desktop/rsobik/BASCtAggression/tmod.ni
 tsev<-makeImage(mask,tstat.sev)
 antsImageWrite(tsev,file='/Users/zach8769/Desktop/rsobik/BASCtAggression/tsev.nii.gz')
 
-rdf<-fit$df.residuals
 
+#Calculate the fwhm/smoothness of the image using the scaled residuals
 fwhm<-estScaled.smooth(res,rdf,mask)
 
-clusters<-rft.thresh(timg,.05,150,fwhm,mask,df,"T")
+#####
+#RFT#
+#####
 
-voxels<-rft.voxel(cluster$stat,fwhm,mask,df,"T")
+#So far I've created three images full of statistical information but none of it is ready to be reported.
+#Because I've literally performed over a million tests a .05 probability level will give me over 50,000 
+#significant voxels just by chance. I need to use a method that accounts for the many tests I perform and
+#the inherent neuroanatomical relationship between proximal voxels. This is why I'll be using Random Field
+#Theory (RFT) to control for multiple tests.
+
+#Calculate an expected threshold given a certain p-value, suprathreshold cluster volume, and overall SPM size
+stat<-rft.thresh(tsev,.05,150,fwhm,mask,df,"T")
+#Using the previously obtained threshold find the cluster-level and voxel-level statistics
+results<-rft.results(tsev,stat,150,fwhm,mask,rdf,"T")
+
+#Extract visual information for the first cluster along the x, y, and z axis.
+#For this particular fitted model only positive "T" values survived thresholding, so I'll be 
+#looking at the PositiveStatistics table within results object
+invisible(plot(t1,list(clust),slices=c(results$PositiveStatistics[1,5]),axis=1,overlay.color=c(red)))
+invisible(plot(t1,list(clust),slices=c(results$PositiveStatistics[1,6]),axis=2,overlay.color=c(red)))
+invisible(plot(t1,list(clust),slices=c(results$PositiveStatistics[1,7]),axis=3,overlay.color=c(red)))
+
+#I like the coronal view provided in the third option so I create a jpeg and...
+jpeg('/Users/zach8769/Desktop/rsobik/BASCtAggression/PCluster1.jpeg')
+invisible(plot(t1,list(clust),slices=c(results$PositiveStatistics[1,7]),axis=3,overlay.color=c(red)))
+dev.off()
+# ...a csv of my data.
+write.csv(results$PositiveStatistics, file='/Users/zach8769/Desktop/rsobik/BASCtAggresion/PStatsSev.csv')
