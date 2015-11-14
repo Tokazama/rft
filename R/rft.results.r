@@ -86,7 +86,8 @@ rft.results<-function(img,stat,ka,fwhm,mask,df,fieldType){
 		names(Clusters)[length(Clusters)]<-"PositiveStatistics"
 	}
 	
-	negclust <- labelClusters(img, ka, -Inf, -stat)
+	nimg<-img*-1
+	negclust <- labelClusters(nimg, ka, stat, Inf)
 	if(max(negclust) < 1){
   		cat("No negative clusters survive threshold
   		")
@@ -103,7 +104,7 @@ rft.results<-function(img,stat,ka,fwhm,mask,df,fieldType){
 			}
 	
 		negtable<-matrix(nrow=length(negclustlist),ncol=7)
-		colnames(postable)<-c("Voxels", "Cluster-Probability", "Voxel-Probability","Peak-Height","xc", "yc", "zc")
+		colnames(negtable)<-c("Voxels", "Cluster-Probability", "Voxel-Probability","Peak-Height","xc", "yc", "zc")
 		for (i in 1:length(negclustlist)){
 			cat("Determing negative cluster-level statistics:",i,"
 			",sep=" ")
