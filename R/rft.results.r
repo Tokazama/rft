@@ -95,7 +95,7 @@ rft.results<-function(img,stat,ka,fwhm,mask,df,fieldType){
 		labs <- unique(negclust[negclust > 0])
 		negclustlist <- list()
 		for (i in 1:length(labs)) {
-			labimg <- antsImageClone(img)
+			labimg <- antsImageClone(nimg)
 			labimg[negclust != labs[i]] <- 0
 			negclustlist <- lappend(negclustlist, labimg)
 			Clusters<-lappend(Clusters,labimg)
@@ -105,6 +105,7 @@ rft.results<-function(img,stat,ka,fwhm,mask,df,fieldType){
 	
 		negtable<-matrix(nrow=length(negclustlist),ncol=7)
 		colnames(negtable)<-c("Voxels", "Cluster-Probability", "Voxel-Probability","Peak-Height","xc", "yc", "zc")
+		cnames<-rep(1,nrow=5)
 		for (i in 1:length(negclustlist)){
 			cat("Determing negative cluster-level statistics:",i,"
 			",sep=" ")
