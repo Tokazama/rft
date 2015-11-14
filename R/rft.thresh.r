@@ -59,7 +59,7 @@
 #'	
 #'
 #' @export rft.thresh
-rft.thresh<-function(img,pval,ka,cthresh,fwhm,mask,df,fieldType){
+rft.thresh<-function(img,pval,ka,fwhm,mask,df,fieldType){
 	voxels <-sum(as.array(mask))
 	bMask <-mask
 	cMask <- ka
