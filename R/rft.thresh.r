@@ -68,7 +68,7 @@ rft.thresh<-function(img,pval,ka,fwhm,mask,df,fieldType){
 	alpha<-pval-1
 	stat<-10
 	Clusters<-list()
-	cat("Determing threshold value based on pval, ka, brain volume
+	cat("Determing threshold value based on pval, ka, and brain volume.
 	")
 	while(alpha < pval){
 		stat <-stat-.01
