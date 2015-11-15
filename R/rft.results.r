@@ -41,91 +41,40 @@
 #'	
 #'
 #' @export rft.results
-rft.results<-function(img,stat,ka,fwhm,mask,df,fieldType){
+rft.results<-function(StatImg,stat,ka,fwhm,df,fieldType,dir){
+	mask<-getMask(StatImg)
 	voxels <-sum(as.array(mask))
 	D<-mask@dimension
 	Mfwhm<-mean(fwhm)
-	Clusters<-list()
-	posclust <- labelClusters(img, ka, stat, Inf)
-	if(max(posclust) < 1){
-  		cat("No positive clusters survive threshold
-  		")
-  	}else{
-		labs <- unique(posclust[posclust > 0])
-		posclustlist <- list()
-		for (i in 1:length(labs)) {
-			labimg <- antsImageClone(img)
-			labimg[posclust != labs[i]] <- 0
-			posclustlist <- lappend(posclustlist, labimg)
-			Clusters<-lappend(Clusters, labimg)
-			clustername<-paste("PCluster",i,sep="")
-			names(Clusters)[length(Clusters)]<-clustername
-			}
-
-		postable<-matrix(nrow=length(posclustlist),ncol=7)
-		colnames(postable)<-c("Voxels", "Cluster-Probability", "Voxel-Probability","Peak-Height","xc", "yc", "zc")
-		cnames<-rep(1,nrow=5)
-		for (i in 1:length(posclustlist)){
-			cat("Determing positive cluster-level statistics:",i,"
-			",sep=" ")
-			cMask<-getMask(posclustlist[[i]])
-			cvoxs<-sum(as.array(cMask))
-			pclust<-rft.pcluster(cMask,mask,Mfwhm,stat,df,fieldType)
-			loc<-labelImageCentroids(cMask)[2]
-			cat("Determing positive voxel-level statistics:",i,"
-			",sep=" ")
-			resel<-ants.resel(cMask,fwhm)
-			ec<-ants.ec(stat,fieldType,df)
-			pvox<-(resel[1]*ec[1])+(resel[2]*ec[2])+(resel[3]*ec[3])+(resel[4]*ec[4])
-			postable[i,]<-c(cvoxs,pclust,pvox,max(posclustlist[[i]]),loc$vertices[1],loc$vertices[2],loc$vertices[3])
-			clustername<-paste("P-Cluster:",i,sep="")
-			cnames[i]<-clustername
-			}
-		rownames(postable)<-cnames
-		Clusters<-lappend(Clusters,postable)
-		names(Clusters)[length(Clusters)]<-"PositiveStatistics"
-	}
-	
-	nimg<-img*-1
-	negclust <- labelClusters(nimg, ka, stat, Inf)
-	if(max(negclust) < 1){
-  		cat("No negative clusters survive threshold
-  		")
-	}else{
-		labs <- unique(negclust[negclust > 0])
-		negclustlist <- list()
-		for (i in 1:length(labs)) {
-			labimg <- antsImageClone(nimg)
-			labimg[negclust != labs[i]] <- 0
-			negclustlist <- lappend(negclustlist, labimg)
-			Clusters<-lappend(Clusters,labimg)
-			clustername<-paste("NCluster",i,sep="")
-			names(Clusters)[length(Clusters)]<-clustername
-			}
-	
-		negtable<-matrix(nrow=length(negclustlist),ncol=7)
-		colnames(negtable)<-c("Voxels", "Cluster-Probability", "Voxel-Probability","Peak-Height","xc", "yc", "zc")
-		cnames<-rep(1,nrow=5)
-		for (i in 1:length(negclustlist)){
-			cat("Determing negative cluster-level statistics:",i,"
-			",sep=" ")
-			cMask<-getMask(negclustlist[[i]])
-			cvoxs<-sum(as.array(cMask))
-			pclust<-rft.pcluster(cMask,mask,Mfwhm,stat,df,fieldType)
-			loc<-labelImageCentroids(cMask)[2]
-			cat("Determing negative voxel-level statistics:",i,"
-			",sep=" ")
-			resel<-ants.resel(cMask,fwhm)
-			ec<-ants.ec(stat,fieldType,df)
-			pvox<-(resel[1]*ec[1])+(resel[2]*ec[2])+(resel[3]*ec[3])+(resel[4]*ec[4])
-			negtable[i,]<-c(cvoxs,pclust,pvox,max(negclustlist[[i]]),loc$vertices[1],loc$vertices[2],loc$vertices[3])
-			clustername<-paste("N-Cluster:",i,sep="")
-			cnames[i]<-clustername
-			}
-		rownames(negtable)<-cnames
-		Clusters<-lappend(Clusters,negtable)
-		names(Clusters)[length(Clusters)]<-"NegativeStatistics"
-	}
-	
-	return(Clusters)
+	absimg<-as.antsImage(abs(as.array(StatImg)))
+	clusters<-image2ClusterImages(absimg,ka,stat,Inf)
+	nclusts<-length(clusters)
+	clustable<-matrix(nrow=nclusts,ncol=7)
+	colnames(clustable)<-c("Voxels", "Cluster-Probability", "Voxel-Probability","Peak-Height","xc", "yc", "zc")
+	clist<-list()
+	cnames<-rep(1,nrow=nclusts)
+	for (i in 1:nclusts){
+		cat("Determing cluster-level statistics:",i,"
+		",sep=" ")
+		cName<-paste("Cluster",i,sep="")
+		cMask<-getMask(clusters[[i]])
+		cvoxs<-sum(as.array(cMask))
+		loc<-labelImageCentroids(cMask)[2]
+		clust<-maskImage(StatImg,cMask,level=1)
+		clist<-lappend(clist,clust)
+		names(clusters)[[i]]<-cName
+		names(clist)[length(clist)]<-cName
+		pclust<-rft.pcluster(cMask,mask,Mfwhm,stat,df,fieldType)
+		cat("Determing voxel-level statistics:",i,"
+		",sep=" ")
+		resel<-ants.resel(cMask,fwhm)
+		ec<-ants.ec(stat,fieldType,df)
+		pvox<-(resel[1]*ec[1])+(resel[2]*ec[2])+(resel[3]*ec[3])+(resel[4]*ec[4])
+		clustable[i,]<-c(cvoxs,pclust,pvox,max(clust),loc$vertices[1],loc$vertices[2],loc$vertices[3])
+		cnames[i]<-cName
+		}
+	rownames(clustable)<-cnames
+	clist<-lappend(clist,clustable)
+	names(clist)[length(clist)]<-"stats"
+	return(clist)
 	}
