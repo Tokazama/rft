@@ -54,6 +54,13 @@ timg<-makeImage(mask,regtstat)
 antsImageWrite(timg,file="Desktop/Ttbi.nii.gz")
 
 fwhm<-estScaled.smooth(res,rdf,mask)
-
 stat<-rft.thresh(timg,.05,150,fwhm,mask,rdf,"T")
-results<-rft.results(timg,stat,150,fwhm,mask,rdf,"T")
+results<-rft.results(timg,stat,100,fwhm,rdf,"T")
+
+antsImageWrite(results$Cluster1,file='Desktop/tertiles/tbicluster1.nii.gz')
+antsImageWrite(results$Cluster2,file='Desktop/tertiles/tbicluster2.nii.gz')
+write.csv(results$stats,file='Desktop/tertiles/tbi.csv')
+
+jpeg('Desktop/tertiles/xtbiclus1.jpeg')
+invisible(plot(t1,list(results$Cluster1),slices=c(results$PositiveStatistics[1,5]),axis=1,overlay.color=c(red)))
+dev.off()
