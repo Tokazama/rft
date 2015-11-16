@@ -41,7 +41,7 @@
 #'	
 #'
 #' @export rft.results
-rft.results<-function(StatImg,stat,ka,fwhm,df,fieldType,dir){
+rft.results<-function(StatImg,stat,ka,fwhm,df,fieldType){
 	mask<-getMask(StatImg)
 	voxels <-sum(as.array(mask))
 	D<-mask@dimension
