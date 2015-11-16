@@ -49,7 +49,7 @@ for (i in 1:voxels){
 	setTxtProgressBar(progress, i)
 	}
 	close(progress)
-rdf<-regfit$df.residuals
+rdf<-regfit$df.residual
 timg<-makeImage(mask,regtstat)
 antsImageWrite(timg,file="Desktop/Ttbi.nii.gz")
 
