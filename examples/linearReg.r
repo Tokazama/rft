@@ -56,4 +56,4 @@ antsImageWrite(timg,file="Desktop/Ttbi.nii.gz")
 fwhm<-estScaled.smooth(res,rdf,mask)
 
 stat<-rft.thresh(timg,.05,150,fwhm,mask,df,"T")
-results<-rft.results(tsev,stat,150,fwhm,mask,rdf,"T")
+results<-rft.results(timg,stat,150,fwhm,mask,rdf,"T")
