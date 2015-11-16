@@ -9,4 +9,4 @@ In conjunction with the ANTsR library, the following functions from this directo
   
 The following provide the R code and commentary on how to perform the analysis:
   ancova.r - RFT ANCOVA
-  linearReg.r - simple linear regression
+  linearReg.r - simple linear regression (most complete example right now)
