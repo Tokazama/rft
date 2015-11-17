@@ -1,11 +1,11 @@
 #' @name rft.results
 #' @title Utilizes RFT to produce cluster and voxel level statistics
 #' 
-#' 
-#' @param img-SPM of class antsImage 
-#' @param stat-statistical threshold for SPM
+#' @param D-image dimensions
+#' @param thresh-statistical threshold for SPM
 #' @param ka-minimum desired cluster size
 #' @param fwhm-full width at half maxima
+#' @param StatImg-SPM of class antsImage 
 #' @param mask-antsImage mask
 #' @param df-degrees of freedom expressed as df[degrees of interest, degrees of error]
 #' @param fieldType:
@@ -37,9 +37,12 @@
 #'	  regsum<-summary(regfit)
 #'	  regtstat[,i]<-regsum$coefficients[3,3]
 #'	  }
+#'	rdf<-regfit$df.residual
+#'	timg<-makeImage(mask,regtstat)
 #'  fwhm<-estPooled.smooth(res,rdf,mask)
+#'	thresh<-rft.thresh(D,img,pval,ka,fwhm,mask,rdf,"T")
+#'	results(D,thresh,ka,fwhm,timg,mask,rdf,"T")
 #'	
-#'
 #' @export rft.results
 rft.results<-function(D,thresh,ka,fwhm,StatImg,mask,df,fieldType){
 	cat("Calculating image resels
@@ -47,21 +50,28 @@ rft.results<-function(D,thresh,ka,fwhm,StatImg,mask,df,fieldType){
 	resel<-ants.resel(mask,fwhm)
 	voxels <-sum(as.array(mask))
 	Mfwhm<-mean(fwhm)
-	absimg<-as.antsImage(abs(as.array(StatImg)))
+	negimg<-as.antsImage(as.array(StatImg)*-1)
 	clist<-list()
-	if(thresh > max(absimg)){
-		cat("No clusters survive statistical threshold
-		")
-	}else{
-		clusters<-image2ClusterImages(absimg,0,thresh,Inf)
+	if(thresh < max(negimg)){
+		clusters<-image2ClusterImages(negimg,0,thresh,Inf)
 		for (i in 1:length(clusters)){
 			cMask<-getMask(clusters[[i]])
 			if(sum(as.array(cMask)) > ka){
 				clist<-lappend(clist,cMask)
 				}
 			}
+		}
+	if(thresh < max(StatImg)){
+		clusters<-image2ClusterImages(StatImg,0,thresh,Inf)
+		for (i in 1:length(clusters)){
+			cMask<-getMask(clusters[[i]])
+			if(sum(as.array(cMask)) > ka){
+				clist<-lappend(clist,cMask)
+				}
+			}
+		}
 		if(length(clist) < 1){
-			cat("No clusters survive ka threshold
+			cat("No clusters survive threshold
 			")
 		}else{
 			nclusts<-length(clusters)
@@ -74,12 +84,12 @@ rft.results<-function(D,thresh,ka,fwhm,StatImg,mask,df,fieldType){
 				cName<-paste("Cluster",i,sep="")
 				cMask<-clist[[i]]
 				cvoxs<-sum(as.array(cMask))
-				loc<-labelImageCentroids(cMask)[2]
+				loc<-getCentroids(cMask)
 				clust<-maskImage(StatImg,cMask,level=1)
 				clist<-lappend(clist,clust)
 				names(clusters)[[i]]<-cName
 				names(clist)[length(clist)]<-cName
-				pclust<-rft.pcluster(cMask,mask,Mfwhm,thresh,df,fieldType)
+				pclust<-rft.pcluster(D,cMask,mask,Mfwhm,thresh,df,fieldType)
 				cat("Determing voxel-level statistics:",i,"
 				",sep=" ")
 				maxpeak<-max(clust)
@@ -92,14 +102,13 @@ rft.results<-function(D,thresh,ka,fwhm,StatImg,mask,df,fieldType){
 					ec<-ants.ec(minpeak,fieldType,df)
 					}
 				pvox<-(resel[1]*ec[1])+(resel[2]*ec[2])+(resel[3]*ec[3])+(resel[4]*ec[4])
-				clustable[nrow(clustable)+1,]<-c(cvoxs,pclust,pvox,peak,loc$vertices[1],loc$vertices[2],loc$vertices[3])
+				clustable[nrow(clustable),]<-c(cvoxs,pclust,pvox,peak,loc[1],loc[2],loc[3])
 				cnames[i]<-cName
 				}
 			rownames(clustable)<-cnames
 			clist<-lappend(clist,clustable)
 			names(clist)[length(clist)]<-"stats"
 			}
-		}
 	clist<-lappend(clist,resel)
 	names(clist)[length(clist)]<-"resels"
 	clist<-lappend(clist,fwhm)
