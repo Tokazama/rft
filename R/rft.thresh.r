@@ -13,6 +13,9 @@
 #'	"F"- F-field
 #'	"X"- Chi squar field
 #'	"Z"- Gaussian field
+#' @param threshType:
+#'	"cluster"-computes a threshold per expected cluster level probability
+#'	"voxel"-using the mask and pval calculates the minimum statistical threshold
 #' @return Outputs a statistical value to be used for threshold a SPM
 #' @description
 #'	A statistical threshold level is predicted using a p-value (pval) and 
@@ -59,20 +62,29 @@
 #'	
 #'
 #' @export rft.thresh
-rft.thresh<-function(D,img,pval,ka,fwhm,mask,df,fieldType){
+rft.thresh<-function(D,img,pval,ka,fwhm,mask,df,fieldType,threshType){
 	voxels <-sum(as.array(mask))
 	bMask <-mask
 	cMask <- ka
-	D<-mask@dimension
+	resel<-ants.resel(mask,fwhm)
 	Mfwhm<-mean(fwhm)
 	alpha<-pval-1
 	stat<-10
-	Clusters<-list()
-	cat("Determing threshold value based on pval, ka, and brain volume.
-	")
+	results<-list()
 	while(alpha < pval){
 		stat <-stat-.01
-		alpha <-rft.pcluster(cMask,bMask,Mfwhm,stat,df,fieldType)
+		if (threshType=="cluster"){
+			alpha <-rft.pcluster(cMask,bMask,Mfwhm,stat,df,fieldType)
+		}else if(threshType=="voxel"){
+			ec<-ants.ec(stat,fieldType,df)
+			alpha<-(resel[1]*ec[1])+(resel[2]*ec[2])+(resel[3]*ec[3])+(resel[4]*ec[4])
+		}else{
+			cat("Must specify appropriate threshType
+			")
 		}
-	return(stat)
+	results<-lappend(results,stat)
+	names(results)[length(results)]<-"threshold"
+	results<-lappend(results,resel)
+	names(results)[length(results)]<-"resels"
+	return(results)
 	}
