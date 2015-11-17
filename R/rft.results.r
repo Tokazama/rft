@@ -13,6 +13,7 @@
 #'	"F"- F-field
 #'	"X"- Chi squar field
 #'	"Z"- Gaussian field
+#' @param resel-resel values for the mask
 #' @return Outputs a statistical value to be used for threshold a SPM
 #' @description
 #'
@@ -44,10 +45,9 @@
 #'	results(D,thresh,ka,fwhm,timg,mask,rdf,"T")
 #'	
 #' @export rft.results
-rft.results<-function(D,thresh,ka,fwhm,StatImg,mask,df,fieldType){
+rft.results<-function(D,thresh,ka,fwhm,StatImg,mask,df,fieldType,resel){
 	cat("Calculating image resels
 	",sep="")
-	resel<-ants.resel(mask,fwhm)
 	voxels <-sum(as.array(mask))
 	Mfwhm<-mean(fwhm)
 	negimg<-as.antsImage(as.array(StatImg)*-1)
