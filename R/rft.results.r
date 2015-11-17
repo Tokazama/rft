@@ -8,41 +8,39 @@
 #' @param StatImg-SPM of class antsImage 
 #' @param mask-antsImage mask
 #' @param df-degrees of freedom expressed as df[degrees of interest, degrees of error]
-#' @param fieldType:
-#'	"T"- T-field
-#'	"F"- F-field
-#'	"X"- Chi squar field
-#'	"Z"- Gaussian field
+#' @param fieldType:\item{"T"}{T-field} \item{"F"}{F-field} \item{"X"}{Chi-square field"} 
+#' \item{"Z"}{Gaussian field}
 #' @param resel-resel values for the mask
 #' @return Outputs a statistical value to be used for threshold a SPM
 #' @description
+#' \code{rft.results} 
 #'
 #'	
-#' @reference 
-#'	Friston K.J., (1994) Assessing the Significance of Focal Activations Using Their Spatial Extent
-#'	Friston K.J., (1996) Detecting Activations in PET and fMRI: Levels of Inference and Power
+#' @reference Friston K.J., (1994) Assessing the Significance of Focal Activations Using Their Spatial Extent
+#' @reference Friston K.J., (1996) Detecting Activations in PET and fMRI: Levels of Inference and Power
 #'
+#' @author Zachary P. Christensen
+#' @kewords rft.pcluster, ants.ec
 #' @examples
 #'
-#'  var1<-vardata[,10]
-#'  subs<-nrow(varmat)
-#'  voxels<-ncol(varmat)
-#'  regpval<-matrix(nrow=1,ncol=voxels)
-#'  regtstat<-matrix(nrow=1,ncol=voxels)
-#'  resmat<-matrix(OL,nrow=subs,ncol=voxels)
-#'  for (i in 1:voxels){
-#'	  vox<-varmat[,i]
-#'	  regfit<-lm(vox~var1)
-#'	  ##Extract statistical values
-#'	  resmat[,i]<-residuals(regfit)
-#'	  regsum<-summary(regfit)
-#'	  regtstat[,i]<-regsum$coefficients[3,3]
-#'	  }
-#'	rdf<-regfit$df.residual
-#'	timg<-makeImage(mask,regtstat)
-#'  fwhm<-estPooled.smooth(res,rdf,mask)
-#'	thresh<-rft.thresh(D,img,pval,ka,fwhm,mask,rdf,"T")
-#'	results(D,thresh,ka,fwhm,timg,mask,rdf,"T")
+#' var1<-vardata[,10]
+#' subs<-nrow(varmat)
+#' voxels<-ncol(varmat)
+#' regpval<-matrix(nrow=1,ncol=voxels)
+#' regtstat<-matrix(nrow=1,ncol=voxels)
+#' resmat<-matrix(OL,nrow=subs,ncol=voxels)
+#' for (i in 1:voxels){
+#'  vox<-varmat[,i]
+#'  regfit<-lm(vox~var1)
+#'  resmat[,i]<-residuals(regfit)
+#'  regsum<-summary(regfit)
+#'	 regtstat[,i]<-regsum$coefficients[3,3]
+#'	 }
+#' rdf<-regfit$df.residual
+#' timg<-makeImage(mask,regtstat)
+#' fwhm<-estPooled.smooth(res,rdf,mask)
+#' thresh<-rft.thresh(D,img,pval,ka,fwhm,mask,rdf,"T")
+#' results(D,thresh,ka,fwhm,timg,mask,rdf,"T")
 #'	
 #' @export rft.results
 rft.results<-function(D,thresh,ka,fwhm,StatImg,mask,df,fieldType,resel){
