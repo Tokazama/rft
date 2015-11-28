@@ -1,0 +1,61 @@
+rft.matrix <-function(variables,conditions,modelType){
+	ncon <-ncol(conditions)
+	nsub <-nrow(variables)
+	nvar <-ncol(variables)
+	
+	if (ncon == 1){
+		DF <-(nsub-nvar)
+	}else{
+		DF <-(nsub-nvar)*(ngroup-1)
+	}
+		conlev <-1
+		if (modelType="ancova"||modelType=="anova"){
+			congroups <-list()
+			#This pads the subjects as zeros and ones
+			for (i in 1:ncon){
+				cfactor <-as.factor(conditions[,i])
+				lnames <-levels(cfactor)
+				nlev <-length(lnames)
+				condmat <-matrix(nrow=nsub,ncol=nlev)
+				for (lev in 1:nlev){
+					tmpgroup <-as.numeric(cfactor)
+					tmpgroup[tmpgroup !=lev]<-0
+					tmpgroup[tmpgroup==lev]<-1
+					condmat[,lev] <-tmpgroup
+					}
+				conlev <-conlev * nlev
+				colnames(condmat) <-lnames
+				congroups[i] <-lappend(cons,condmat)
+				}
+			DM <-matrix(1L,nrow=nsub)
+			colnames(DM) <-"Intercept"
+			#This combines the conditions into a design matrix
+			congroup1 <-congroups[1]
+			for (i in 2:ncon){
+				condmat <-congroups[i]
+				for (n in 1:ncol(condmat)){
+					nlev <-ncol(congroups1)
+					tmpmat <-matrix(rep(condmat[,i],nlev),ncol=nlev) * congroups1
+					nam1 <-colnames(condmat)[n]
+					nam2 <-colnames(congroups1)
+					namelist <-list()
+					for (nam in 1:length(nam2)){
+						tmpname <-print(nam2,":",nam1[nam],sep="")
+						namelist <-lappend(namelist,tmpname)
+						}
+					names(tmpmat) <-namelist
+					congroups1 <-tmpmat
+					}
+				}
+			if (modelType=="ancova"){
+				as.matrix(variables)
+				dm <-matrix(rep(variables,ncol(congroups1),ncol=ncol(congroups1))) * congroups1
+				DM <-cbind(dm,DM)
+			}else{
+				DM <-cbind(congroups1,DM)
+				}
+			}
+		if (modelType=="regression"){
+			DM <-cbind(variables,1)
+			}
+		}
