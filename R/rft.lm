@@ -1,17 +1,35 @@
-rft.lm  <-function(imat,varmat,conmat){
-#Uses designm matrix to solve for T-values
-cols <-ncol(DM)
-X <-cbind(DM[,2:cols],1)
-UU <-ginv(t(X) %*% X)
-UY <-t(X) %*% smat
-B <-UU %*% UY
-res <-smat - (X %*% B)
-RSS <-colSums(res^2)
-MRSS <-RSS/DF
-tfields <-list()
-for (i in 1:ncol(conmat)){
-	SE <-sqrt(MRSS *(conmat[,i] %*% UU %*% conmat[,i]))
-	T<-(conmat[,i] %*% B)/SE
-	tfields <-lappend(tfields,T,)
-	}
+rft.lm <-function(imat,varmat,mask,conmat){
+	nsub <-nrow(imat)
+	#Uses designm matrix to solve for T-values
+	cols <-ncol(DM)
+	X <-cbind(DM[,2:cols],1)
+	UU <-ginv(t(X) %*% X)
+	UY <-t(X) %*% smat
+	B <-UU %*% UY
+	res <-smat - (X %*% B)
+	RSS <-colSums(res^2)
+	MRSS <-RSS/DF
+	tfields <-list()
+	for (i in 1:ncol(conmat)){
+		SE <-sqrt(MRSS *(conmat[,i] %*% UU %*% conmat[,i]))
+		T<-(conmat[,i] %*% B)/SE
+		tfields <-lappend(tfields,T,)
+		}
+	psd <-colMeans(sqrt(RSS))
+	fwhm<-matrix(0L,nrow=1,ncol=3)
+	Zmat <-matrix(nrow=nsub,
+	cat("Estimating fwhm/smoothing")
+	progress <- txtProgressBar(min = 0, max = nsub, style = 3)
+	for (i in 1:nsub){
+		Zmat<-(res[i,]-Mmat[1])/psd
+		img<-makeImage(mask,Zmat[i,])
+		smooth<-est.smooth(img,mask)
+		fwhm<-fwhm+smooth[[2]]
+		setTxtProgressBar(progress, i)
+		}
+	close(progress)
+	fwhm2<-sqrt(4*log(2)/(fwhm/(nsub-1)))
+	stats <-list(tfields,fwhm2)
+	names(stats) <-c("tfields","fwhm")
+	return(stats)
 }
