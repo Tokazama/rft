@@ -1,0 +1,17 @@
+rft.lm  <-function(imat,varmat,conmat){
+#Uses designm matrix to solve for T-values
+cols <-ncol(DM)
+X <-cbind(DM[,2:cols],1)
+UU <-ginv(t(X) %*% X)
+UY <-t(X) %*% smat
+B <-UU %*% UY
+res <-smat - (X %*% B)
+RSS <-colSums(res^2)
+MRSS <-RSS/DF
+tfields <-list()
+for (i in 1:ncol(conmat)){
+	SE <-sqrt(MRSS *(conmat[,i] %*% UU %*% conmat[,i]))
+	T<-(conmat[,i] %*% B)/SE
+	tfields <-lappend(tfields,T,)
+	}
+}
