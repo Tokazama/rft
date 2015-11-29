@@ -1,20 +1,20 @@
 rft.lm <-function(imat,DM,mask,conmat){
 	nsub <-nrow(imat)
+	nvox <-ncol(imat)
 	#Uses designm matrix to solve for T-values
 	cols <-ncol(DM)
-	X <-cbind(DM[,2:cols],1)
-	UU <-ginv(t(DM) %*% X)
+	U <-t(DM) %*% X
 	Xsvd <- svd(X)
-	if (is.complex(X)){
+	if (is.complex(U)){
 		Xsvd$u <- Conj(Xsvd$u)
 		Positive <- Xsvd$d > max(sqrt(.Machine$double.eps) * Xsvd$d[1L], 0)
-	}
+		}
 	if (all(Positive)){ 
-		Xsvd$v %*% (1/Xsvd$d * t(Xsvd$u))
-    }else if (!any(Positive)){
-		array(0, dim(X)[2L:1L])
+		UU <-Xsvd$v %*% (1/Xsvd$d * t(Xsvd$u))
+	}else if (!any(Positive)){
+		UU <-array(0, dim(U)[2L:1L])
 	}else{
-	Xsvd$v[, Positive, drop = FALSE] %*% ((1/Xsvd$d[Positive]) * t(Xsvd$u[, Positive, drop = FALSE]))
+		UU <-Xsvd$v[, Positive, drop = FALSE] %*% ((1/Xsvd$d[Positive]) * t(Xsvd$u[, Positive, drop = FALSE]))
 	}
 	UY <-t(X) %*% smat
 	B <-UU %*% UY
@@ -29,7 +29,7 @@ rft.lm <-function(imat,DM,mask,conmat){
 		}
 	psd <-colMeans(sqrt(RSS))
 	fwhm<-matrix(0L,nrow=1,ncol=3)
-	Zmat <-matrix(nrow=nsub,
+	Zmat <-matrix(nrow=nsub, ncol=nvox)
 	cat("Estimating fwhm/smoothing")
 	progress <- txtProgressBar(min = 0, max = nsub, style = 3)
 	for (i in 1:nsub){
