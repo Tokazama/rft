@@ -36,7 +36,7 @@
 #'   fwhm<-sqrt(4*log(2)/(fwhm/(subs-1))
 #'
 #' @export est.smooth
-est.smooth<-function(img,mask,xvox,yvox,zvox){
+est.smooth<-function(img,mask){
 
     dimx <- dim(img)[1]
     dimy <- dim(img)[2]
