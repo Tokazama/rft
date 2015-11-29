@@ -1,10 +1,29 @@
 
 rft.matrix <-function(variables,conditions,modelType){
-	variables <-as.matrix(variables)
-	conditions <-as.matrix(conditions)
 	ncon <-ncol(conditions)
 	nvar <-ncol(variables)
 	conlev <-1
+	if (modelType=="regression"){
+		if (class(variables) !="matrix" | class(variables) !="data.frame"){
+			variables <-as.matrix(variables)
+			}
+		formula <-~ variables - 1
+		dm <-model.matrix(formula)
+		dm <-cbind(dm,1)
+	}else if(modelType=="anova" | modelType=="ancova"){
+		if (class(conditions) !="matrix" | class(conditions) !="data.frame"){
+			conditions <-as.matrix(variables)
+			}
+		conlist <-list()
+		for (n in 1:ncon){
+			formula <-~ conditions[,i] - 1
+			dm <-model.matrix(formula)
+			conlist <-lappend(conlist, dm)
+			}
+		if (ncon > 1){
+			for (n in 2:ncon){
+			
+			name1 <-names(
 	if (modelType=="ancova"|modelType=="anova"){
 		congroups <-list()
 		nsub <-nrow(conditions)
