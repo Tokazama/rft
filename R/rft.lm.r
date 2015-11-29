@@ -1,23 +1,20 @@
 #
 #' @name rft.lm
-#' @title Utilizes RFT to produce cluster and voxel level statistics
+#' @title Fits design matrices
 #' 
-#' @param D-image dimensions
-#' @param thresh-statistical threshold for SPM
-#' @param ka-minimum desired cluster size
-#' @param fwhm-full width at half maxima
-#' @param StatImg-SPM of class antsImage 
-#' @param mask-antsImage mask
-#' @param df-degrees of freedom expressed as df[degrees of interest, degrees of error]
-#' @param resel-resel values for the mask
-#' @return Produces T-values, coefficients, and fwhm
+#' @param imat - Matrix of images of n x voxels
+#' @param dm - Design matrix created by model.rft() function. With values dm["DesignMatrix", "DegreesOfFreedom", "D.M.Names"]
+#' @param conmat - A contrast matrix of D.M.Names x contrast
+#' @return Produces T-values, coefficients, and fwhm values.
 #' @description
+#'	Accepts a design matrix of 
 #' \code{rft.lm} 
 #'
+#' @References Worlsey K.J., et al. (1996) A Unified Statistical Approach for Determining Significant Signals in Images of Cerebral Activation.
 #' @author Zachary P. Christensen
 #' @kewords rft.pcluster, ants.ec
 #' @examples
-#'
+#' 
 #' 
 #'	
 #' @export rft.lm
