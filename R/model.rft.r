@@ -8,7 +8,7 @@ rft.model <-function(variables,conditions,controls,modelType){
 			variables <-as.matrix(variables)
 			}
 		nvar <-ncol(variables)
-		formula <~ variables - 1
+		formula <- ~ variables - 1
 		dm <-model.matrix(formula)
 		dm <-cbind(dm,1)
 		DF <-nrow(dm)-ncol(dm)
