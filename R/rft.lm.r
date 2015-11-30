@@ -19,8 +19,8 @@
 #'	
 #' @export rft.lm
 rft.lm <-function(imat,dm,conmat){
-	DF <-dm@DegreesOfFreedom
-	if (missing(imat) | missing(dm) | missing(mask) | missing(conmat)){
+	DF <-dm$DegreesOfFreedom
+	if (missing(imat) | missing(dm) | missing(conmat)){
 		stop("Must specify imat dm and conmat")
 	if (class(dm) !=matrix){
 		stop("Design matrix must be of class matrix")
@@ -71,4 +71,5 @@ rft.lm <-function(imat,dm,conmat){
 	lmresults <-list(tfields,fwhm2)
 	names(lmresults) <-c("tfields","fwhm")
 	return(lmresults)
+}
 }
