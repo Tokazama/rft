@@ -24,6 +24,10 @@ model.rft <-function(variables,conditions,controls,modelType){
 		if (ncon > 1){
 			formula <-~
 			for (n in 1:ncon){
+				tmpcond <-conditions[,n]
+				if (class([tmpcond !="factor"){
+					tmpcond <-as.factor(tmpcond)
+				}
 				formula <-formula:conditions[,n]
 				}
 			dm <-model.matrix(formula-1)
@@ -31,6 +35,8 @@ model.rft <-function(variables,conditions,controls,modelType){
 			dm <-model.matrix(~conditions-1)
 		}
 		nsub <-nrow(dm)
+		dmcol <-ncol(dm)
+		DF <-nsub-dmcol
 	}else{
 		stop("Must specify appropriate modelType")
 	}
@@ -38,17 +44,17 @@ model.rft <-function(variables,conditions,controls,modelType){
 	if (modelType=="ancova"){
 		if (missing(variables)){
 			stop("Ancova modelType must have variables specificied")
-			}
+		}else if(class(variables) !="matrix" | class(variables) !="data.frame"){
+			variables <-as.matrix(variables)
+		}
 		nvar <-ncol(variables)
 		tmpmat <-matrix(nrow=nsub)
 		for (i in 1:nvar){
 			var <-variables[,i]
 			varmat <-matrix(rep(var,dmcol),ncol=dmcol)
-			tmpmat <-cbind((dm *varmat),tmpmat)
+			tmpmat <-cbind(tmpmat,(dm *varmat))
 			}
-		dm <-cbind(dm[2:ncol(dm)],1)
-		dmcol <-ncol(dm)
-		DF <-nsub-dmcol
+		dm <-cbind(tmpmat[,2:ncol(tmpmat)],1)
 		}
 	if (modelType=="anova"){
 		dm <-cbind(dm,1)
