@@ -57,7 +57,7 @@ est.smooth<-function(img,mask){
     m1[2:(dimx+1), 2:(dimy+1), 2:(dimz+1)] <- maskar
     m2[1:(dimx), 2:(dimy+1), 2:(dimz+1)] <- maskar
     m3 <- (m1 + m2) == 2
-    Zxx <- ((d1 - d2)[m3 == 1])/(xvox)
+    Zxx <- ((d1 - d2)[m3 == 1])
     #variances of partial derivatives x
     lambda[1,1] <- sum(Zxx^2)/(voxels)
 	
@@ -67,7 +67,7 @@ est.smooth<-function(img,mask){
     m1[2:(dimx+1), 2:(dimy+1), 2:(dimz+1)] <- maskar
     m2[2:(dimx+1), 1:(dimy), 2:(dimz+1)] <- maskar
     m3 <- (m1 + m2) == 2
-    Zyy <- ((d1 - d2)[m3 == 1])/(yvox)
+    Zyy <- ((d1 - d2)[m3 == 1])
     #variances of partial derivatives y
     lambda[1,2] <- sum(Zyy^2)/(voxels)
     
@@ -77,7 +77,7 @@ est.smooth<-function(img,mask){
     m1[2:(dimx+1), 2:(dimy+1), 2:(dimz+1)] <- maskar
     m2[2:(dimx+1), 2:(dimy+1), 1:(dimz)] <- maskar
     m3 <- (m1 + m2) == 2
-    Zzz <- ((d1 - d2)[m3 == 1])/(yvox)  
+    Zzz <- ((d1 - d2)[m3 == 1])/
     #variances of partial derivatives z
     lambda[1,3] <- sum(Zzz^2)/(voxels)
     #calculate fwhm from lambda
