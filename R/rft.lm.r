@@ -20,6 +20,7 @@
 #' @export rft.lm
 rft.lm <-function(imat,dm,conmat){
 	DF <-dm$DegreesOfFreedom
+	dm <-dm$DesignMatrix
 	if (missing(imat) | missing(dm) | missing(conmat)){
 		stop("Must specify imat dm and conmat")
 	if (class(dm) !=matrix){
@@ -31,10 +32,8 @@ rft.lm <-function(imat,dm,conmat){
 	cols <-ncol(DM)
 	U <-t(dm) %*% dm
 	Usvd <- svd(U)
-	if (is.complex(U)){
-		Usvd$u <- Conj(Usvd$u)
-		Positive <- Usvd$d > max(sqrt(.Machine$double.eps) * Usvd$d[1L], 0)
-		}
+	Usvd$u <- Conj(Usvd$u)
+	Positive <- Usvd$d > max(sqrt(.Machine$double.eps) * Usvd$d[1L], 0)
 	if (all(Positive)){ 
 		UU <-Usvd$v %*% (1/Usvd$d * t(Usvd$u))
 	}else if (!any(Positive)){
@@ -42,24 +41,24 @@ rft.lm <-function(imat,dm,conmat){
 	}else{
 		UU <-Usvd$v[, Positive, drop = FALSE] %*% ((1/Usvd$d[Positive]) * t(Usvd$u[, Positive, drop = FALSE]))
 	}
-	UY <-t(dm) %*% smat
+	UY <-t(dm) %*% imat
 	B <-UU %*% UY
-	res <-smat - (dm %*% B)
+	res <-imat - (dm %*% B)
 	RSS <-colSums(res^2)
 	MRSS <-RSS/DF
 	tfields <-list()
 	for (i in 1:ncol(conmat)){
 		SE <-sqrt(MRSS *(conmat[,i] %*% UU %*% conmat[,i]))
 		T<-(conmat[,i] %*% B)/SE
-		tfields <-lappend(tfields,T,)
+		tfields <-lappend(tfields,T)
 		}
-	psd <-colMeans(sqrt(RSS))
+	psd <-colMeans(sqrt(as.matrix(RSS)))
 	fwhm<-matrix(0L,nrow=1,ncol=3)
 	Zmat <-matrix(nrow=nsub, ncol=nvox)
 	cat("Estimating fwhm/smoothing")
 	progress <- txtProgressBar(min = 0, max = nsub, style = 3)
 	for (i in 1:nsub){
-		Zmat<-(res[i,]-Mmat[1])/psd
+		Zmat[i,]<-(res[i,]-Mmat[1])/psd
 		img<-makeImage(mask,Zmat[i,])
 		smooth<-est.smooth(img,mask)
 		fwhm<-fwhm+smooth[[2]]
