@@ -30,10 +30,7 @@ model.rft <-function(variables,conditions,controls,modelType){
 		}else{
 			dm <-model.matrix(~conditions-1)
 		}
-		dm <-cbind(dm,1)
-		nsub <-nrow(dim)
-		dmcol <-ncol(dm)
-		DF <-nsub-dmcol
+		nsub <-nrow(dm)
 	}else{
 		stop("Must specify appropriate modelType")
 	}
@@ -43,12 +40,18 @@ model.rft <-function(variables,conditions,controls,modelType){
 			stop("Ancova modelType must have variables specificied")
 			}
 		nvar <-ncol(variables)
-		tmpmat <-matrix(1L,nrow=nsub,ncol=1)
+		tmpmat <-matrix(nrow=nsub)
 		for (i in 1:nvar){
 			var <-variables[,i]
 			varmat <-matrix(rep(var,dmcol),ncol=dmcol)
 			tmpmat <-cbind((dm *varmat),tmpmat)
 			}
+		dm <-cbind(dm[2:ncol(dm)],1)
+		dmcol <-ncol(dm)
+		DF <-nsub-dmcol
+		}
+	if (modelType=="anova"){
+		dm <-cbind(dm,1)
 		}
 	if (missing(controls)){
 		colnames(dm)[ncol(dm)] <-"Intercept"
