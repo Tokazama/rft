@@ -1,8 +1,11 @@
 
 model.rft <-function(variables,conditions,controls,modelType){
+	if (modelType=="anova"){
+		conditions=variables
+		}
 	if (modelType=="regression"){
 		if (class(variables) !="matrix" | class(variables) !="data.frame"){
-			variables <-as.data.frame(variables)
+			variables <-as.matrix(variables)
 			}
 		nvar <-ncol(variables)
 		formula <-~ variables - 1
@@ -15,7 +18,7 @@ model.rft <-function(variables,conditions,controls,modelType){
 			stop("Both anova and ancova modelTypes must have conditions specified")
 			}
 		if (class(conditions) !="matrix" | class(conditions) !="data.frame"){
-			conditions <-as.data.frame(variables)
+			conditions <-as.matrix(conditions)
 			}
 		ncon <-ncol(conditions)
 		if (ncon > 1){
@@ -27,6 +30,7 @@ model.rft <-function(variables,conditions,controls,modelType){
 		}else{
 			dm <-model.matrix(~conditions-1)
 		}
+		dm <-cbind(dm,1)
 		nsub <-nrow(dim)
 		dmcol <-ncol(dm)
 		DF <-nsub-dmcol
@@ -50,7 +54,7 @@ model.rft <-function(variables,conditions,controls,modelType){
 		colnames(dm)[ncol(dm)] <-"Intercept"
 	}else {
 		if (class(controls) !="matrix" | class(controls) !="data.frame"){
-			controls <-as.data.frame(controls)
+			controls <-as.matrix(controls)
 			}
 		dm <-cbind(controls,dm)
 		colnames(dm)[ncol(dm)] <-"Intercept"
@@ -58,7 +62,7 @@ model.rft <-function(variables,conditions,controls,modelType){
 	design.matrix <-list()
 	design.matrix <-lappend(design.matrix,dm)
 	design.matrix <-lappend(design.matrix,DF)
-	design.matrix <-lappend(design.matrix,colnames(DM))
+	design.matrix <-lappend(design.matrix,colnames(dm))
 	names(design.matrix) <-c("DesignMatrix", "DegreesOfFreedom", "D.M.Names")
 	return(design.matrix)
 	}
