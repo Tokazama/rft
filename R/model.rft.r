@@ -1,5 +1,5 @@
 
-model.rft <-function(variables,conditions,controls,modelType){
+rft.model <-function(variables,conditions,controls,modelType){
 	if (modelType=="anova"){
 		conditions=variables
 		}
@@ -8,7 +8,7 @@ model.rft <-function(variables,conditions,controls,modelType){
 			variables <-as.matrix(variables)
 			}
 		nvar <-ncol(variables)
-		formula <-~ variables - 1
+		formula <~ variables - 1
 		dm <-model.matrix(formula)
 		dm <-cbind(dm,1)
 		DF <-nrow(dm)-ncol(dm)
@@ -24,9 +24,9 @@ model.rft <-function(variables,conditions,controls,modelType){
 		if (ncon > 1){
 			formula <-~
 			for (n in 1:ncon){
-				tmpcond <-conditions[,n]
-				if (class([tmpcond !="factor"){
-					tmpcond <-as.factor(tmpcond)
+				if (class(conditions[,n]) !="factor"){
+				conditions <-as.data.frame(conditions)
+				conditions[,n] <-as.factor(conditions[,n])
 				}
 				formula <-formula:conditions[,n]
 				}
