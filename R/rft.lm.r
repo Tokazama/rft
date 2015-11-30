@@ -23,13 +23,11 @@ rft.lm <-function(imat,dm,conmat){
 	dm <-dm$DesignMatrix
 	if (missing(imat) | missing(dm) | missing(conmat)){
 		stop("Must specify imat dm and conmat")
-	if (class(dm) !=matrix){
-		stop("Design matrix must be of class matrix")
 		}
 	nsub <-nrow(imat)
 	nvox <-ncol(imat)
 	#Uses designm matrix to solve for T-values
-	cols <-ncol(DM)
+	cols <-ncol(dm)
 	U <-t(dm) %*% dm
 	Usvd <- svd(U)
 	Usvd$u <- Conj(Usvd$u)
@@ -43,6 +41,7 @@ rft.lm <-function(imat,dm,conmat){
 	}
 	UY <-t(dm) %*% imat
 	B <-UU %*% UY
+	cat("Calculating residuals",sep="")
 	res <-imat - (dm %*% B)
 	RSS <-colSums(res^2)
 	MRSS <-RSS/DF
@@ -54,8 +53,9 @@ rft.lm <-function(imat,dm,conmat){
 		}
 	psd <-colMeans(sqrt(as.matrix(RSS)))
 	fwhm<-matrix(0L,nrow=1,ncol=3)
+	Mmat <-colMeans(res)
 	Zmat <-matrix(nrow=nsub, ncol=nvox)
-	cat("Estimating fwhm/smoothing")
+	cat("Estimating fwhm/smoothing",sep="")
 	progress <- txtProgressBar(min = 0, max = nsub, style = 3)
 	for (i in 1:nsub){
 		Zmat[i,]<-(res[i,]-Mmat[1])/psd
@@ -67,8 +67,7 @@ rft.lm <-function(imat,dm,conmat){
 	close(progress)
 	fwhm2<-sqrt(4*log(2)/(fwhm/DF))
 	
-	lmresults <-list(tfields,fwhm2)
-	names(lmresults) <-c("tfields","fwhm")
+	lmresults <-list(tfields,B,fwhm2)
+	names(lmresults) <-c("tfields","Coefficients","fwhm")
 	return(lmresults)
-}
 }
