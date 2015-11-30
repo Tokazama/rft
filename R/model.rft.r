@@ -22,15 +22,15 @@ rft.model <-function(variables,conditions,controls,modelType){
 			}
 		ncon <-ncol(conditions)
 		if (ncon > 1){
-			formula <-~
+			formula <-print("~",sep="")
 			for (n in 1:ncon){
 				if (class(conditions[,n]) !="factor"){
-				conditions <-as.data.frame(conditions)
-				conditions[,n] <-as.factor(conditions[,n])
-				}
+					stop("Condition",n," not a factor.", sep="")
+					}
 				formula <-formula:conditions[,n]
 				}
-			dm <-model.matrix(formula-1)
+			newform <-formula - 1
+			dm <-model.matrix(newform)
 		}else{
 			dm <-model.matrix(~conditions-1)
 		}
