@@ -19,12 +19,12 @@
 #'	
 #' @export rft.lm
 rft.lm <-function(imat,dm,conmat){
+	DF <-dm@DegreesOfFreedom
 	if (missing(imat) | missing(dm) | missing(mask) | missing(conmat)){
 		stop("Must specify imat dm and conmat")
 	if (class(dm) !=matrix){
 		stop("Design matrix must be of class matrix")
 		}
-	
 	nsub <-nrow(imat)
 	nvox <-ncol(imat)
 	#Uses designm matrix to solve for T-values
@@ -66,7 +66,7 @@ rft.lm <-function(imat,dm,conmat){
 		setTxtProgressBar(progress, i)
 		}
 	close(progress)
-	fwhm2<-sqrt(4*log(2)/(fwhm/(nsub-1)))
+	fwhm2<-sqrt(4*log(2)/(fwhm/DF))
 	
 	lmresults <-list(tfields,fwhm2)
 	names(lmresults) <-c("tfields","fwhm")
