@@ -5,7 +5,8 @@
 library(ANTsR)
 sobik<-read.table('Desktop/data/SOBIK-demographic-data.csv',header=TRUE,sep=",")
 mask<-antsImageRead('Desktop/7_13_template/brainmask.nii')
-
+sobik <-sobik[1:122,]
+subs <-sobik[,1]
 
 #Subset the data to TBI and columns of relevent variables and get rid of rows with missing data
 vardata<-sobik[sobik$InjuryGroup=="sev"|sobik$InjuryGroup=="mod"|sobik$InjuryGroup=="mild",]
