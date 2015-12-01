@@ -17,33 +17,32 @@
 #' Worlsey K.J., (1996) A Unified Statistical Approach for Determining Significant Signals in Images of Cerebral Activation.
 #' Stefan J.K., (1999) Robust Smoothness Estimation in Statistical Parametric Maps Using Standardized Residual from the General Linear Model
 #' @examples
-#'	
-#' mask<-getMask(imglist[[1]])
-#' mat <- imageListToMatrix(imglist, mask)
-#' var1<-c(1:nrow(mat))
-#' lmfit <- lm(mat~var1)
-#' res<-residuals(lmfit)
-#' rdf<-lmfit$df.residual
-#' res2<-colSums(res^2)
-#' S2<-res2/rdf
-#' psd<-sqrt(S2)
-#' Mmat<-colMeans(res)
-#' Zmat<-res
+#' # estimatation of a single images smoothness
+#' outimg1 <-makeImage(c(10,10,10), rnorm(1000))
+#' maskimg <-getMask(outimg1)
+#' fwhm <-est.Smooth(outimg1,maskimg)
+#' # estimation of smoothness of overall sample images in a statistical model
+#' outimg2 <-makeImage(c(10,10,10), rnorm(1000))
+#' imat <-imageListToMatrix(list(outimg1, outimg2), maskimg)
+#' variable <-rnorm(2)
+#' fit <-lm(imat ~ variable)
+#' res <-residuals(fit)
+#' DegFree <-fit$df.residual
+#' meanres <-colMeans(res)
+#' psd <-sqrt(colSums(res^2)/DegFree)
+#' Zmat<-matrix(nrow=2,ncol=ncol(imat))
 #' fwhm<-matrix(0L,nrow=1,ncol=3)
 #' subs<-nrow(res)
-#' progress <- txtProgressBar(min = 0, max = subs, style = 3)
 #' for (i in 1:subs){
-#' 	Zmat[i,]<-(res[i,]-Mmat[1])/psd
+#' 	Zmat[i,]<-(res[i,]-Mres[1])/psd
 #' 	img<-makeImage(mask,Zmat[i,])
-#' 	smooth<-est.smooth(img,mask,1,1,1)
-#' 	fwhm<-fwhm+smooth[[2]]
-#' 	setTxtProgressBar(progress, i)
+#' 	smooth<-est.Smooth(img,mask)
+#'	fwhm<-fwhm+smooth[[2]]
 #' 	}
-#' close(progress)
-#' fwhm<-sqrt(4*log(2)/(fwhm/(subs-1))
-#'
-#' @export estsmooth
-estsmooth<-function(img,mask){
+#' fwhm2<-sqrt(4*log(2)/(fwhm/(subs-1)))
+#' 
+#' @export est.Smooth
+est.Smooth<-function(img,mask){
 
     dimx <- dim(img)[1]
     dimy <- dim(img)[2]
