@@ -147,14 +147,14 @@ Zmat <-matrix(nrow=nsub, ncol=nvox)
 cat("Estimating fwhm/smoothing",sep="")
 progress <- txtProgressBar(min = 0, max = nsub, style = 3)
 for (i in 1:nsub){
-	Zmat[i,]<-(res[i,]-Mmat[1])/psd
-	img<-makeImage(mask,Zmat[i,])
-	smooth<-est.Smooth(img,mask)
-	fwhm<-fwhm+smooth[[2]]
+	Zmat[i,] <-(res[i,]-Mmat[1])/psd
+	img <-makeImage(mask,Zmat[i,])
+	smooth <-est.Smooth(img,mask)
+	fwhm <-fwhm+smooth[[2]]
 	setTxtProgressBar(progress, i)
 	}
 close(progress)
-fwhm2<-sqrt(4*log(2)/(fwhm/degf)
+fwhm2 <-sqrt(4*log(2)/(fwhm/degf)
 ```
 
 ## Steps 3-6: Choosing a threshold and extracting important data
