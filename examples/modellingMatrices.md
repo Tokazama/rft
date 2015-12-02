@@ -1,5 +1,9 @@
-Voxel-Based Morphometry
-=======================
+Random Field Theory
+===================
+Once jacobian images are obtained from a morphometry pipeline there are a variety of statistical models that can be used to evaluate these images. Some pipelines warp a template atlas along with the template brain into subject space. Volumes can be obtained from each region of interest (ROI) in the warped atlases. Another common approach is to perform a statistical test at each individual voxel. Modern magnetic resonance images (MRIs) typically contain over a million voxels in a single scan. From a statistical standpoint, this poses a challenge. The probability of a false-positive necesitates an alpha far below the traditional .05. If one were to perform one million statistical tests with an alpha of .05 and using traditional bonferroni correction the adjusted alpha would be .05e-6. 
+
+There are a variety of ways 
+Random field theory (RFT) allows us to take statistical results run on voxel-based morphometry (VBM) data and more realistically threshold 
 
 Simple Linear Regression
 ------------------------
