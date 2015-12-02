@@ -8,16 +8,16 @@ Random field theory (RFT) allows us to take SPM images and consider each voxel a
 
 1. Obtaining residuals from the statistical model
 2. Using image residuals in order to estimate smoothness
-3. Calculating image resels
-4. Clustering the SPM image by a chosen threshold
+3. Clustering the SPM image by a chosen threshold
+4. Calculating image resels
 5. Determining cluster-level statistics
 6. Determining voxel-level statistics
 
 Because this process can become overwhelming to anyone approaching it for the first time with a functional adrenal gland, I will go through each step as thoroughly as I can. Feel free to skip ahead as you come across fairly rudimentary material.
 
-## Fitting your data to a statistical model
+## Step 1: Fitting your data to a statistical model and extracting residuals
 
-The following will highlight the initial steps in obtaining residuals and a SPM images using statistical models. The important thing to realize is that none of these methods are absolute. They should merely be used as an introduction to how you can approach this step. The benefit to performing a RFT based VBM analysis in R is that you get to decide what assumptions to make. For example, additional steps of scaling images or incorporating pooled deviations between conditions and image voxels may be beneficial.
+The following will highlight the initial steps in obtaining residuals and a SPM images using statistical models. The important thing to realize is that none of these methods are absolute. They should merely be used as an introduction to how you can approach this step. The benefit to performing a RFT based VBM analysis in R is that you get to decide what assumptions to make. For example, additional steps of scaling images or incorporating pooled deviations between conditions and image voxels may be beneficial. Before performing your own analysis it's encouraged that you explore other methods of obtaining the SPM and residuals that may better fit your research goals.
 
 ### Using `lm()`
 
@@ -25,16 +25,18 @@ For seasoned R users many already existing functions are sufficient to extract p
 
 Here we'll set up our data for this tutorial
 ```
+library(MASS)
+library(ANTsR)
+
 subs <-nrow(imat)
 nvox <-ncol(imat)
-
 var1 <-vardata[,10]
 var2 <-
 cond1 <-vardata
 cond2 <-vardata
 ```
 
-The following performs a statistical test utilizing the `lm()` function to acquire residuals and a SPM of T-scores. It simply demonstrates how R can be utilized as is to obtain the information we need. Before pursuing your own analysis it's encouraged that you explore other methods of obtaining the SPM and residuals that better fits the goal of your research.
+The following performs a statistical test utilizing the `lm()` function to acquire residuals and a SPM of T-scores. It simply demonstrates how R can be utilized as is to obtain the information we need. 
 
 ```
 spm <-matrix(nrow=1,ncol=voxels)
@@ -57,6 +59,8 @@ timg<-makeImage(mask, spm)
 Traditionally, software that has utilized RFT uses design matrices to quickly organize and compute results. In this subsection I will demonstrate how to perform a simple linear regression (similar to what was just performed) and how to create design matrices for other statistical models.
 
 Here we see how we can create a disgn matrix and extract the degrees of freedom we will need in later steps.
+
+* Linear Regression
 
 ```
 dm <-model.matrix(~var1-1)
@@ -82,9 +86,61 @@ mrss <-rss
 se <-sqrt(mrss *(conmat%*% UU %*% conmat))
 spm <-(conmat %*% B)/se
 ```
-We can similrly create design matrices for a variety of situations
+We can similarly create design matrices for a variety of situations
 
-### Estimating the smoothness
+
+
+* Multiple Regression
+
+```
+dm <-model.matrix(~var1+var2)
+dm <-cbind(dm,1)
+conmat <-matrix(0L,nrow=3,ncol=2)
+conmat[,1] <-c(1,0,0)
+conmat[,2] <-c(0,1,0)
+```
+
+* Anova (one-way)
+
+
+```
+dm <-model.matrix(~cond1-1)
+dm <-cbind(dm,1)
+
+```
+
+* Anova (two-way)
+
+```
+dm <-model.matrix(~cond1:cond2-1)
+dm <-cbind(dm,1)
+```
+
+* Ancova
+
+```
+dm <-model.matrix(~var1:cond1-1)
+dm <-cbind(dm,1)
+```
+
+* Mancova
+
+```
+dm <-model.matrix(~var1:cond1:cond2)
+dm <-cbind(dm,1)
+```
+
+* Adding Controls
+
+(var2 is the control variable)
+```
+dm <-model.matrix(~ig+var2-1)
+dm <-cbind(dm,1)
+```
+
+## Step 2: Estimating the smoothness
+
+Once we've obtained 
 ```
 Mmat <-colMeans(residuals)
 Zmat <-matrix(nrow=nsub, ncol=nvox)
@@ -101,46 +157,17 @@ close(progress)
 fwhm2<-sqrt(4*log(2)/(fwhm/degf)
 ```
 
-Multiple Regression
--------------------
-```
-dm <-model.matrix(~var1+var2)
-dm <-cbind(dm,1)
-```
+## Steps 3-6: Choosing a threshold and extracting important data
 
-Anova (one-way)
----------------
+Fortunately, the final steps are intricately related and are consolidated into a handful of functions. An analysis can be completed using only `rft.thresh` and `rft.results` takes care of the rest. However, it can be beneficial to be aware of what functions are used within the `rft.results` functions.
+
+** `rft.pcluster` - Calculates probability of obtaining a cluster of a certain size given a threshold value and total search area
+** `ants.resels` - The resolutions per voxels of an image
+** `ants.ec` - Determines the euler characteristic given the threshold to maxima for a cluster
 
 ```
-dm <-model.matrix(~ig-1)
-dm <-cbind(dm,1)
+thresh<-rft.thresh(D,timg,.05,150,fwhm,mask,rdf,"T","voxel")
+results<-rft.results(D,thresh[1],100,fwhm,timg,mask,rdf,"T",thresh[2])
 ```
 
-Anova (two-way)
----------------
-```
-dm <-model.matrix(~ig:im-1)
-dm <-cbind(dm,1)
-```
 
-Ancova
-------
-```
-dm <-model.matrix(~var1:ig-1)
-dm <-cbind(dm,1)
-```
-
-Mancova
--------
-```
-dm <-model.matrix(~var1:ig:im)
-dm <-cbind(dm,1)
-```
-
-Adding Controls
----------------
-(var2 is the control variable)
-```
-dm <-model.matrix(~ig+var2-1)
-dm <-cbind(dm,1)
-```
