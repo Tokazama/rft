@@ -2,7 +2,7 @@ Voxel-Based Morphometry
 =======================
 
 Simple Linear Regression
------------------------
+------------------------
 
 ### Set up data
 
@@ -19,7 +19,7 @@ dm <-cbind(dm,1)
 degf <-nsub - ncol(dm)
 ```
 
-### Linear regression through matrices
+### Calculating T-Scores
 ```
 UU <-ginv(t(dm) %*% dm)
 UY <-t(dm) %*% imat
@@ -49,37 +49,44 @@ fwhm2<-sqrt(4*log(2)/(fwhm/degf)
 ```
 
 Multiple Regression
---------
+-------------------
 ```
 dm <-model.matrix(~var1+var2)
 dm <-cbind(dm,1)
 ```
 
-# anova-one way
+Anova (one-way)
+---------------
+
 ```
 dm <-model.matrix(~ig-1)
 dm <-cbind(dm,1)
 ```
 
-# anova-two-way
+Anova (two-way)
+---------------
 ```
 dm <-model.matrix(~ig:im-1)
 dm <-cbind(dm,1)
 ```
 
-# ancova
+Ancova
+------
 ```
 dm <-model.matrix(~var1:ig-1)
 dm <-cbind(dm,1)
 ```
 
-# mancova
+Mancova
+-------
 ```
 dm <-model.matrix(~var1:ig:im)
 dm <-cbind(dm,1)
 ```
 
-# adding controls (var2 is the control variable)
+Adding Controls
+---------------
+(var2 is the control variable)
 ```
 dm <-model.matrix(~ig+var2-1)
 dm <-cbind(dm,1)
