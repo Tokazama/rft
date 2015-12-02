@@ -1,10 +1,14 @@
-library(MASS)
+Voxel-Based Morphometry
+=======================
 
-## Simple Linear Regression
+Simple Linear Regression
+-----------------------
 
 # Set up data
 
 ```
+library(ANTsR)
+library(MASS)
 nsub <-nrow(imat)
 nvox <-ncol(imat)
 ```
