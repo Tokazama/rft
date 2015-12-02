@@ -1,63 +1,38 @@
-#' @name rft.pcluster
-#' @title Calculates probability of 
-#' A quick heuristic for thresholding a Statistical field using RFT
+#' Cluster level statistics
 #'
-#'
-#' @param cMask-antsImage mask of the cluster
-#' @param bMask-antsImage mask of the brain
-#' @param fwhm-full width at half maxima
-#' @param stat-statistical value that was used to threshold the image
-#' @param df-degrees of freedom expressed as df[degrees of interest, degrees of error]
+#' This function calculates the probability of obtaining a cluster the size of 
+#' code/{cMask} within a search region of code/{bMask} given the statistical threshold
+#' of code/{stat} used to extract said cluster. The degrees of freedom and statistical 
+#' field type used to obtain the original statistical map are also required. 
+#' 
+#' @param cMask - antsImage mask of the cluster
+#' @param bMask - antsImage mask of the brain
+#' @param fwhm - full width at half maxima
+#' @param stat - statistical value that was used to threshold the image
+#' @param df - degrees of freedom expressed as df[degrees of interest, degrees of error]
 #' @param fieldType:
-#'	"T"- T-field
-#'	"F"- F-field
-#'	"X"- Chi squar field
-#'	"Z"- Gaussian field
-#' @return Outputs a statistical value to be used for threshold a SPM
+#'	"T" - T-field
+#'	"F" - F-field
+#'	"X" - Chi-square field
+#'	"Z" - Gaussian field
+#' @return Outputs a 
 #' @reference Friston K.J., (1994) Assessing the Significance of Focal Activations Using Their Spatial Extent.
 #' @reference Friston K.J., (1996) Detecting Activations in PET and fMRI: Levels of Inference and Power.
 #'
 #' @examples
-#'
-#'  var1<-vardata[,10]
-#'  subs<-nrow(varmat)
-#'  voxels<-ncol(varmat)
-#'  regpval<-matrix(nrow=1,ncol=voxels)
-#'  regtstat<-matrix(nrow=1,ncol=voxels)
-#'  resmat<-matrix(OL,nrow=subs,ncol=voxels)
-#'  for (i in 1:voxels){
-#'	  vox<-varmat[,i]
-#'	  regfit<-lm(vox~var1)
-#'	  ##Extract statistical values
-#'	  resmat[,i]<-residuals(regfit)
-#'	  regsum<-summary(regfit)
-#'	  regtstat[,i]<-regsum$coefficients[3,3]
-#'	  }
-#'  fwhm<-estPooled.smooth(res,rdf,mask)
-#'	negclust<-image2ClusterImages(timg,150,-Inf,-thresh)
-#'	negtable<-matrix(ncol=5)
-#'	colnames(postable)<-c("Voxels", "Cluster-Probability", "Peak-Height", "Voxel-Probability", "Coordinates")
-#'	for (i in 1:length(posclust)){
-#'	  cat("Determing negative cluster level statistics:",i,sep=" ")
-#'	  cmask<-getMask(negclust[[i]])
-#'	  cvoxs<-sum(as.array(cmask))
-#'	  pclust<-rft.pcluster(negclust[[i]],mask,fwhm,thresh,df,fieldType)
-#'	  peak<-max(posclust[[i]])
-#'	  loc<-labelImageCentroids(posclust[[i]])[2]
-#'	  resel <-ants.resel(mask,fwhm)
-#'	  ec<-ants.ec(stat,fieldType,df)
-#'	  pval<-(resel[1]*ec[1])+(resel[2]*ec[2])+(resel[3]*ec[3])+(resel[4]*ec[4])
-#'	  negtable[i,]<-c(cvox, pclust, peak, pval, loc$vertices[1],loc$vertices[2],loc$vertices[3])
-#'	  clustername<-paste("N-Cluster:",i,sep="")
-#'	  rownames(postable[i,])<-c(clustername)
-#'	  image<-paste(fileDir,"Nlcuster",i,".nii.gz",sep="")
-#'	  antsImageWrite(negclust[[i]],file=image)
-#'	  }
+#' 
+#' # estimatation of a single images smoothness
+#' outimg1 <-makeImage(c(10,10,10), rnorm(1000))
+#' maskimg <-getMask(outimg1)
+#' fwhm <-est.Smooth(outimg1,maskimg)
+#' # create arbitrary threshold and degrees of freedom from hypothetical analysis
+#' thresh <-mean(outimg1)
+#' df <-4
+#' pval <-rft.pcluster(3,clustmask,brainmask, thresh, df, fwhm[[1]], fieldType="T")
 #'
 #' @export rft.pcluster
 rft.pcluster<-function(D,cMask,bMask,fwhm,stat,df,fieldType){
 	bvox<-sum(as.array(bMask))
-	D<-bMask@dimension
 	if(class(cMask)=="numeric"){
 		ka<-cMask
 	}else{
@@ -71,7 +46,7 @@ rft.pcluster<-function(D,cMask,bMask,fwhm,stat,df,fieldType){
 		EN<-bvox*(1-pf(stat, df[1],df[2]))
 	}else if(fieldType=="X"){
 		EN<-bvox*(1-pchisq(stat, df[1],df[2]))
-	}else if(fieldType=="G"){
+	}else if(fieldType=="Z"){
 		EN<-bvox*(1-qnorm(stat))
 	}else{
 		stop("A correct fieldtype is required")
