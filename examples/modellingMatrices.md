@@ -4,7 +4,7 @@ Voxel-Based Morphometry
 Simple Linear Regression
 -----------------------
 
-# Set up data
+### Set up data
 
 ```
 library(ANTsR)
@@ -12,14 +12,14 @@ library(MASS)
 nsub <-nrow(imat)
 nvox <-ncol(imat)
 ```
-# Create Design Matrix
+### Create Design Matrix
 ```
 dm <-model.matrix(~var1-1)
 dm <-cbind(dm,1)
 degf <-nsub - ncol(dm)
 ```
 
-# Linear regression through matrices
+### Linear regression through matrices
 ```
 UU <-ginv(t(dm) %*% dm)
 UY <-t(dm) %*% imat
@@ -31,7 +31,7 @@ se <-sqrt(mrss *(contrast%*% UU %*% contrast))
 tfield <-(contrast %*% B)/se
 ```
 
-# Estimating the smoothness
+### Estimating the smoothness
 ```
 Mmat <-colMeans(residuals)
 Zmat <-matrix(nrow=nsub, ncol=nvox)
@@ -48,7 +48,8 @@ close(progress)
 fwhm2<-sqrt(4*log(2)/(fwhm/degf)
 ```
 
-# multiple regression
+Multiple Regression
+--------
 ```
 dm <-model.matrix(~var1+var2)
 dm <-cbind(dm,1)
