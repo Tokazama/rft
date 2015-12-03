@@ -21,14 +21,15 @@
 #'
 #' @examples
 #' 
-#' # estimatation of a single images smoothness
+#' ## estimatation of a single images smoothness
 #' outimg1 <-makeImage(c(10,10,10), rnorm(1000))
 #' maskimg <-getMask(outimg1)
 #' fwhm <-est.Smooth(outimg1,maskimg)
-#' # create arbitrary threshold and degrees of freedom from hypothetical analysis
+#' ## create arbitrary threshold and degrees of freedom from hypothetical analysis
 #' thresh <-mean(outimg1)
 #' df <-4
-#' pval <-rft.pcluster(3,clustmask,brainmask, thresh, df, fwhm[[1]], fieldType="T")
+#' clustimg <-thresholdImage(outimg1, thresh, Inf, inval=1, outval=0)
+#' pval <-rft.pcluster(3, clustmask, clustimg, thresh, df, fwhm[[1]], fieldType="T")
 #'
 #' @export rft.pcluster
 rft.pcluster<-function(D,cMask,bMask,fwhm,stat,df,fieldType){
