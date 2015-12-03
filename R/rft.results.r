@@ -44,8 +44,6 @@
 #'	
 #' @export rft.results
 rft.results<-function(D,thresh,ka,fwhm,StatImg,mask,df,fieldType,resel){
-	cat("Calculating image resels
-	",sep="")
 	voxels <-sum(as.array(mask))
 	Mfwhm<-mean(fwhm)
 	negimg<-as.antsImage(as.array(StatImg)*-1)
@@ -94,10 +92,10 @@ rft.results<-function(D,thresh,ka,fwhm,StatImg,mask,df,fieldType,resel){
 				minpeak<-abs(min(clust))
 				if (maxpeak > minpeak){
 					peak<-max(clust)
-					ec<-ants.ec(peak,fieldType,df)
+					ec<-rft.ec(peak,fieldType,df)
 				}else{
 					peak<-min(clust)
-					ec<-ants.ec(minpeak,fieldType,df)
+					ec<-rft.ec(minpeak,fieldType,df)
 					}
 				pvox<-(resel[1]*ec[1])+(resel[2]*ec[2])+(resel[3]*ec[3])+(resel[4]*ec[4])
 				clustable[nrow(clustable),]<-c(cvoxs,pclust,pvox,peak,loc[1],loc[2],loc[3])
