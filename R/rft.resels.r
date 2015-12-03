@@ -55,5 +55,6 @@ rft.resel <- function(mask, fwhm){
   r3 <- (((Fxy-cubes)*rx*ry)+((Fxz-cubes)*rx*rz)+((Fyz-cubes)*ry*rz))
   r4 <- (cubes*rx*ry*rz)
   resel<-c(r1,r2,r3,r4)
+  resel
   return(resel)
 }
