@@ -15,7 +15,8 @@ Random field theory (RFT) allows us to take SPM images and consider each voxel a
 
 Because this process can become overwhelming to anyone approaching it for the first time with a functional adrenal gland, I will go through each step as thoroughly as I can. Feel free to skip ahead as you come across fairly rudimentary material.
 
-The examples below will be ran on the [OASIS data set](http://www.oasis-brains.org/app/template/Tools.vm#website). In order to decrease processing time I will only be running the analysis on Disc 12 (Sessions 420-457). When accessing the data from the previous link look to the top right corner to find an option bar that says "Jump to data set". Choose "Cross-Sectional Data" and click the spreadsheet link. 
+The examples below will be ran on the data from the sobik data set in the rft repository.
+
 
 ## Step 1: Fitting your data to a statistical model and extracting residuals
 
@@ -28,10 +29,9 @@ For seasoned R users many already existing functions are sufficient to extract p
 
 Here we'll set up our csv data in and organize it accordingly.
 ```
-
 library(MASS)
 library(ANTsR)
-rootdir <-'/Users/zach8769/Desktop/oasis/'
+rootdir <-'/Users/zach8769/Desktop/sobik/'
 
 setwd(rootdir)
 oasis <-read.csv('oasis.csv')
@@ -40,11 +40,11 @@ oasis <-oasis[381:416,]
 load('oasis')
 subs <-nrow(imat)
 nvox <-ncol(imat)
-age <-oasis$Age
-etiv <-oasis$eTIV
-sex <-oasis$M.F
 
-cond2 <-vardata
+var1 <-sobik$WASIMatrixReasoningT
+age <-sobik$AgeAtInjury
+ig <-sobik$InjuryGroup
+im <-sobik$injurymech
 ```
 
 The following performs a statistical test utilizing the `lm()` function to acquire residuals and a SPM of T-scores. It simply demonstrates how R can be utilized as is to obtain the information we need. 
@@ -55,7 +55,7 @@ res <-matrix(0L,nrow=subs,ncol=voxels)
 progress <- txtProgressBar(min = 0, max = voxels, style = 3)
 for (i in 1:nvox){
 	vox<-imat[,i]
-	regfit<-lm(vox~var1)
+	regfit<-lm(vox~age)
 	res[,i]<-residuals(regfit)
 	regsum<-summary(regfit)
 	spm[,i]<-regsum$coefficients[2,3]
@@ -74,16 +74,13 @@ Here we see how we can create a disgn matrix and extract the degrees of freedom 
 * Linear Regression
 
 ```
-dm <-model.matrix(~age-1)
-dm <-cbind(dm,1)
-degf <-nsub - ncol(dm)
+dm <-model.matrix(~var1-1)
+dm
+
+conmat <-matrix(c(1,0),nrow=2,ncol=1)
 ```
 
 Once a design matrix is available we need to make a contrast matrix. This is similar to other methods that require a contrast matrix in R. This is fairly simple for a linear regression.
-
-```
-conmat <-c(1,0)
-```
 
 The following demonstrates the matrix manipulation necessary to extract the SPM and residuals.
 
@@ -102,71 +99,68 @@ We can similarly create design matrices for a variety of situations
 
 
 * Multiple Regression
-
 ```
-dm <-model.matrix(~age+var2)
-dm <-cbind(dm,1)
+dm <-model.matrix(~age+var1)
+dm
+
 conmat <-matrix(0L,nrow=3,ncol=2)
-conmat[,1] <-c(1,0,0)
-conmat[,2] <-c(0,1,0)
+conmat[,1] <-c(1,0,0) # association of age
+conmat[,2] <-c(0,1,0) # association of MMSE
 ```
 
 * Anova (one-way)
-
-
 ```
-dm <-model.matrix(~cond1-1)
-dm <-cbind(dm,1)
+dm <-model.matrix(~ig-1)
+dm
 
+conmat <-matrix(0L,nrow=2,ncol=1)
+conmat[,1] <-c(1,-1) # effect of sex
 ```
 
 * Anova (two-way)
-
 ```
-dm <-model.matrix(~cond1:cond2-1)
-dm <-cbind(dm,1)
+dm <-model.matrix(~ig:im-1)
+dm
+
+
+
 ```
 
 * Ancova
-
 ```
-dm <-model.matrix(~age:cond1-1)
-dm <-cbind(dm,1)
-```
+dm <-model.matrix(~var1:ig-1)
+dm
 
-* Mancova
-
-```
-dm <-model.matrix(~age:cond1:cond2)
-dm <-cbind(dm,1)
+conmat <-matrix(0L,nrow=2,ncol=3)
+conmat[,1] <-c(1,0) #effect of age in males
+conmat[,2] <-c(0,1) #effect of age in females
+conmat[,3] <-c(1,-1) #effect of age and sex
 ```
 
 * Adding Controls
+```
+dm <-model.matrix(~ig+age-1)
+dm
 
-(var2 is the control variable)
-```
-dm <-model.matrix(~ig+var2-1)
-dm <-cbind(dm,1)
+conmat <-matrix(0L,nrow=3,ncol=1)
+conmat[,1] <-c(1,-1,0) #effect of sex when controlling for age
 ```
 
-## Step 2: Estimating the smoothness
+```
+## Set up model
+formula <-imat~var1:ig:im-1
+conmat <-matrix(c(1,-1,0),nrow=3,ncol=1)
+## fit model and extract important information
+fit <-rft.lm(formula, conmat, mask, test="FALSE")
+df <-fit$df
+timg <-fit$tfields
+fwhm <-fit$fwhm
+## generate results
+thresh <-rft.thresh(3, timg, .05, 150, fwhm, mask, df, "T", "voxel")
+results <-rft.results(3, thresh[1], 100, fwhm, timg, mask, df, "T", thresh[2])
+```
 
-Once we've obtained 
-```
-Mmat <-colMeans(residuals)
-Zmat <-matrix(nrow=nsub, ncol=nvox)
-cat("Estimating fwhm/smoothing",sep="")
-progress <- txtProgressBar(min = 0, max = nsub, style = 3)
-for (i in 1:nsub){
-	Zmat[i,] <-(res[i,]-Mmat[1])/psd
-	img <-makeImage(mask,Zmat[i,])
-	smooth <-est.Smooth(img,mask)
-	fwhm <-fwhm+smooth[[2]]
-	setTxtProgressBar(progress, i)
-	}
-close(progress)
-fwhm2 <-sqrt(4*log(2)/(fwhm/degf)
-```
+
 
 ## Steps 3-6: Choosing a threshold and extracting important data
 
