@@ -15,24 +15,35 @@ Random field theory (RFT) allows us to take SPM images and consider each voxel a
 
 Because this process can become overwhelming to anyone approaching it for the first time with a functional adrenal gland, I will go through each step as thoroughly as I can. Feel free to skip ahead as you come across fairly rudimentary material.
 
+The examples below will be ran on the [OASIS data set](http://www.oasis-brains.org/app/template/Tools.vm#website). In order to decrease processing time I will only be running the analysis on Disc 12 (Sessions 420-457). When accessing the data from the previous link look to the top right corner to find an option bar that says "Jump to data set". Choose "Cross-Sectional Data" and click the spreadsheet link. 
+
 ## Step 1: Fitting your data to a statistical model and extracting residuals
 
 The following will highlight the initial steps in obtaining residuals and a SPM images using statistical models. The important thing to realize is that none of these methods are absolute. They should merely be used as an introduction to how you can approach this step. The benefit to performing a RFT based VBM analysis in R is that you get to decide what assumptions to make. For example, additional steps of scaling images or incorporating pooled deviations between conditions and image voxels may be beneficial. Before performing your own analysis it's encouraged that you explore other methods of obtaining the SPM and residuals that may better fit your research goals.
 
 ### Using `lm()`
 
-For seasoned R users many already existing functions are sufficient to extract pertinent information. 
+For seasoned R users many already existing functions are sufficient to extract pertinent information.
 
-Here we'll set up our data for this tutorial
+
+Here we'll set up our csv data in and organize it accordingly.
 ```
+
 library(MASS)
 library(ANTsR)
+rootdir <-'/Users/zach8769/Desktop/oasis/'
 
+setwd(rootdir)
+oasis <-read.csv('oasis.csv')
+oasis[,1] ## I use this to see where the first row of the data will be using is (scan 420)
+oasis <-oasis[381:416,]
+load('oasis')
 subs <-nrow(imat)
 nvox <-ncol(imat)
-var1 <-vardata[,10]
-var2 <-
-cond1 <-vardata
+age <-oasis$Age
+etiv <-oasis$eTIV
+sex <-oasis$M.F
+
 cond2 <-vardata
 ```
 
@@ -63,7 +74,7 @@ Here we see how we can create a disgn matrix and extract the degrees of freedom 
 * Linear Regression
 
 ```
-dm <-model.matrix(~var1-1)
+dm <-model.matrix(~age-1)
 dm <-cbind(dm,1)
 degf <-nsub - ncol(dm)
 ```
@@ -93,7 +104,7 @@ We can similarly create design matrices for a variety of situations
 * Multiple Regression
 
 ```
-dm <-model.matrix(~var1+var2)
+dm <-model.matrix(~age+var2)
 dm <-cbind(dm,1)
 conmat <-matrix(0L,nrow=3,ncol=2)
 conmat[,1] <-c(1,0,0)
@@ -119,14 +130,14 @@ dm <-cbind(dm,1)
 * Ancova
 
 ```
-dm <-model.matrix(~var1:cond1-1)
+dm <-model.matrix(~age:cond1-1)
 dm <-cbind(dm,1)
 ```
 
 * Mancova
 
 ```
-dm <-model.matrix(~var1:cond1:cond2)
+dm <-model.matrix(~age:cond1:cond2)
 dm <-cbind(dm,1)
 ```
 
