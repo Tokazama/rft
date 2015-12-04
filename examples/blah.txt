@@ -1,0 +1,10 @@
+for i in $(find ~/Desktop/oasis/*/RAW/ -type d)
+do
+sub=$(dirname $i)
+id=$(basename $sub)
+echo $id
+
+dcm2nii -a n -g n -r n -x n -o $sub/nifti/ $i/*
+done
+
+antsBrainExtraction.sh -d 3 -a $i
