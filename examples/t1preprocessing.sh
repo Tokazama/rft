@@ -20,9 +20,6 @@ export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
 
 rootdir=/fslhome/zach8769/
 
-ARTHOME=${rootdir}/bin/art
-export ARTHOME
-
 export ANTSPATH=/fslhome/zach8769/bin/antsbin/bin/
 PATH=${ANTSPATH}:${PATH}
 
@@ -42,10 +39,10 @@ antsBrainExtraction.sh -d 3 \
 -a ${t1}/n4_resliced.nii.gz \
 -e $rootdir/compute/NKI10AndUnder/T_template0.nii.gz \
 -m $rootdir/compute/NKI10AndUnder/T_template0_BrainExtractionMask.nii.gz \
--o $t1/extract
+-o $t1/
 
 temp=$rootdir/compute/jlf/OASIS-TRT-20
-antsJointLabelFusion.sh -d 3 -o ${subjDir}/atlas/ -t ${t1}/extract*.nii.gz -c 5 \
+antsJointLabelFusion.sh -d 3 -o ${subjDir}/atlas/ -t ${t1}/BrainExtractionBrain.nii.gz -c 5 -j 4\
 -g $temp-1.nii.gz -l $temp-1_DKT31_CMA_labels.nii.gz \
 -g $temp-2.nii.gz -l $temp-2_DKT31_CMA_labels.nii.gz \
 -g $temp-3.nii.gz -l $temp-3_DKT31_CMA_labels.nii.gz \
