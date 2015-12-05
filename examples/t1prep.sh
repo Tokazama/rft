@@ -20,10 +20,10 @@ export OMP_NUM_THREADS=$SLURM_CPUS_ON_NODE
 
 rootdir=/fslhome/zach8769/
 
-ARTHOME=$rootdir/bin/art
+ARTHOME=${rootdir}/bin/art
 export ARTHOME
 
-export ANTSPATH=$rootdir/bin/antsbin/bin/
+export ANTSPATH=/fslhome/zach8769/bin/antsbin/bin/
 PATH=${ANTSPATH}:${PATH}
 
 IFS=$'\n'
@@ -40,9 +40,9 @@ N4BiasFieldCorrection -d 3 -i ${t1}/n4.nii.gz -o ${t1}/n4.nii.gz -s 2 -b [200] -
 /fslhome/zach8769/bin/c3d ${t1}/n4.nii.gz -resample-mm 1x1x1mm -o ${t1}/n4_resliced.nii.gz
 
 antsBrainExtraction.sh -d 3 \
--a ${t1}/n4_resliced.nii.gz
+-a ${t1}/n4_resliced.nii.gz \
 -e $rootdir/compute/NKI10AndUnder/T_template0.nii.gz \
--m $rootdir/compute/NKI10AndUnder/T_template0_BrainExtractionMask.nii.gz
+-m $rootdir/compute/NKI10AndUnder/T_template0_BrainExtractionMask.nii.gz \
 -o $t1/extract
 
 temp=$rootdir/compute/jlf/OASIS-TRT-20
@@ -68,4 +68,3 @@ antsJointLabelFusion.sh -d 3 -o ${subjDir}/atlas/ -t ${t1}/extract*.nii.gz -c 5 
 -g $temp-19.nii.gz -l $temp-19_DKT31_CMA_labels.nii.gz \
 -g $temp-20.nii.gz -l $temp-20_DKT31_CMA_labels.nii.gz
 done
-
