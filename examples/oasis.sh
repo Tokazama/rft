@@ -24,7 +24,5 @@ for scan in $(find RAW/*.nii -type f)
 done
 
 #ACPC detect
+/fslhome/zach8769/bin/art/acpcdetect -M -o ${subjDir}/acpc.nii -i ${array[$i]}
 
-
-
-antsBrainExtraction.sh -d 3 -a $i
