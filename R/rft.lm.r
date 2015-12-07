@@ -15,7 +15,23 @@
 #' @kewords rft.pcluster, ants.ec
 #' @examples
 #' 
+#' outimg1 <-makeImage(c(10,10,10), rnorm(1000))
+#' maskimg <-getMask(outimg1)
+#' fwhm <-est.Smooth(outimg1,maskimg)
+#' # estimation of smoothness of overall sample images in a statistical model
+#' outimg2 <-makeImage(c(10,10,10), rnorm(1000))
+#' imat <-imageListToMatrix(list(outimg1, outimg2), maskimg)
+#' var1 <-rnorm(2)
+#' conmat <-matrix(c(1))
+#' fit <-rft.lm(imat~var1-1, conmat, mask, test="FALSE")
+#' tmat <-fit$tfields
+#' df <-fit$df
+#' fwhm <-fit$fwhm
 #' 
+#' timg <-makeImage(
+#'
+#' thresh <-rft.thresh(3, timg, .05, 150, fwhm, mask, df, "T", "voxel")
+#' results <-rft.results(3, thresh[1], 100, fwhm, timg, mask, df, "T", thresh[2], resels)
 #'
 #' @export rft.lm
 rft.lm <-function(formula, conmat, mask, test="FALSE"){	
@@ -23,7 +39,7 @@ rft.lm <-function(formula, conmat, mask, test="FALSE"){
 	nsub <-nrow(dm)
 	nvar <-ncol(dm)
 	if (test=="TRUE"){
-		z <-list(design.matrix,contrast.matrix)
+		z <-list("design.matrix", "contrast.matrix")
 		z$design.matrix <-dm
 		conmat <-matrix(0L,nrow=nvar, ncol=nvar)
 		rownames(conmat) <-colnames(dm)
