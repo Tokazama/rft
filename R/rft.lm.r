@@ -1,5 +1,5 @@
 #
-#' @name rft.lm
+#' rft.lm
 #' @title Fits design matrices
 #' 
 #' @param imat - Matrix of images of n x voxels
@@ -79,7 +79,7 @@ rft.lm <-function(formula, conmat, mask, test="FALSE"){
 		cat("Calculating resels
 		",sep="")
 		resels <-rft.resel(mask, fwhm2)
-		z <-list(design.matrix, tfields, coefficients, df, fwhm, residuals, contrast.matrix, resels)
+		z <-list("design.matrix", "tfields", "coefficients", "df", "fwhm", "residuals", "contrast.matrix", "resels")
 		z$design.matrix <-dm
 		z$tfields <-tfields
 		z$coefficients <-B
@@ -87,7 +87,7 @@ rft.lm <-function(formula, conmat, mask, test="FALSE"){
 		z$fwhm <-fwhm2
 		z$residuals <-res
 		z$contrast.matrix <-conmat
-		z$resels <-
+		z$resels <-resels
 		}
 	z
 	return(z)
