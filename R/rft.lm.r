@@ -48,7 +48,8 @@ rft.lm <-function(formula, conmat, mask, test="FALSE"){
 		}
 		UY <-t(dm) %*% imat
 		B <-UU %*% UY
-		cat("Calculating residuals",sep="")
+		cat("Calculating residuals
+		",sep="")
 		res <-imat - (dm %*% B)
 		RSS <-colSums(res^2)
 		MRSS <-RSS/DF
@@ -63,7 +64,8 @@ rft.lm <-function(formula, conmat, mask, test="FALSE"){
 		fwhm<-matrix(0L,nrow=1,ncol=3)
 		Mmat <-colMeans(res)
 		Zmat <-matrix(nrow=nsub, ncol=nvox)
-		cat("Estimating fwhm/smoothing",sep="")
+		cat("Estimating fwhm/smoothing
+		",sep="")
 		progress <- txtProgressBar(min = 0, max = nsub, style = 3)
 		for (i in 1:nsub){
 			Zmat[i,]<-(res[i,]-Mmat[1])/psd
@@ -74,8 +76,10 @@ rft.lm <-function(formula, conmat, mask, test="FALSE"){
 			}
 		close(progress)
 		fwhm2<-sqrt(4*log(2)/(fwhm/DF))
-		
-		z <-list(design.matrix, tfields, coefficients, df, fwhm, residuals, contrast.matrix)
+		cat("Calculating resels
+		",sep="")
+		resels <-rft.resel(mask, fwhm2)
+		z <-list(design.matrix, tfields, coefficients, df, fwhm, residuals, contrast.matrix, resels)
 		z$design.matrix <-dm
 		z$tfields <-tfields
 		z$coefficients <-B
@@ -83,6 +87,7 @@ rft.lm <-function(formula, conmat, mask, test="FALSE"){
 		z$fwhm <-fwhm2
 		z$residuals <-res
 		z$contrast.matrix <-conmat
+		z$resels <-
 		}
 	z
 	return(z)
