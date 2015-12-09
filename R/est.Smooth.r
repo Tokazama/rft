@@ -42,8 +42,41 @@
 #' fwhm2<-sqrt(4*log(2)/(fwhm/(subs-1)))
 #' 
 #' @export est.Smooth
-est.Smooth<-function(img,mask){
-
+est.Smooth<-function(D, img, mask){
+	if (D==2){
+		dimx <- dim(img)[1]
+    dimy <- dim(img)[2]
+    d1 <- matrix(0, dim = dim(img) + 2)
+    d2 <- matrix(0, dim = dim(img) + 2)
+    m1 <- matrix(0, dim = dim(img) + 2)
+    m2 <- matrix(0, dim = dim(img) + 2)
+    maskar <-as.matrix(mask)
+    voxels <-sum(maskar)
+    imgar <-as.matrix(img)
+    fwhm <-matrix(0L,nrow=1,ncol=3)
+    lambda <-matrix(0L,nrow=1,ncol=3)
+    	
+    #calculate partial derivatives y
+    d1[2:(dimx+1), 2:(dimy+1), 2:(dimz+1)] <- imgar 
+    d2[2:(dimx+1), 1:(dimy), 2:(dimz+1)] <- imgar
+    m1[2:(dimx+1), 2:(dimy+1), 2:(dimz+1)] <- maskar
+    m2[2:(dimx+1), 1:(dimy), 2:(dimz+1)] <- maskar
+    m3 <- (m1 + m2) == 2
+    Zyy <- ((d1 - d2)[m3 == 1])
+    #variances of partial derivatives y
+    lambda[1,2] <- sum(Zyy^2)/(voxels)
+    
+		 #calculate partial derivatives y
+    d1[2:(dimx+1), 2:(dimy+1), 2:(dimz+1)] <- imgar 
+    d2[2:(dimx+1), 1:(dimy), 2:(dimz+1)] <- imgar
+    m1[2:(dimx+1), 2:(dimy+1), 2:(dimz+1)] <- maskar
+    m2[2:(dimx+1), 1:(dimy), 2:(dimz+1)] <- maskar
+    m3 <- (m1 + m2) == 2
+    Zyy <- ((d1 - d2)[m3 == 1])
+    #variances of partial derivatives y
+    lambda[1,2] <- sum(Zyy^2)/(voxels)
+    
+    }else{
     dimx <- dim(img)[1]
     dimy <- dim(img)[2]
     dimz <- dim(img)[3]
@@ -86,6 +119,7 @@ est.Smooth<-function(img,mask){
     Zzz <- ((d1 - d2)[m3 == 1])
     #variances of partial derivatives z
     lambda[1,3] <- sum(Zzz^2)/(voxels)
+    }
     #calculate fwhm from lambda
     fwhm<-sqrt(4*log(2)/lambda)
     smooth<-list(fwhm,lambda)
