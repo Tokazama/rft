@@ -14,10 +14,6 @@
 #' \item{"X"}{Chi-square field"} 
 #' \item{"Z"}{Gaussian field}
 #' }
-#' @param threshType:
-#' \describe{
-#'	\item{"voxel"}{using the mask and pval calculates the minimum statistical threshold}
-#' }
 #' @return Outputs a statistical value to be used for threshold a SPM
 #' @description
 #' 
@@ -66,41 +62,35 @@
 #'
 #'
 #' @export rft.thresh
-rft.thresh <-function(D, StatImg, pval, ka, fwhm, mask, resel, df, fieldType, threshType){
-	voxels <-sum(as.array(mask))
-	bMask <-mask
-	cMask <- ka
-	Mfwhm <-mean(fwhm)
+rft.thresh <-function(D, StatImg, pval, ka, fwhm, mask, resels, df, fieldType,fdr=FALSE){
 	alpha <-pval-1
 	stat <-10
 	while(alpha < pval){
 		stat <-stat-.01
-		if (threshType=="cluster"){
-			alpha <-rft.pcluster(D, cMask, bMask, Mfwhm, stat, df, fieldType, fdr)
-		}else if(threshType=="voxel"){
-			ec <-rft.ec(stat, fieldType, df)
-			alpha <-(resel[1]*ec[1])+(resel[2]*ec[2])+(resel[3]*ec[3])+(resel[4]*ec[4])
-		}else{
-			cat("Must specify appropriate threshType
-			")
-		}
+		ec <-rft.ec(stat, fieldType, df)
+		alpha <-(resels[1]*ec[1])+(resels[2]*ec[2])+(resels[3]*ec[3])+(resels[4]*ec[4])
 	}
-	x <-StatImg[StatImg > stat]
+	image2ClusterImages(timg, minClusterSize=1,minThresh=stat,maxThresh=Inf)
+	clist <-antsImageClone(StatImg)
+  cmax <-c()
+	for (i in 1:length(clist)){
+    cmax <-cbind(cmax,max(clist[[i]]))
+	}
 	if (fdr=="TRUE"){
 		if (fieldType=="Z"){
-			p <- sort(1 - pnorm(x))
+			p <-sort(1 - pnorm(cmax),decreasing=TRUE)
 		}else if(fieldType=="T"){
-			p <- sort(1 - pt(x, df = df[1]))
+			p <-sort(1 - pt(cmax, df = df[1]),decreasing=TRUE)
 		}else if(fieldType=="F"){
-			p <- sort(1 - pf(x, df1 = df[1], df2 = df[2]))
+			p <-sort(1 - pf(cmax, df1 = df[1], df2 = df[2]),decreasing=TRUE)
 		}else if(fieldType=="X"){
-			p <-sort(1-pchisq(stat, df[1],df[2]))
+			p <-sort(1-pchisq(cmax, df[1],df[2]),decreasing=TRUE)
 		}
-		V <- length(p)
-		cV <- switch(cV.type, 1, log(V) + 0.5772)
+	  pfdr <-sort((alpha*(1:length(p))/length(p)),decreasing=TRUE)
 		i <- 1
-		while (p[i] <= (i * q)/(V * cV)) i <- i + 1
-		i <- max(i - 1, 1)
+		while (p[i] >= pfdr[i]){
+		  i <-i+1
+		}
 		if (fieldType=="Z"){
 			thresh <- qnorm(1 - p[i])
 		}else if(fieldType=="T"){
@@ -108,10 +98,9 @@ rft.thresh <-function(D, StatImg, pval, ka, fwhm, mask, resel, df, fieldType, th
 		}else if(fieldType=="F"){
 			thresh <- qf(1 - p[i], df1 = df[1], df2 = df[2])
 		}else if(fieldType=="X"){
-			thresh <-qchisq(1-p[i], df[1],df[2]))
+			thresh <-qchisq(1-p[i], df[1],df[2])
 		}
-		StatImg[StatImg < thresh] <-0
 		}
-	z <-list(ThresholdImg=StatImg, RFT.Thresh=stat, FDR.Thresh=thresh)
-	return(z)
-	}
+	z <-list(threshold=thresh)
+	z
+}
