@@ -1,18 +1,34 @@
-#
-#' rft.lm
-#' @title Fits design matrices
+#' Fits a linear model according to random field theory
 #' 
-#' @param imat - Matrix of images of n x voxels
-#' @param dm - Design matrix created by model.rft() function. With values dm["DesignMatrix", "DegreesOfFreedom", "D.M.Names"]
-#' @param conmat - A contrast matrix of D.M.Names x contrast
-#' @return Produces T-values, coefficients, and fwhm values.
-#' @description
-#'	Accepts a design matrix of 
-#' \code{rft.lm} 
+#' @param D image dimensions
+#' @param x matrix or data frame of predictors
+#' @param y observations (i.e. an image matrix)
+#' @param conmat contrast matrix of contrasts * conditions (see example for more details)
+#' @param mask object of type \code{antsImage}. Typically the same mask used to produce the image matrix.
+#' @param statdir directory that statistical images are saved to (defaualt to "./")
 #'
-#' @References Worlsey K.J., et al. (1996) A Unified Statistical Approach for Determining Significant Signals in Images of Cerebral Activation.
-#' @author Zachary P. Christensen
-#' @kewords rft.pcluster, ants.ec
+#'
+#' @return a list of statistical images, coefficients, the FWHM estimate, and resel values.
+#' @description
+#'
+#' This function is a wrapper for several functions necessary to performing a random field theory based
+#' statistical analysis of images. A matrix ,or data frame, of predictors (\code{x}) is fitted to an 
+#' image matrix (\code{y}) using a general linear model. The intercept is supressed and set to x=0. 
+#' Therefore, \code{y} is scaled to zero. As recommended by ### et al. (1999) the residuals are used to 
+#' estimate the full width at half-maxima (FWHM; or "smoothness") of the final statistical image. The 
+#' the resolutions in voxel space (resels) are calculated using the estimated FWHM and the image search 
+#' region (\code{mask}). The \code{T.imgs} output contains a list of t-statistical fields in image space
+#' determined according to specified contrasts (\code{conmat}). 
+#' 
+#'
+#' @References 
+#' Worsley K.J., (1992) A Three-Dimensional Statistical Analysis for CBF Activation Studies in Human Brain.
+#' Worlsey K.J., et al. (1996) A Unified Statistical Approach for Determining Significant Signals in Images of Cerebral Activation.
+#' Stefan J.K., (1999) Robust Smoothness Estimation in Statistical Parametric Maps Using Standardized Residual from the General Linear Model
+#' 
+#' @Author Zachary P. Christensen
+#' @kewords rft.pcluster, rft.ec, rft.resels
+#' @note: function currently in beta phase. Waiting for acceptance of peer-reviewed paper
 #' @examples
 #' 
 #' outimg1 <-makeImage(c(10,10,10), rnorm(1000))
@@ -23,88 +39,61 @@
 #' imat <-imageListToMatrix(list(outimg1, outimg2), maskimg)
 #' var1 <-rnorm(2)
 #' conmat <-matrix(c(1))
-#' fit <-rft.lm(imat~var1-1, conmat, mask, test="FALSE")
+#' fit <-rft.fit(imat~var1-1, conmat, mask)
 #' tmat <-fit$tfields
 #' df <-fit$df
 #' fwhm <-fit$fwhm
 #' 
-#' timg <-makeImage(
 #'
 #' thresh <-rft.thresh(3, timg, .05, 150, fwhm, mask, df, "T", "voxel")
-#' results <-rft.results(3, thresh[1], 100, fwhm, timg, mask, df, "T", thresh[2], resels)
+#' results <-rft.results(3, thresh[1], 100, fwhm, timg, mask, df, "T", thresh, resels)
 #'
 #' @export rft.lm
-rft.lm <-function(formula, conmat, mask, test="FALSE"){	
-	dm <-model.matrix(formula)
-	nsub <-nrow(dm)
-	nvar <-ncol(dm)
-	if (test=="TRUE"){
-		z <-list("design.matrix", "contrast.matrix")
-		z$design.matrix <-dm
-		conmat <-matrix(0L,nrow=nvar, ncol=nvar)
-		rownames(conmat) <-colnames(dm)
-		z$contrast.matrix <-conmat
-	}else{
-		dm <-cbind(dm,1)
-		conmat <-rbind(conmat,0)
-		DF <-nsub-nvar
-		imat <-model.response(model.frame(formula))
-		nvox <-ncol(imat)
-		#Uses designm matrix to solve for T-values
-		U <-t(dm) %*% dm
-		Usvd <- svd(U)
-		Usvd$u <- Conj(Usvd$u)
-		Positive <- Usvd$d > max(sqrt(.Machine$double.eps) * Usvd$d[1L], 0)
-		if (all(Positive)){ 
-			UU <-Usvd$v %*% (1/Usvd$d * t(Usvd$u))
-		}else if (!any(Positive)){
-			UU <-array(0, dim(U)[2L:1L])
-		}else{
-			UU <-Usvd$v[, Positive, drop = FALSE] %*% ((1/Usvd$d[Positive]) * t(Usvd$u[, Positive, drop = FALSE]))
+rft.lm <-function(x, y, conmat, mask, tol=1e-07, statdir="./", findSmooth="TRUE", findResels="TRUE", concise="TRUE"){		
+	z <-.lm.fit(x,y,tol=tol)
+	p <-z$rank
+	df <-c(n-p, p-1)
+	b <-z$coefficients
+	r <-z$residuals
+	rss <-sum(r^2)
+	mrss <-rss/df[1]
+	p1 <-1L:p
+	R <-chol2inv(z$qr[p1, p1, drop = FALSE])
+	T.imgs <-list()
+	for (i in 1:nrow(conmat)){  
+		se <-t(as.matrix(sqrt(mrss *(conmat[i,] %*% R %*% conmat[i,]))))
+		se[se==0] <-.01
+		est <-conmat[i,] %*% b
+		tstat <- est/se
+		timg <-makeImage(mask,tstat)
+		antsImageWrite(timg, file=paste(statdir, rownames(conmat)[i], ".nii.gz", sep=""))
+		T.imgs <-lappend(T.imgs, timg)
+		names(T.imgs)[i] <-rownames(conmat)[i]
 		}
-		UY <-t(dm) %*% imat
-		B <-UU %*% UY
-		cat("Calculating residuals
-		",sep="")
-		res <-imat - (dm %*% B)
-		RSS <-colSums(res^2)
-		MRSS <-RSS/DF
-		tfields <-matrix(nrow=ncol(conmat),ncol=nvox)
-		for (i in 1:ncol(conmat)){
-			SE <-t(as.matrix(sqrt(MRSS *(conmat[,i] %*% UU %*% conmat[,i]))))
-			SE[SE==0] <-.01
-			tfields[i,] <-(conmat[,i] %*% B)/SE
-			}
-		rownames(tfields) <-colnames(conmat)
-		psd <-colMeans(sqrt(as.matrix(RSS)))
-		fwhm<-matrix(0L,nrow=1,ncol=3)
-		Mmat <-colMeans(res)
-		Zmat <-matrix(nrow=nsub, ncol=nvox)
-		cat("Estimating fwhm/smoothing
-		",sep="")
-		progress <- txtProgressBar(min = 0, max = nsub, style = 3)
-		for (i in 1:nsub){
-			Zmat[i,]<-(res[i,]-Mmat[1])/psd
-			img<-makeImage(mask,Zmat[i,])
-			smooth<-est.Smooth(img,mask)
-			fwhm<-fwhm+smooth[[2]]
-			setTxtProgressBar(progress, i)
-			}
-		close(progress)
-		fwhm2<-sqrt(4*log(2)/(fwhm/DF))
-		cat("Calculating resels
-		",sep="")
-		resels <-rft.resel(mask, fwhm2)
-		z <-list("design.matrix", "tfields", "coefficients", "df", "fwhm", "residuals", "contrast.matrix", "resels")
-		z$design.matrix <-dm
-		z$tfields <-tfields
-		z$coefficients <-B
-		z$df <-DF
-		z$fwhm <-fwhm2
-		z$residuals <-res
-		z$contrast.matrix <-conmat
-		z$resels <-resels
+	if (findSmooth=="TRUE"){
+		cat("Estimating FWHM. \n")
+		fwhm <-estScaledSmooth(res,mask,df)
 		}
-	z
-	return(z)
-}
+	if (findResels=="TRUE"){
+		cat("Calculating resels. \n")
+		resels <-rft.resels(mask, fwhm)
+		}
+	if (concise=="TRUE"){
+	ans <-list(design.matrix=x,
+		T.imgs=T.imgs,
+		conmat=conmat,
+		df=df,
+		fwhm=fwhm,
+		resels=resels)
+	}else {
+	ans <-list(design.matrix=x,
+		T.imgs=T.imgs,
+		conmat=conmat,
+		coefficients=coef,
+		residuals=resid,
+		df=df,
+		fwhm=fwhm,
+		resels=resels)
+	}
+	ans
+	}
