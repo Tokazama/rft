@@ -4,13 +4,13 @@ estScaledSmooth<-function(res,df,mask){
 	scale <-(1/n)*(df[1]/df[2])
 	sr <-res/sqrt(res*res)
 	cat("Estimating fwhm/smoothing")
-	progress <- txtProgressBar(min = 0, max = subs, style = 3)
+	progress <- txtProgressBar(min = 0, max = n, style = 3)
 	for (i in 1:subs){
 	for (i in 1:n){
 		img <-makeImage(mask,sr[i,])
 		imgar[i,] <-as.array(img)
+		setTxtProgressBar(progress, i)
 	}
-
 	close(progress)
 	
 	dimx <-dim(mask)[1]
@@ -22,9 +22,6 @@ estScaledSmooth<-function(res,df,mask){
 	m2 <-array(0, dim=c(n,dim(mask)+2))
 	maskar <-as.array(mask)
 	voxels <-sum(maskar)
-	imgar <-as.array(img)
-	fwhm <-matrix(0L,nrow=1,ncol=3)
-	lambda <-matrix(0L,nrow=3,ncol=3)
 
 	#calculate partial derivatives x
 	d1[,2:(dimx+1), 2:(dimy+1), 2:(dimz+1)] <-imgar
