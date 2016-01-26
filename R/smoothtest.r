@@ -13,9 +13,13 @@ if (class(x)=="antsImage"){
     rsamples <-sample(nrow(x),sample)
     x <-x[rsamples,]
   }
-  n <-nrow(x) # number of images in sample (rows)
-  scale <-(1/n)*(nfull/(df[2]))
-}
+    n <-nrow(x) # number of images in sample (rows)
+    scale <-(1/n)*(nfull/(df[2]))
+    # standardized residuals
+    ux <-x/sqrt(colSums(x*x)/n)
+  }
+
+
 
 
 
@@ -77,3 +81,18 @@ Vzz <-Vzz/(nvox*(n-1))
 Vxy <-Vxy/(4*nvox*(n-1))
 Vxz <-Vxz/(4*nvox*(n-1))
 Vyz <-Vyz/(4*nvox*(n-1))
+
+# Nonstationary cluster-size inference with random field and permutation methods
+# Hayasaka et al. (2004)
+
+RPV="resel per voxel"
+rpv <-((4*log(2))^(-D/2))*sqrt(lambda)
+fwhm <-((4*log(2))^(D/2))*abs(lambda)^(-1/(2*D))
+
+c <=gamma((df[2]/2)-
+resels <-nvox/(fwhm^D)
+# A Three-Dimensional Statistical Analysis for CBF Activation Studies in Human Brain
+# Worsley et al., (1992)
+
+# Robust Smoothness Estimation in Statistical Parametric Maps Using Standardized Residuals from the General Linear Model
+# Kiebel et al., (1999)
