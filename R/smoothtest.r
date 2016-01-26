@@ -41,10 +41,16 @@ m2[2:(dimx+1), 2:(dimy+1), 1:(dimz)] <-maskar
 m3 <-(m1 + m2) == 2
 dz <-((d1 - d2)*m3)
 
-Vxx <-(dx*dx)/(nvox*df[2])
-Vyy <-(dy*dy)/(nvox*df[2])
-Vzz <-(dz*dz)/(nvox*df[2])
-Vxy <-((dx[1:dimx,1:dimy,1:dimz]+dx[1:dimx,2:(dimy+1),1:dimz])*(dy[1:dimx,1:dimy,1:dimz]+dy[2:(dimx+1),1:dimy,1:dimz]))/(4*nvox*df[2])
-Vxz <-((dx[1:dimx,1:dimy,1:dimz]+dx[1:dimx,1:dimy,2:(dimz+1)])*(dz[1:dimx,1:dimy,1:dimz]+dz[2:(dimx+1),1:dimy,1:dimz]))/(4*nvox*df[2])
-Vyz <-((dy[1:dimx,1:dimy,1:dimz]+dy[1:dimx,1:dimy,2:(dimz+1)])*(dz[1:dimx,1:dimy,1:dimz]+dz[1:dimx,2:(dimy+1),1:dimz]))/(4*nvox*df[2])
+Vxx <-(dx*dx)
+Vyy <-(dy*dy)
+Vzz <-(dz*dz)
+Vxy <-((dx[1:dimx,1:dimy,1:dimz]+dx[1:dimx,2:(dimy+1),1:dimz])*(dy[1:dimx,1:dimy,1:dimz]+dy[2:(dimx+1),1:dimy,1:dimz]))
+Vxz <-((dx[1:dimx,1:dimy,1:dimz]+dx[1:dimx,1:dimy,2:(dimz+1)])*(dz[1:dimx,1:dimy,1:dimz]+dz[2:(dimx+1),1:dimy,1:dimz]))
+Vyz <-((dy[1:dimx,1:dimy,1:dimz]+dy[1:dimx,1:dimy,2:(dimz+1)])*(dz[1:dimx,1:dimy,1:dimz]+dz[1:dimx,2:(dimy+1),1:dimz]))
 
+Vxx <-Vxx/(nvox*(n-1))
+Vyy <-Vyy/(nvox*(n-1))
+Vzz <-Vzz/(nvox*(n-1))
+Vxy <-Vxy/(4*nvox*(n-1))
+Vxz <-Vxz/(4*nvox*(n-1))
+Vyz <-Vyz/(4*nvox*(n-1))
