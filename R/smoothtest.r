@@ -75,22 +75,27 @@ for (i in 1:n){
   Vxz <-Vxz+(dxz*dzx)
   Vyz <-Vyz+(dyz*dzy)
   }
-Vxx <-Vxx/(nvox*(n-1))
-Vyy <-Vyy/(nvox*(n-1))
-Vzz <-Vzz/(nvox*(n-1))
-Vxy <-Vxy/(4*nvox*(n-1))
-Vxz <-Vxz/(4*nvox*(n-1))
-Vyz <-Vyz/(4*nvox*(n-1))
+Vxx <-Vxx/(n-1)
+Vyy <-Vyy/(n-1)
+Vzz <-Vzz/(n-1)
+Vxy <-Vxy/(4*(n-1))
+Vxz <-Vxz/(4*(n-1))
+Vyz <-Vyz/(4*(n-1))
 
+resel.img <-(Vxx*Vyy*Vzz)+(Vxy*Vyz*Vxz*2)-(Vxx*Vyz*Vyz)-(Vxy*Vxy*Vzz)-(Vxz*Vyy*Vxz)
+resel.img <-sqrt(resel.img/(4*log(2))^D)
+resel.img <-sum(resel.img)/nvox
+
+fwhm <-cbind(Vxx,Vyy,Vzz)
+fwhm <-sqrt(fwhm/(4*log(2)))
+fwhm <-colSums(fwhm)/nvox
+
+
+resels <-resel.img^(1/D)*(fwhm/prod(fwhm)^(1/D))
+fwhm <-1/resel
 # Nonstationary cluster-size inference with random field and permutation methods
 # Hayasaka et al. (2004)
 
-RPV="resel per voxel"
-rpv <-((4*log(2))^(-D/2))*sqrt(lambda)
-fwhm <-((4*log(2))^(D/2))*abs(lambda)^(-1/(2*D))
-
-c <=gamma((df[2]/2)-
-resels <-nvox/(fwhm^D)
 # A Three-Dimensional Statistical Analysis for CBF Activation Studies in Human Brain
 # Worsley et al., (1992)
 
