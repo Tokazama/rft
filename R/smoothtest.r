@@ -53,13 +53,25 @@ estSmooth <-function(x,mask,df,sample){
     dx2[1:(dimx), 2:(dimy+1), 2:(dimz+1)] <-imgar
     dx <-(d1 - d2)*xm3
     
+    x.v0 <-d1^2
+    x.v1 <-((m1-xm2)*xm3)^2
+    xx <- -(1/(4*log(1-x.v1/(2*x.v0))))
+    
     #calculate partial derivatives y
     dy2[2:(dimx+1), 1:(dimy), 2:(dimz+1)] <-imgar
     dy <-(d1 - d2)*ym3
     
+    y.v0 <-d1^2
+    y.v1 <-((m1-ym2)*ym3)^2
+    yy <- -(1/(4*log(1-y.v1/(2*y.v0))))
+    
     #calculate partial derivatives z
     dz2[2:(dimx+1), 2:(dimy+1), 1:(dimz)] <-imgar
     dz <-(d1 - d2)*zm3
+    
+    z.v0 <-d1^2
+    z.v1 <-((m1-zm2)*zm3)^2
+    zz <- -(1/(4*log(1-z.v1/(2*z.v0))))
     
     #calculate partial derivatives yx
     d1[2:(dimx+1), 2:(dimy+1), 2:(dimz+1)] <-dy[2:(dimx+1), 2:(dimy+1), 2:(dimz+1)]
