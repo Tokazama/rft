@@ -71,7 +71,9 @@ rft.pcluster <-function(D, u, k, c, bMask, fwhm, stat, df, fieldType){
 	Pnk <-exp(-rfB*(ka^(2/D)))
 	
 	gamma(Em*Pnk)
-	
+	# "at high thresholds Ec can be approximated accurately by the average euler characteristic"
+	# Applications of Random Fields in Human Brain Mapping-Cao and Worsley 2001
+
 	punc <-1-exp(-Em*Pnk)
 	ec <-rft.ec(stat,fieldType,df)
 	pstat <-(resel[1]*ec[1])+(resel[2]*ec[2])+(resel[3]*ec[3])+(resel[4]*ec[4])
@@ -82,21 +84,6 @@ rft.pcluster <-function(D, u, k, c, bMask, fwhm, stat, df, fieldType){
 		Ek=
 	}
 	
-mx.exp <- function (X, n) {
-	if (n != round(n)) {
-        n <- round(n)
-        warning("rounding exponent `n' to", n)
-    }
-    phi <- diag(nrow = nrow(X))
-    pot <- X
-    while (n > 0) {
-        if (n%%2) 
-            phi <- phi %*% pot
-        n <- n%/%2
-        pot <- pot %*% pot
-    }
-    return(phi)
-}
 	P <-toeplitz( as.numeric(t(EC) * G) ); P[lower.tri(P)] <- 0.0
 	P <-mx.exp(P, n)
 	P <-P[1,]
