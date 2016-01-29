@@ -1,12 +1,14 @@
 #' Fits a linear model according to random field theory
 #' 
-#' @param D image dimensions
 #' @param x matrix or data frame of predictors
 #' @param y observations (i.e. an image matrix)
 #' @param conmat contrast matrix of contrasts * conditions (see example for more details)
 #' @param mask object of type \code{antsImage}. Typically the same mask used to produce the image matrix.
+#' @param tol
 #' @param statdir directory that statistical images are saved to (defaualt to "./")
-#'
+#' @param findSmooth
+#' @param concise
+#' @param resSample
 #'
 #' @return a list of statistical images, coefficients, the FWHM estimate, and resel values.
 #' @description
@@ -49,51 +51,53 @@
 #' results <-rft.results(3, thresh[1], 100, fwhm, timg, mask, df, "T", thresh, resels)
 #'
 #' @export rft.lm
-rft.lm <-function(x, y, conmat, mask, tol=1e-07, statdir="./", findSmooth="TRUE", findResels="TRUE", concise="TRUE"){		
-	z <-.lm.fit(x,y,tol=tol)
-	p <-z$rank
-	df <-c(n-p, p-1)
-	b <-z$coefficients
-	r <-z$residuals
-	rss <-sum(r^2)
-	mrss <-rss/df[1]
-	p1 <-1L:p
-	R <-chol2inv(z$qr[p1, p1, drop = FALSE])
-	T.imgs <-list()
-	for (i in 1:nrow(conmat)){  
-		se <-t(as.matrix(sqrt(mrss *(conmat[i,] %*% R %*% conmat[i,]))))
-		se[se==0] <-.01
-		est <-conmat[i,] %*% b
-		tstat <- est/se
-		timg <-makeImage(mask,tstat)
-		antsImageWrite(timg, file=paste(statdir, rownames(conmat)[i], ".nii.gz", sep=""))
-		T.imgs <-lappend(T.imgs, timg)
-		names(T.imgs)[i] <-rownames(conmat)[i]
-		}
-	if (findSmooth=="TRUE"){
-		cat("Estimating FWHM. \n")
-		fwhm <-estScaledSmooth(res,mask,df)
-		}
-	if (findResels=="TRUE"){
-		cat("Calculating resels. \n")
-		resels <-rft.resels(mask, fwhm)
-		}
-	if (concise=="TRUE"){
-	ans <-list(design.matrix=x,
-		T.imgs=T.imgs,
-		conmat=conmat,
-		df=df,
-		fwhm=fwhm,
-		resels=resels)
-	}else {
-	ans <-list(design.matrix=x,
-		T.imgs=T.imgs,
-		conmat=conmat,
-		coefficients=coef,
-		residuals=resid,
-		df=df,
-		fwhm=fwhm,
-		resels=resels)
-	}
-	ans
-	}
+rft.lm <-function(x, y, conmat, mask, tol=1e-07, statdir="./", findSmooth="TRUE", concise="TRUE",resSample){		
+  z <-.lm.fit(x,y,tol=tol)
+  p <-z$rank
+  df <-c(p-1,nrow(z$residuals)-p)
+  b <-z$coefficients
+  r <-z$residuals
+  mrss <-colSums(r^2)/df[2]
+  p1 <-1L:p
+  R <-chol2inv(z$qr[p1, p1, drop = FALSE])  
+  T.imgs <-list()
+  if (concise=="TRUE"){
+    ans <-list(conmat=conmat,DesignMatrix=x,df=df)
+  }else {
+    ans <-list(conmat=conmat,DesignMatrix=x,df=df,residuals=r,coefficients=b)
+  }
+  if (class(conmat)=="numeric"){
+    conmat <-matrix(conmat, nrow=1)
+  }
+  for (i in 1:nrow(conmat)){  
+    se <-t(as.matrix(sqrt(mrss *(conmat[i,] %*% R %*% conmat[i,]))))
+    se[se==0] <-.01
+    est <-conmat[i,] %*% b
+    tstat <- est/se
+    timg <-makeImage(mask,tstat)
+    antsImageWrite(timg, file=paste(statdir, rownames(conmat)[i], ".nii.gz", sep=""))
+    T.imgs <-lappend(T.imgs, timg)
+    names(T.imgs)[i] <-rownames(conmat)[i]
+  }
+  ans <-lappend(ans,T.imgs)
+  names(ans)[length(ans)] <-"Timgs"
+  if (findSmooth=="TRUE"){
+    cat("Estimating FWHM. \n")
+    sr <-r/sqrt(mrss) #standardize residuals
+    if (missing(resSample)){
+      fwhm <-estSmooth(sr,mask,df)
+    }else{
+      fwhm <-estSmooth(sr,mask,df,resSample)
+    }
+    ans <-lappend(ans,fwhm$fwhm)
+    names(ans)[length(ans)] <-"fwhm"
+    ans <-lappend(ans,fwhm$RPVImg)
+    names(ans)[length(ans)] <-"RPVImg"
+    
+    cat("Calculating resels. \n")
+    resels <-rft.resels(mask, fwhm$fwhm)
+    ans <-lappend(ans,resels)
+    names(ans)[length(ans)] <-"resels"
+  }
+  ans
+  }
