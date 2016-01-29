@@ -14,6 +14,13 @@
 #' \item{"X"}{Chi-square field"} 
 #' \item{"Z"}{Gaussian field}
 #' }
+#' @param threshType:
+#' \describe{
+#'	\item{"cluster"}{computes a threshold per expected cluster level probability}
+#'	\item{"voxel"}{uses the mask and pval calculates the minimum statistical threshold}
+#'	\item{"cfdr"}{uses an uncorrected threshold at the alpha level and then computes and FDR threshold based on cluster maxima}
+#'	\item{"vfdr"}{computes the fdr threshold for the entire field of voxels}
+#' }
 #' @return Outputs a statistical value to be used for threshold a SPM
 #' @description
 #' 
@@ -62,45 +69,74 @@
 #'
 #'
 #' @export rft.thresh
-rft.thresh <-function(D, StatImg, pval, ka, fwhm, mask, resels, df, fieldType,fdr=FALSE){
-	alpha <-pval-1
-	stat <-10
-	while(alpha < pval){
-		stat <-stat-.01
-		ec <-rft.ec(stat, fieldType, df)
-		alpha <-(resels[1]*ec[1])+(resels[2]*ec[2])+(resels[3]*ec[3])+(resels[4]*ec[4])
-	}
-	image2ClusterImages(timg, minClusterSize=1,minThresh=stat,maxThresh=Inf)
-	clist <-antsImageClone(StatImg)
-  cmax <-c()
-	for (i in 1:length(clist)){
-    cmax <-cbind(cmax,max(clist[[i]]))
-	}
-	if (fdr=="TRUE"){
-		if (fieldType=="Z"){
-			p <-sort(1 - pnorm(cmax),decreasing=TRUE)
-		}else if(fieldType=="T"){
-			p <-sort(1 - pt(cmax, df = df[1]),decreasing=TRUE)
-		}else if(fieldType=="F"){
-			p <-sort(1 - pf(cmax, df1 = df[1], df2 = df[2]),decreasing=TRUE)
-		}else if(fieldType=="X"){
-			p <-sort(1-pchisq(cmax, df[1],df[2]),decreasing=TRUE)
-		}
-	  pfdr <-sort((alpha*(1:length(p))/length(p)),decreasing=TRUE)
-		i <- 1
-		while (p[i] >= pfdr[i]){
-		  i <-i+1
-		}
-		if (fieldType=="Z"){
-			thresh <- qnorm(1 - p[i])
-		}else if(fieldType=="T"){
-			thresh <- qt(1 - p[i], df = df[1])
-		}else if(fieldType=="F"){
-			thresh <- qf(1 - p[i], df1 = df[1], df2 = df[2])
-		}else if(fieldType=="X"){
-			thresh <-qchisq(1-p[i], df[1],df[2])
-		}
-		}
-	z <-list(threshold=thresh)
-	z
-}
+rft.thresh <-function(StatImg, pval, k, fwhm, resels, df, fieldType, threshType){
+  if (missing(threshType)){
+    stop("Must specify threshold type")
+  }
+  if (missing(pval)){
+    stop("Must specify pval")
+  }
+  D <-mask@dimension
+  if (threshType=="cluster" | threshType=="voxel"){
+    if (missing(fieldType)){
+      stop("Must specify fieldType if computing voxel or cluster level threshold")
+    }
+    alpha <-pval-1
+    u <-15
+    Mfwhm <-mean(fwhm)
+    while(alpha < pval){
+      stat <-u-.01
+      if (threshType=="cluster"){
+        alpha <-rft.pval(D, 1, k, u, resels, df, fieldType)
+      }else if(threshType=="voxel"){
+        alpha <-rft.pval(1, 1, maxpeak, resels, df, fieldType)
+      }else{
+        cat("Must specify appropriate threshType \n")
+      }
+    }
+  thresh <-u
+  }else if (threshType=="cfdr" | threshType=="vfdr"){
+    if (threshType=="cfdr"){
+      if (fieldType=="Z"){
+        stat <- qnorm(1 - pval)
+      }else if(fieldType=="T"){
+        stat <- qt(1 - pval, df = df[2])
+      }else if(fieldType=="F"){
+        stat <- qf(1 - pval, df1 = df[1], df2 = df[2])
+      }else if(fieldType=="X"){
+        stat <-qchisq(1-pval, df[1],df[2])
+      }
+      statimg <-image2ClusterImages(StatImg, minClusterSize=1,minThresh=stat,maxThresh=Inf)
+      cmax <-c()
+      for (i in 1:length(clist)){
+        cmax <-cbind(cmax,max(clist[[i]]))
+        }
+      }else if (threshType=="vfdr"){
+        cmax <-as.array(StatImg)
+      }
+      if (fieldType=="Z"){
+        p <-sort(1 - pnorm(cmax),decreasing=TRUE)
+      }else if(fieldType=="T"){
+        p <-sort(1 - pt(cmax, df = df[1]),decreasing=TRUE)
+      }else if(fieldType=="F"){
+        p <-sort(1 - pf(cmax, df1 = df[1], df2 = df[2]),decreasing=TRUE)
+      }else if(fieldType=="X"){
+        p <-sort(1-pchisq(cmax, df[1],df[2]),decreasing=TRUE)
+      }
+      pfdr <-sort((alpha*(1:length(p))/length(p)),decreasing=TRUE)
+      i <- 1
+      while (p[i] >= pfdr[i]){
+        i <-i+1
+      }
+      if (fieldType=="Z"){
+        thresh <- qnorm(1 - p[i])
+      }else if(fieldType=="T"){
+        thresh <- qt(1 - p[i], df = df[1])
+      }else if(fieldType=="F"){
+        thresh <- qf(1 - p[i], df1 = df[1], df2 = df[2])
+      }else if(fieldType=="X"){
+        thresh <-qchisq(1-p[i], df[1],df[2])
+      }
+  }
+  thresh
+  }
