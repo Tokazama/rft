@@ -13,7 +13,7 @@
 #' pvox<-(resel[1]*ec[1])+(resel[2]*ec[2])+(resel[3]*ec[3])+(resel[4]*ec[4])
 #'
 #' @export rft.resel
-rft.resel <- function(mask, fwhm){
+rft.resels <- function(mask, fwhm){
   mask<-as.array(mask)
   P<-sum(mask)
   dimx <- dim(mask)[1]
