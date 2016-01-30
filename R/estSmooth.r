@@ -47,7 +47,7 @@ estSmooth <-function(x,mask,df,sample){
   dimx <-dim(mask)[1]
   dimy <-dim(mask)[2]
   dimz <-dim(mask)[3]
-  if (class(x)=="antsImage" | class(x)=="array"){
+  if (class(x)=="antsImage"){
     classval <-1
     scale <-1
     n <-1
@@ -82,13 +82,12 @@ estSmooth <-function(x,mask,df,sample){
   zm3 <-(m1 + zm2)==2
   m3 <-(xm3*ym3*zm3)
   
-  
   progress <-txtProgressBar(min=0, max=n, style=3)
   for (i in 1:n){
     if (classval > 1){
       img <-makeImage(mask,x[i,])
-      imgar <-as.array(img)
-    }
+      }
+    imgar <-as.array(img)
     #calculate partial derivatives x
     d1[2:(dimx+1), 2:(dimy+1), 2:(dimz+1)] <-imgar
     dx2[1:(dimx), 2:(dimy+1), 2:(dimz+1)] <-imgar
