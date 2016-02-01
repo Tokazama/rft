@@ -43,3 +43,24 @@ fit3 <-rft.lm(x,imat3,conmat,mask)
 
 # fwhm=c(4.977359, 4.677361, 4.586128)
 # resels=c(1.0000,   101.8433,  2244.1573, 12044.1197)
+
+## Single Image ##
+
+smooth.table <-matrix(ncol=5)
+colnames(smooth.table) <-c("Sigma","Kernel_Width","xFWHM","yFWHM","zFWHM")
+sig.seq <-seq(1,10,by=.5)
+kern.seq <-seq(10,140, by=10)
+num <-0
+for (sigma in sig.seq){
+	sig.name <-paste("Sigma-",sigma,sep="")
+	for (kernel in kern.seq){
+		simg <-smoothImage(img,sigma,FWHM=TRUE,max_kernel_width=kernel)
+		fwhm <-estSmooth(simg, mask)
+		myrow <-cbind(sigma,kernel,fwhm[1],fwhm[2],fwhm[3])
+		smooth.table <-rbind(smooth.table,myrow)
+		num <-num+1
+		cat(num/266)
+		}
+	}
+
+
