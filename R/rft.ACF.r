@@ -9,6 +9,12 @@ rft.ACF <-function(){
 # 1. estimate beta using ordinary least-squares (OLS)
 # 2. Compute F ratio
 
+tr <-function(x){
+d <-diag(x)
+ans <-sum(d)
+ans
+}
+
 # y=X*beta+error
 # In= the identity matrix of rank 'n'
 # Xo denotes the subspace of the full model X
