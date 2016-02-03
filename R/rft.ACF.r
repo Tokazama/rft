@@ -61,5 +61,19 @@ p(y|lambda) = N(lambdaEst, I(lambdaEst)^-1)
 # I(lambdaEst) is the observed information matrix with:
 I(lambdaEst) = - (partial derivative lambda)*log(p(y|lambdaEst))
 
+# sphericity
+# md=mean for diagonal entries, ma=mean of all entries, mj. = mean for row j, m.j=mean for column j
+e = (k^2(md-ma)^2)/((k-1)(sum(md-mj.-m.j-ma)))
+
+e = (sum(L)^2)/((k-1)*sum(L^2))
+
+# if spherical
+e = (sum(L)^2)/((k-1)*sum(L^2)) = ((k-1)*L)^2/((k-1)*(k-1)*L^2) = 1
+
+# opposit extreme
+e = (sum(L)^2)/((k-1)*sum(L^2)) = (L^2)/((k-1)*L^2) = 1/(k-1)
+
+# bounds
+1/(k-1) =< e =< 1
 
 }
