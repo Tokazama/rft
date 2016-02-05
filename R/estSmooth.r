@@ -31,7 +31,7 @@
 #' Hayasaka (2004) Nonstationary cluster-size inference with random field and permutation methods.
 #' Worsley K.J. (1992) A Three-Dimensional Statistical Analysis for CBF Activation Studies in Human Brain.
 #' Worsley K.J. (1996) A Unified Statistical Approach for Determining Significant Signals in Images of Cerebral Activation.
-#' Worsley K.J. (1999) 
+#' Worsley K.J. (1999) Detecting Changes in Nonisotropic Images
 #' Stefan J.K. (1999) Robust Smoothness Estimation in Statistical Parametric Maps Using Standardized Residual from the General Linear Model
 #' @examples
 #' # estimatation of a single images smoothness
@@ -123,6 +123,9 @@ estSmooth <-function(x,mask,df,makeRPV=TRUE,sample){
     Vxy <-Vxy*scale
     Vxz <-Vxz*scale
     Vyz <-Vyz*scale
+    # calculated similarly to SPM. I believe it's derived from Worsley et al., (1999):
+    # dif_u =(u1-u0,...,uD-u0)
+    # Resels=(1/factorial(D))*sum(|dif_u'dif_u|^(1/2)*(4*log(2))^(-D/2))
     rpv <-Vxx*Vyy*Vzz+Vxy*Vyz*Vxz*2-Vyz*Vyz*Vxx-Vxy*Vxy*Vzz-Vxz*Vxz*Vyy
     rpv[rpv < 0] <-0
     rpv <-sqrt(rpv/(4*log(2))^D)
