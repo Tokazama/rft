@@ -6,6 +6,10 @@
 #' @param mask object of type \code{antsImage}. Typically the same mask used to produce the image matrix.
 #' @param tol
 #' @param statdir directory that statistical images are saved to (defaualt to "./")
+#' @param scaleImgs 
+#' "meanSubs" useful to correcto for gain factor that varies over scans in fMRI. 
+#' "control" is useful for PET data where the administered dose is already controlled for variation over scans through scanner protocol
+#' "meanGroups"
 #' @param findSmooth if \cod{findSmooth="FALSE"} then FWHM and resels aren't calculated (default is \code{"TRUE"}
 #' @param concise if \code{concise="FALSE"} then residuals and coefficients are returned (default is \code{"TRUE"})
 #' @param resSample how many of the residual images will be used to estimate FWHM and resels (default is all images)
@@ -69,7 +73,54 @@
 #' results <-rft.results(3, thresh[1], 100, fwhm, timg, mask, df, "T", thresh, resels)
 #'
 #' @export rft.lm
-rft.lm <-function(x, y, conmat, mask, tol=1e-07, statdir="./", findSmooth="TRUE", concise="TRUE",resSample){		
+rft.lm <-function(formula, conmat, mask, tol=1e-07, statdir="./", intercept=T, meanSubs=F, meanReg=F, meanGroups=F, findSmooth=T, concise=T, resSample){
+  # extract response and predictors
+  #attr(data, "terms"), "response")
+  #terms(formula(myform))
+  y <-model.fram(formula)[[1L]]
+  nsub <-nrow(y)
+  nvox <-sum(as.array(mask))
+  #myresp <-as.character(formula(formula)[2])
+  
+  if (meanSubs=="T" | meanReg=="T" | meanGroups=="T"){
+    g <-rowSums(y)/nvox
+  }
+  if (meanSubs=="T"){
+    # very roughly scale to physiologically meaningful values in PET (50 mls of blood / 100 mls of brain tissue /min)
+    # also scales does grand mean scaling for each image (essentially weights regression for each image)
+    x <-model.matrix(update(formula, ~ . - 1))
+    for (sub in 1:nsub){
+      y[nsub,] <-y[nsub,]*(50/g[nsub,])
+      x[nsub,] <-x[nsub,]*(g[nsub,]/50)
+    }
+  }
+  if(meanReg=="T"){
+    x <-model.matrix(update(formula, ~ . + g - 1))
+    conmat <-cbind(conmat,0)
+  }
+  if(meanGroups !="F"){
+    # uses same parameters as "meanReg" but uses means of groups for individual intercepts
+    gg <-matrix(nrow=nsub,ncol=1)
+    tmp <-as.numeric(meanGroups)
+    for (groups in 1:length(unique(tmp)){
+      gg[gg==groups] <-mean(g[gg==groups])
+    }
+    x <-model.matrix(update(formula, ~ . + gg - 1))
+    conmat <-cbind(conmat,0)
+  }
+  # Grand Mean Scaling
+  if (GMS=="T"){
+  
+  }
+  # formula is updated to not include intercepts because R doesn't allow all factors to be expressed with an intercept (R sets one of the factors as intercept)
+  if (scaleImgs=="F"){
+    x <-model.matrix(update(formula, ~ . - 1))
+  }
+  if (intercept="T" | or ){
+    x <-cbind(x,1)
+    conmat <-cbind(conmat,0)
+    colnames(conmat)[ncol(conmat)] <-"Intercept"
+  }
   z <-.lm.fit(x,y,tol=tol)
   p <-z$rank
   df <-c(p-1,nrow(z$residuals)-p)
@@ -79,7 +130,7 @@ rft.lm <-function(x, y, conmat, mask, tol=1e-07, statdir="./", findSmooth="TRUE"
   p1 <-1L:p
   R <-chol2inv(z$qr[p1, p1, drop = FALSE])  
   T.imgs <-list()
-  if (concise=="TRUE"){
+  if (concise=="T"){
     ans <-list(conmat=conmat,DesignMatrix=x,df=df)
   }else {
     ans <-list(conmat=conmat,DesignMatrix=x,df=df,residuals=r,coefficients=b)
@@ -99,7 +150,7 @@ rft.lm <-function(x, y, conmat, mask, tol=1e-07, statdir="./", findSmooth="TRUE"
   }
   ans <-lappend(ans,T.imgs)
   names(ans)[length(ans)] <-"Timgs"
-  if (findSmooth=="TRUE"){
+  if (findSmooth=="T"){
     cat("Estimating FWHM. \n")
     sr <-r/sqrt(mrss) #standardize residuals
     if (missing(resSample)){
