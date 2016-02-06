@@ -121,6 +121,16 @@ rft.lm <-function(formula, conmat, mask, tol=1e-07, statdir="./", intercept=T, m
     conmat <-cbind(conmat,0)
     colnames(conmat)[ncol(conmat)] <-"Intercept"
   }
+  #p <-ncol(x)
+  #Ip <-diag(p)
+  #In <-diag(nsub)
+  #R <-In-MASS::ginv(crossprod(X))
+  ## creating contrasts
+  #co <-Ip-MASS::ginv(crossprod(c))*Ip
+  #Xo <-X %*% co
+  #Ro <-In-MASS::ginv(crossprod(Xo))
+  #M <-Ro-R
+  
   z <-.lm.fit(x,y,tol=tol)
   p <-z$rank
   df <-c(p-1,nrow(z$residuals)-p)
