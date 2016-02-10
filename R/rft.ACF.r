@@ -77,3 +77,19 @@ e = (sum(L)^2)/((k-1)*sum(L^2)) = (L^2)/((k-1)*L^2) = 1/(k-1)
 1/(k-1) =< e =< 1
 
 }
+
+#first run: estimate non-sphericity
+xVi.Vi <-diag(nsub) #estimated non-sphericity (if not included default to identity matrix)
+xVi <-diag(nsub) # describes intrinsic non-sphericity (if not included default to identity matrix)
+VY <-Y # scans
+xX <-X # design matrix
+a <-inv(xVi.V)
+xX.W$u <-sqrt(abs(diag(a)))
+xX.W$K <-
+xX.W <-inv(xVi.V)# withening (if not specificied = inv(x.Vi.V)
+xM <-maskar# contains masking info
+
+#greenhouse-geiser
+V <-cov(y)
+eps <-sum(diag(V))^2/(df[1]*sum(diag(crossprod(V))))
+cdfs <-eps*df #corrected degrees of freedom
