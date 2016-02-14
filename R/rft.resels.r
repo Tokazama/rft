@@ -1,9 +1,9 @@
 #' Estimates image resels
 #' 
 #' 
-#' @param mask-statistical value (typically the maxima of a cluster or SPM)
-#' @param fwhm- degrees of freedom expressed as df[degrees of interest, degrees of error]
-#' @return resel-a vector of the estimated resels
+#' @param mask statistical value (typically the maxima of a cluster or SPM)
+#' @param fwhm degrees of freedom expressed as df[degrees of interest, degrees of error]
+#' @return resels a vector of the estimated resels
 #'
 #' outimg1 <-makeImage(c(10,10,10), rnorm(1000))
 #' maskimg <-getMask(outimg1)
@@ -14,47 +14,43 @@
 #'
 #' @export rft.resel
 rft.resels <- function(mask, fwhm){
-  mask<-as.array(mask)
-  P<-sum(mask)
-  dimx <- dim(mask)[1]
-  dimy <- dim(mask)[2]
-  dimz <- dim(mask)[3]
-  rx <- 1/(fwhm[1])
-  ry <- 1/(fwhm[2])
-  rz <- 1/(fwhm[3])
+  dimx <-dim(mask)[1]
+  dimy <-dim(mask)[2]
+  dimz <-dim(mask)[3]
+  mask <-iMath(mask,"PadImage",1)
+  nvox <-sum(as.array(mask))
 
-  Ex <- 0
-  Ey <- 0
-  Ez <- 0
-  Fxy <- 0
-  Fxz <- 0
-  Fyz <- 0
-  cubes <- 0
+  x1 <-2:(dimx+1)
+  y1 <-2:(dimy+1)
+  z1 <-2:(dimz+1)
+  x2 <-3:(dimx+2)
+  y2 <-3:(dimy+2)
+  z2 <-3:(dimz+2)
+  rx <-1/(fwhm[1])
+  ry <-1/(fwhm[2])
+  rz <-1/(fwhm[3])
   
-  voxels<-(dimx*dimy*dimz)
-  progress <- txtProgressBar(min = 0, max = dimx, style = 3)
-  for (i in 1:(dimx)){
-      for (j in 1:(dimy)){
-          for (k in 1:(dimz)){
-              if(mask[i,j,k]==1){
-                  Ex <-ifelse(mask[i+1,j,k]==1,Ex+1,Ex)
-                  Ey <-ifelse(mask[i,j+1,k]==1,Ey+1,Ey)
-                  Ez <-ifelse(mask[i,j,k+1]==1,Ez+1,Ez)
-                  Fxy <-ifelse(mask[i+1,j,k]==1 && mask[i,j+1,k]==1 && mask[i+1,j+1,k]==1,Fxy+1,Fxy)
-                  Fxz <-ifelse(mask[i+1,j,k]==1 && mask[i,j,k+1]==1 && mask[i+1,j,k+1]==1,Fxz+1,Fxz)
-                  Fyz <-ifelse(mask[i,j+1,k]==1 && mask[i,j,k+1]==1 && mask[i,j+1,k+1]==1,Fyz+1,Fyz)
-                  cubes <-ifelse(mask[i,j,k]==1 && mask[i+1,j,k]==1 && mask[i,j+1,k]==1 && mask[i+1,j+1,k]==1 && mask[i,j,k+1]==1 && mask[i+1,j,k+1]==1 && mask[i,j+1,k+1]==1 && mask[i+1,j+1,k+1]==1,cubes+1,cubes)
-                }
-            }
-        }
-    setTxtProgressBar(progress, i)
-    }
-  close(progress)
-  r1 <- (P-(Ex+Ey+Ez)+(Fyz+Fxz+Fxy)-cubes)
-  r2 <- (((Ex-Fxy-Fxz+cubes)*rx)+((Ey-Fxy-Fyz+cubes)*ry)+((Ez-Fxz-Fyz+cubes)*rz))
-  r3 <- (((Fxy-cubes)*rx*ry)+((Fxz-cubes)*rx*rz)+((Fyz-cubes)*ry*rz))
-  r4 <- (cubes*rx*ry*rz)
-  resel<-c(r1,r2,r3,r4)
-  resel
-  return(resel)
+  m <-mask[x1,y1,z1]
+  xm <-m+mask[x2,y1,z1]
+  ym <-m+mask[x1,y2,z1]
+  zm <-m+mask[x1,y1,z2]
+  xym <-m+mask[x2,y1,z1]+mask[x1,y2,z1]+mask[x2,y2,z1]
+  xzm <-m+mask[x2,y1,z1]+mask[x1,y1,z2]+mask[x2,y1,z2]
+  yzm <-m+mask[x1,y2,z1]+mask[x1,y1,z2]+mask[x1,y2,z2]
+  xyzm <-m+mask[x2,y1,z1]+mask[x1,y2,z1]+mask[x1,y1,z2]+mask[x2,y2,z1]+mask[x2,y1,z2]+mask[x1,y2,z2]+mask[x2,y2,z2]
+
+  Ex <-sum(xm[xm==2])/2
+  Ey <-sum(ym[ym==2])/2
+  Ez <-sum(zm[zm==2])/2
+  Fxy <-sum(xym[xym==4])/4
+  Fxz <-sum(xzm[xzm==4])/4
+  Fyz <-sum(yzm[yzm==4])/4
+  Fxyz <-sum(xyzm[xyzm==8])/8
+  
+  resels <-c(0,0,0,0)
+  resels[1] <-(nvox-(Ex+Ey+Ez)+(Fyz+Fxz+Fxy)-Fxyz)
+  resels[2] <-(Ex-Fxy-Fxz+Fxyz)*rx+(Ey-Fxy-Fyz+Fxyz)*ry+(Ez-Fxz-Fyz+Fxyz)*rz
+  resels[3] <-(Fxy-Fxyz)*rx*ry+(Fxz-Fxyz)*rx*rz+(Fyz-Fxyz)*ry*rz
+  resels[4] <-Fxyz*rx*ry*rz
+  return(resels)
 }
