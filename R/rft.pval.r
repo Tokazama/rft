@@ -59,49 +59,50 @@ rft.pval <-function(D, c, k, u, resels, df, fieldType, n=1){
   if (fieldType=="T"){
     ec[1] <-1-pt(u,df[2])
     ec[2] <-(((4*log(2))^(1/2))/(2*pi))*((1+((u^2)/df[2]))^(-1/2*(df[2]-1)))
-    ec[3] <-((((4*log(2))*lgamma((df[2]+1)))/(((2*pi)^(3/2))*((df[2]/2)^(1/2))*lgamma(df[2]/2)))*((1+((u^2)/2))^(-1/2*(df[2]-1))))*u
+    ec[3] <-(4*log(2))/((2*pi)^(3/2))*((1+u^2/df[2])^((1-df[2])/2))*u/((df[2]/2)^(1/2))*exp(lgamma((df[2]+1)/2)-lgamma(df[2]/2))
     ec[4] <-(((4*log(2))^(3/2))/((2*pi)^2))*((1+((u^2)/df[2]))^(-1/2*(df[2]-1)))*((((df[2]-1)/df[2])*(u^2))-1)
   }else if(fieldType=="F"){
     ec[1] <-1-pf(u,df[1],df[2])
-    ec[2] <-(((4*log(2))^(1/2))/((2*pi)^(1/2)))*(((lgamma(df+k-1)/2)*2^(1/2))/(lgamma(df/2)*lgamma(k/2)))*((k*u/df)^(1/2(k-2)))*((1+(k*u/v))^(-1/2*(df+k-2)))
-    ec[3] <-((4*log(2))/(2*pi))*((lgamma((v+k-2)))/(lgamma(df/2)*lgamma(k/2)))*((k*u/df)^(1/2*(k-2)))*(1+(k*t/df))^(-1/2(df+k-2))*((v-1)*(k*u/v)-(k-1))
-    ec[4] <-(((4*log(2))^(3/2))/((2*pi)^(3/2)))*(((lgamma((v+k-2)))*2^(-1/2))/(lgamma(df/2)*lgamma(k/2)))*((k*t/df)^(1/2*(k-3)))*((1+(k*u/df))^(-1/2*(df+k-2)))*((df-1)*(df-2)*((k*u/v)^(2))-(2*df*k-df-k-1)*(k*u/df)+(k-1)*(k-2))
+    ec[2] <-((4*log(2))/(2*pi))^(1/2)*exp(lgamma((df[2]+df[1]-1)/2)-(lgamma(df[2]/2) + lgamma(df[1]/2)))*2^(1/2)*(df[1]*u/df[2])^(1/2*(df[1]-1))*(1+df[1]*u/df[2])^(-1/2*(df[2]+df[1]-2))
+    ec[3] <-((4*log(2))/(2*pi))*exp(lgamma((df[2]+df[1]-2)/2)-(lgamma(df[2]/2) + lgamma(df[1]/2)))*(df[1]*u/df[2])^(1/2*(df[1]-2))*(1+df[1]*u/df[2])^(-1/2*(df[2]+df[1]-2))*((df[2]-1)*df[1]*u/df[2]-(df[1]-1))
+    ec[4] <-((4*log(2))/(2*pi))^(3/2)*exp(lgamma((df[2]+df[1]-3)/2)-(lgamma(df[2]/2) + lgamma(df[1]/2)))*2^(-1/2)*(df[1]*u/df[2])^(1/2*(df[1]-3))*(1+df[1]*u/df[2])^(-1/2*(df[2]+df[1]-2))*((df[2]-1)*(df[2]-2)*(df[1]*u/df[2])^2-(2*df[2]*df[1]-df[2]-df[1]-1)*(df[1]*u/df[2])+(df[1]-1)*(df[1]-2))
   }else if(fieldType=="X"){
     ec[1] <-1-pchisq(u,df[2])
-    ec[2] <-(((4*log(2))^(1/2))/(2*pi))*(((u^(1/2*(df-1)))*(e^(-1/2*u)))/((2^(1/2(df-2)))*gamma(df/2)))
-    ec[3] <-((4*log(2))/(2*pi))*(((u^(1/2*(df-2)))*(e^(-1/2*u)))/((2^(1/2*(df-2)))*gamma(df/2)))*(u-(v-1))
-    ec[4] <-((4*log(2)^(3/2))/((2*pi)^(3/2)))*(((u^(1/2*(df-3)))*(e^(-1/2*u)))/((2^(1/2*(df-2)))*(gamma(df/2))))*((u^2)-((2*df-1)*u)+(df-1)*(df-2))
+    ec[2] <-((4*log(2))/(2*pi))^(1/2)*(u^(1/2*(df[2] - 1))*exp(-u/2-lgamma(df[2]/2))/2^((df[2]-2)/2))
+    ec[3] <-((4*log(2))/(2*pi))*(u^(1/2*(df[2] - 1))*exp(-u/2-lgamma(df[2]/2))/2^((df[2]-2)/2))*(u-(df[2]-1))
+    ec[4] <-((4*log(2))/(2*pi))^(3/2)*(u^(1/2*(df[2] - 1))*exp(-u/2-lgamma(df[2]/2))/2^((df[2]-2)/2))*(u^2-(2*df[2]-1)*u+(df[2]-1)*(df[2]-2))
   }else if(fieldType=="Z"){
     ec[1] <-1-pnorm(u,df[2])
-    ec[2] <-((((4*log(2))^(1/2))/(2*pi))*e^(-1/2*((u^2))))
-    ec[3] <-((4*log(2))/(2*pi))*u*(e^(-1/2*(u^2)))
-    ec[4] <-(((4*log(2))^(3/2))/((2*pi)^2))*((u^2)-1)*(e^(-1/2*(u^2)))
+    ec[2] <-(4*log(2))^(1/2)/(2*pi)*exp(-u^2/2)
+    ec[3] <-(4*log(2))/((2*pi)^(3/2))*exp(-u^2/2)*u
+    ec[4] <-(4*log(2))^(3/2)/((2*pi)^2)*exp(-u^2/2)*(u^2 - 1)
   }
   ec <-pmax(ec[1:(D+1)],.Machine$double.eps)
   P <-toeplitz(as.numeric(ec*G))
   P[lower.tri(P)] <-0
-  if (n !=round(n)){
-    n <-round(n)
+  if (n != round(n)){
+    n <- round(n)
     warning("rounding exponent `n' to", n)
   }
-  P <-diag(nrow = nrow(P))
+  phi <-diag(nrow=nrow(P))
   pot <-P
-  while (n > 0){
-    if (n %% 2)(P <-P %*% pot)
-    n <-n %/% 2
+  while (n > 0) {
+    if (n %% 2) 
+      phi <-phi %*% pot
+    n <-n%/%2
     pot <-pot %*% pot
   }
+  P <-phi
   P <-P[1,]
   EM <-(resels[1:(D+1)]/G)*P # maxima in all dimensions
   Ec <-sum(EM) # number of overall expected maxima/clusters
   EN <-P[1]*resels[D+1] # number of resels in entire image
   ek <-EN/EM[D+1] # expected number of resels per cluster
   
-  rfB <-(gamma((D/2)+1)*ek)^(2/D)
+  rfB <-(gamma(D/2+1)/ek)^(2/D)
   Pu <-exp(-rfB*(k^(2/D))) # cumulative cluster-size distribution from which uncorrected P values are calculated
   
-  Pcor <-1-ppois(c-1,lambda=(Ec+.Machine$double.eps)*Pu)
-  
-  z <-list(Pcor=Pcor, Pu=Pu, Ec=Ec, ek=ek)
+  Pcor <-1-ppois(c-1,lambda=(Ec+.Machine$double.eps)*Pu) 
+  z <-list(Pcor=Pcor, Pu=Pu, Ec=Ec, ek=ek,ec=ec)
   return(z)
 }
