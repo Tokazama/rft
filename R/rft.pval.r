@@ -102,7 +102,7 @@ rft.pval <-function(D, c, k, u, resels, df, fieldType, n=1){
   rfB <-(gamma(D/2+1)/ek)^(2/D)
   Punc <-exp(-rfB*(k^(2/D))) # cumulative cluster-size distribution from which uncorrected P values are calculated
   
-  Pcor <-1-ppois(c-1,lambda=(Ec+.Machine$double.eps)*Pu) 
+  Pcor <-1-ppois(c-1,lambda=(Ec+.Machine$double.eps)*Punc) 
   z <-list(Pcor=Pcor, Punc=Punc, Ec=Ec, ek=ek,ec=Euler)
   return(z)
 }
