@@ -1,0 +1,167 @@
+What follows are some tests I've put together to compare the accuracy of my ANTsR random field theory (RFT) functions to SPM8s. In my final tests I actually compared the output from SPM12. The results are essentially the same. This is by no means a complete introduction to using these functions. Herein I simply attempt to ensure that they work properly for myself and those who are curious about their development. Most of this has been put together while I was in class (general education requirements are the worst), so I apologize if it's hard to follow.
+
+It's important to note that the norm in RFT is to use special parameters to account for various anomolies while fitting the data. Therefore, I'm actually using the resulting images from SPM8/12 to perform these tests (basically a more systematic test of each component).
+
+* [SPM8 Results]($SPM8 Results)
+  * Summary of results from my SPM8/SPM12 output
+
+* [FWHM](FWHM)
+  * Testing full width at half-maxima
+  * to do: might need to adjust resels per voxel (RPV) image estimation for non-isotropy stuff
+* [Resels](Resels)
+  * Testing resolutions per image
+  * to do: possibly implement sparsity for speed
+* [P-values](P-values)
+  * Ensuring proper computation of p-values
+  * to do: more fully test extent resels to control for non-isotropy in clusters
+* [Fitting data](Fitting data) 
+  * Nowhere near ready...
+  * to do: figure out fisher scoring 
+
+# SPM8 Results
+* Height threshold: T = 5.70, p=0.000 (0.050)
+* Extent threshold: k = 0 voxels, p=1.000 (.05)
+* Expected voxels per cluster: ke = 77.28 voxels
+* Expected number of clusters: ce = 0.0
+* FWEp: 5.701, FDRp:Inf, FWEc: 132, FDRc: Inf
+* Degrees of freedom = 1.0 31.0
+* FWHM = 16.0 16.4 15.5 mm (voxels are same)
+* Volume: 2512701 = 2512701 voxels = 600.6 resels
+* Voxel size: 1.0 1.0 1.0 mm mm mm; (resel = 4073.27 voxels)
+* set-level: .001
+
+Cluster 1
+* PFWE-corr: .003
+* PFDR-corr: .105
+* k: 294
+* Puncorr: .053
+Peak 1
+* PFWE-corr: .002
+* PFDR-corr: .068
+* T: 7.05
+* Z: 5.41
+* Puncorr: .000
+
+Cluster 1
+* PFWE-corr: .009
+* PFDR-corr: .178
+* k: 132
+* Puncorr: .053
+Peak 1
+* PFWE-corr: .002
+* PFDR-corr: .1
+* T: 6.68
+* Z: 5.22
+* Puncorr: .000
+
+
+## FWHM
+```
+ilist <-list("/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0001.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0002.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0003.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0004.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0005.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0006.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0007.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0008.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0009.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0010.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0011.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0012.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0013.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0014.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0015.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0016.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0017.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0018.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0019.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0020.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0021.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0022.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0023.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0024.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0025.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0026.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0027.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0028.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0029.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0030.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0031.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0032.hdr",
+"/Users/zach8769/Desktop/ptbp/rft/spm8/ResI_0033.hdr"
+)
+mask <-antsImageRead('Desktop/ptbp/rft/spm8/mask.hdr')
+imglist<-imageFileNames2ImageList(ilist)
+imat <-imageListToMatrix(imglist,mask)
+mrss <-colSums(imat^2)/31 # scale the residuals
+sr <-imat/sqrt(mrss)
+mytest <-estSmooth(sr,mask,c(1,31))
+```
+R = 15.96086 16.61354 15.70837
+SPM8 = 15.9507 16.4349 15.5381
+
+## Resels
+Here I estimate the resels using the mask and reported FWHM from SPM8.
+```
+fwhm <-c(16.0, 16.4, 15.5)
+rft.resels(mask,fwhm)
+```
+Yields comparable measures:
+R = 1.00000  30.46091 258.14032 601.51751
+SPM8 = 1 30.4540 257.9273 600.6214
+
+Note that only the last measurement references resels as measured in the 3rd dimension. There is a negligable difference between the two measurements (SPM8 = 600.6 and R = 601.51751). However, this may be due to a difference in the FWHM used to calculate resels in SPM8 and the potentially rounded FWHM reported.
+
+## P-values
+```
+timg <-antsImageRead('Desktop/ptbp/rft/spm8/spmT_0002.nii')
+fwhm <-c(16.0, 16.4, 15.5)
+resels <-c(1, 30.4540, 257.9273, 600.6214)
+df <-c(1,31)
+sumres <-rft.results(timg, resels, fwhm, df, fieldType="T")
+
+Cluster-level Statistics
+         cP-FWE cP-FDR     cP Voxels
+Cluster1 0.0091 0.1753 0.1753    134
+Cluster2 0.0028 0.1057 0.0528    294
+
+Peak-level Statistics
+         pP-FWE pP-FDR pP MaxStat    Z   xc    yc    zc
+Cluster1 0.0051 0.0978  1  6.6768 -Inf -6.4 -32.8  57.0
+Cluster2 0.0021 0.0809  1  7.0523 -Inf 22.3  17.3 -42.1
+```
+This is just a quick example of how rft.results uses the rft.pval function to compute some of its statistics.
+
+```
+timg <-antsImageRead('Desktop/ptbp/rft/spm8/spmT_0002.nii')
+thresh <-thresholdImage(timg,5.701,Inf)
+clusters <-image2ClusterImages(thresh)
+rpv <-antsImageRead('Desktop/ptbp/rft/spm8/RPV.hdr')
+# peak test
+clus.rpv1 <-sum(as.array(maskImage(rpv,clusters[[1]])))
+Pp1 <-rft.pval(3, 1, 0, max(timg[clusters[[1]]==1]), 1, resels, df, fieldType="T")$Pcor
+```
+
+## Fitting data
+
+I only used a handful of images for quick comparisons between SPM8 and ANTsR.
+```
+root <-"/Users/zach8769/Desktop/"
+statdir <-"/Users/zach8769/Desktop/papers/RFT_vs_SCCAN/"
+ptbp <-read.csv(paste(root,"/ptbp/data/ptbp_summary_demographics.csv",sep=""),header=TRUE,sep=",")
+data <-ptbp[1:33,]
+```
+
+Here I'm fitting a linear model but have opted out of the default settings and chosen not to estimate smoothing (FWHM and resels). I've also set \code{concise=FALSE}. This preserves the coefficients and residuals created by the model. In contrast, the default (\code{concise=TRUE}) saves RAM by eliminating these at the end of the function call. Because image analysis uses a large amount of RAM it's typically fine to throw these away once FWHM and resels are estimated and the t-statistical map is created. Default settings will typically do this automatically, although the example directly below has changed these defaults.
+```
+mycon <-matrix(nrow=2,ncol=2)
+mycon[1,] <-c(0,1)
+mycon[2,] <-c(0,-1)
+colnames(mycon) <-c("Intercept","Age")
+rownames(mycon) <-c("Age+","Age-")
+fit <-rft.lm(dm, imat, mycon, mask,findSmooth=FALSE,concise=FALSE)
+```
+
+
+
