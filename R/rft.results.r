@@ -90,8 +90,8 @@ rft.results <-function(StatImg, resels, fwhm, df, fieldType, RPVImg,  k=0, thres
   k <-k*vox2res
   nvox <-length(as.vector(StatImg[StatImg !=0]))
   if (class(thresh)=="list"){
-  pval <-thresh[[2]]
-  # find minimum threshold value to acheive desired using RFT
+    pval <-thresh[[2]]
+    # find minimum threshold value to acheive desired using RFT
     if (thresh[[1]]=="crft" | thresh[[1]]=="prft"){
       u <-max(StatImg)
       if (thresh[[1]]=="crft"){
@@ -180,18 +180,17 @@ rft.results <-function(StatImg, resels, fwhm, df, fieldType, RPVImg,  k=0, thres
   Pz <-rft.pval(D,1,0,u,n,c(1,1,1,1),df,fieldType)$Pcor
   Pu <-rft.pval(D,1,0,u,n,resels,df,fieldType)
   psum <-rft.pval(D,1,k,u,n,resels,df,fieldType)
-  parameters <-print(list(paste("Threshold:",u, "; p-value",Pz,sep=" "),
-                    paste("Extent Threshold:",k/vox2res,sep=" "),
-                    paste("Expected voxels per cluster:",Pu$ek/vox2res,sep=" "),
-                    paste("Expected number of clusters:",psum$Ec*psum$Punc,sep=" "),
-                    paste("Degrees of freedom",df[1],"and",df[2],sep=" "),
-                    paste("Volum: voxels =",nvox,"resels =",resels[4],sep=" "),
-                    paste("Full Width at Half-Maxima:", fwhm,sep=" ")),quote=FALSE)
-  names(parameters) <-c("","","","","","","")
+  parameters <-as.table(matrix(nrow=8,ncol=4))
+  rownames(parameters) <-c("Threshold:","Extent threshold:","Expected voxels per cluster:",
+      "Expected number of clusters:","Degrees of freedom:","Voxels:","Resels:","FWHM:")
+  parameters[,1] <-c(u,k/vox2res,Pu$ek/vox2res,psum$Ec*psum$Punc,df[1],nvox,resels[1],fwhm[1])
+  parameters[,2] <-c(NA,NA,NA,NA,df[2],NA,resels[2],fwhm[2])
+  parameters[,3] <-c(NA,NA,NA,NA,NA,NA,   resels[3],fwhm[3])
+  parameters[,4] <-c(NA,NA,NA,NA,NA,NA,   resels[4],NA)
+  
+  colnames(parameters) <-c("","","","")
   # set-level stat
   Pset <-rft.pval(D, nclus, k, u, n, resels, df, fieldType)$Pcor
-  sumres <-list(print("Set-level p-value:",Pset,"; Number of Clusters:",nclus,sep=" "))
-
   stats <-as.table(stats)
   Eu <-c()
   for (i in 1:nclus){
@@ -239,13 +238,13 @@ rft.results <-function(StatImg, resels, fwhm, df, fieldType, RPVImg,  k=0, thres
   colnames(stats) <-c("cP-FWE", "cP-FDR", "cP", "Voxels",  
                       "pP-FWE", "pP-FDR", "pP", "MaxStat", 
                       "Z", "xc", "yc", "zc")
-  sumres <-lappend(sumres,round(stats,4),parameters)
+  # sumres <-lappend(round(Pset,4),list(round(stats,4),round(parameters,4)))
   
   results <-list(Pset,
                  round(stats[1:nclus,1:4],4),
                  round(stats[1:nclus,5:12],4),
-                 parameters)
-  names(results) <-c("set","cluster","peak","parameters")
+                 round(parameters,4))
+  names(results) <-c("SetStats","ClusterStats","PeakStats","Parameters")
   
   if (tex=="T"){
     texTable <-xtable(stats)
@@ -256,5 +255,5 @@ rft.results <-function(StatImg, resels, fwhm, df, fieldType, RPVImg,  k=0, thres
   }
   return(results)
   
-  sumres
+  # sumres
 }
