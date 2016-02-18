@@ -94,9 +94,9 @@ rft.results <-function(StatImg, resels, fwhm, df, fieldType, RPVImg,  k=0, thres
   # find minimum threshold value to acheive desired using RFT
     if (thresh[[1]]=="crft" | thresh[[1]]=="prft"){
       u <-max(StatImg)
-      if (threshType=="crft"){
+      if (thresh[[1]]=="crft"){
         alpha <-rft.pval(D, 1, k, u, n, resels, df, fieldType)$Pcor
-      }else if(threshType=="prft"){
+      }else if(thresh[[1]]=="prft"){
         alpha <-rft.pval(D, 1, 0, u, n, resels, df, fieldType)$Pcor
       }
       if (alpha > pval){
@@ -104,55 +104,58 @@ rft.results <-function(StatImg, resels, fwhm, df, fieldType, RPVImg,  k=0, thres
       }
       while(alpha < pval){
         u <-u-.01
-        if (threshType=="crft"){
+        if (thresh[[1]]=="crft"){
           alpha <-rft.pval(D, 1, k, u, n, resels, df, fieldType)$Pcor
-        }else if(threshType=="prft"){
+        }else if(thresh[[1]]=="prft"){
           alpha <-rft.pval(D, 1, 0, u, n, resels, df, fieldType)$Pcor
         }
       }
     }else if (thresh[[1]]=="cfdr" | thresh[[1]]=="pfdr"){
+      # FDR based thresholds 
+      pval <-thresh[[2]]
       pp <-thresh[[3]]
-    # FDR based thresholds  
-      if (threshType=="cfdr"){
-        if (fieldType=="Z"){
-          stat <-qnorm(1-pp)
-        }else if(fieldType=="T"){
-          stat <-qt(1-pp, df[2])
-        }else if(fieldType=="F"){
-          stat <-qf(1-pp, df[1], df[2])
-        }else if(fieldType=="X"){
-          stat <-qchisq(1-pp, df[1],df[2])
-        }
-        statimg <-image2ClusterImages(StatImg, minClusterSize=1,minThresh=stat,maxThresh=Inf)
-        cmax <-c()
-        for (i in 1:length(clist)){
-          cmax <-cbind(cmax,max(clist[[i]]))
-        }
-      }else if (threshType=="pfdr"){
-        cmax <-as.array(StatImg)
-      }
+      
+      # find initial threshold for given fieldType
       if (fieldType=="Z"){
-        p <-sort(1-pnorm(cmax),decreasing=TRUE)
+        stat <-qnorm(1-pp)
       }else if(fieldType=="T"){
-        p <-sort(1-pt(cmax, df = df[1]),decreasing=TRUE)
+        stat <-qt(1-pp, df[2])
       }else if(fieldType=="F"){
-        p <-sort(1-pf(cmax, df1 = df[1], df2 = df[2]),decreasing=TRUE)
+        stat <-qf(1-pp, df[1], df[2])
       }else if(fieldType=="X"){
-        p <-sort(1-pchisq(cmax, df[1],df[2]),decreasing=TRUE)
+        stat <-qchisq(1-pp, df[1],df[2])
       }
-      pfdr <-sort((alpha*(1:length(p))/length(p)),decreasing=TRUE)
+      if (thresh[[1]]=="cfdr"){
+        fdrclust <-labelClusters(StatImg,k,u,Inf)
+        fdrlabs <-unique(clust[clust > 0])
+        cmax <-c()
+        for (i in 1:length(fdrlabs)){
+          cmax <-c(cmax,rft.pval(D, 1, 0, max(StatImg[fdrclust]), n, resels, df, fieldType)$Ec)
+        }
+      }else if(thresh[[1]]=="pfdr"){
+        fdrclust <-antsImageClone(StatImg)
+        fdrclust[fdrclust < stat] <-0
+        cmax <-as.numeric(fdrclust)
+        for (i in 1:length(cmax)){
+          cmax[i] <-rft.pval(D, 1, 0, max(StatImg[fdrclust]), n, resels, df, fieldType)$Ec
+        }
+      }
+      cmax <-cmax/rft.pval(D, 1, 0, stat, n, resels, df, fieldType)$Ec
+      cmax <-sort(cmax,decreasing=TRUE)
+      # find Q
+      fdrvec <-sort((thresh[[2]]*(1:length(cmax))/length(cmax)),decreasing=TRUE)
       i <- 1
-      while (p[i] >= pfdr[i]){
+      while (cmax[i] >= fdrvec[i]){
         i <-i+1
       }
       if (fieldType=="Z"){
-        u <-qnorm(1-p[i])
+        u <-qnorm(1-cmax[i])
       }else if(fieldType=="T"){
-        u <-qt(1-p[i], df = df[1])
+        u <-qt(1-cmax[i], df[1])
       }else if(fieldType=="F"){
-        u <-qf(1-p[i], df1 = df[1], df2 = df[2])
+        u <-qf(1-cmax[i], df[1], df[2])
       }else if(fieldType=="X"){
-        u <-qchisq(1-p[i], df[1],df[2])
+        u <-qchisq(1-cmax[i], df[1],df[2])
       }
     }
   }else if(class(thresh)=="numeric"){
@@ -174,24 +177,21 @@ rft.results <-function(StatImg, resels, fwhm, df, fieldType, RPVImg,  k=0, thres
   # cluster coordinates
   stats[1:nclus,10:12] <-getCentroids(clust)[1:nclus,1:3]
   # # footnote
-  # Pz <-rft.pval(D,1,0,u,n,c(1,1,1,1),df,fieldType)
-  # Pu <-rft.pval(D,1,0,u,n,resels,df,fieldType)
-  # psum <-rft.pval(D,1,k,u,n,resels,df,fieldType)
-  # summary <-list(u, # Height threshold
-  #                Pz,
-  #                Pu,
-  #                k/vox2res, # Extent threshold
-  #                Pn,
-  #                P,
-  #                Ek/vox2res, # Expected voxels per cluster
-  #                Ec*Pn, # Expected number of clusters
-  #                df, # degrees of freedom
-  #                nvox, # Volume
-  #                resels[4],
-  #                fwhm #FWHM
-  #                )
+  Pz <-rft.pval(D,1,0,u,n,c(1,1,1,1),df,fieldType)$Pcor
+  Pu <-rft.pval(D,1,0,u,n,resels,df,fieldType)
+  psum <-rft.pval(D,1,k,u,n,resels,df,fieldType)
+  parameters <-print(list(paste("Threshold:",u, "; p-value",Pz,sep=" "),
+                    paste("Extent Threshold:",k/vox2res,sep=" "),
+                    paste("Expected voxels per cluster:",Pu$ek/vox2res,sep=" "),
+                    paste("Expected number of clusters:",psum$Ec*psum$Punc,sep=" "),
+                    paste("Degrees of freedom",df[1],"and",df[2],sep=" "),
+                    paste("Volum: voxels =",nvox,"resels =",resels[4],sep=" "),
+                    paste("Full Width at Half-Maxima:", fwhm,sep=" ")),quote=FALSE)
+  names(parameters) <-c("","","","","","","")
   # set-level stat
-  Pset <-rft.pval(D, nclus, k, u, n, resels, df, fieldType)
+  Pset <-rft.pval(D, nclus, k, u, n, resels, df, fieldType)$Pcor
+  sumres <-list(print("Set-level p-value:",Pset,"; Number of Clusters:",nclus,sep=" "))
+
   stats <-as.table(stats)
   Eu <-c()
   for (i in 1:nclus){
@@ -239,8 +239,13 @@ rft.results <-function(StatImg, resels, fwhm, df, fieldType, RPVImg,  k=0, thres
   colnames(stats) <-c("cP-FWE", "cP-FDR", "cP", "Voxels",  
                       "pP-FWE", "pP-FDR", "pP", "MaxStat", 
                       "Z", "xc", "yc", "zc")
+  sumres <-lappend(sumres,round(stats,4),parameters)
   
-  results <-list(Statistics=round(stats,4),ClusterImg=clust,Pset$Pcor)
+  results <-list(Pset,
+                 round(stats[1:nclus,1:4],4),
+                 round(stats[1:nclus,5:12],4),
+                 parameters)
+  names(results) <-c("set","cluster","peak","parameters")
   
   if (tex=="T"){
     texTable <-xtable(stats)
@@ -250,5 +255,6 @@ rft.results <-function(StatImg, resels, fwhm, df, fieldType, RPVImg,  k=0, thres
     write.csv(stats, file=paste(statdir))
   }
   return(results)
-  print(stats)
+  
+  sumres
 }
