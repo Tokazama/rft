@@ -6,13 +6,13 @@
 #' field type used to obtain the original statistical map are also required. 
 #' 
 #' set-level
-#' rft.pval(D, c, k, u, resels, df, fieldType)
+#' rft.pval(D, c, k, u, n, resels, df, fieldType)
 #' 
 #' cluster-level
-#' rft.pval(D, 1, k, u, resels, df, fieldType)
+#' rft.pval(D, 1, k, u, n, resels, df, fieldType)
 #' 
 #' voxel-level
-#' rft.pval(D, 1, 0, u, resels, df, fieldType)
+#' rft.pval(D, 1, 0, u, n, resels, df, fieldType)
 #' 
 #' @param D image dimensions
 #' @param c Threshold
@@ -44,7 +44,7 @@
 #' 
 #' 
 #' @export rft.pval
-rft.pval <-function(D, c, k, u, resels, df, fieldType, n=1){
+rft.pval <-function(D, c, k, u, n, resels, df, fieldType){
   if(missing(fieldType)){
     stop("Must specify fieldType")
   }else if(missing(df)){
@@ -103,6 +103,6 @@ rft.pval <-function(D, c, k, u, resels, df, fieldType, n=1){
   Punc <-exp(-rfB*(k^(2/D))) # cumulative cluster-size distribution from which uncorrected P values are calculated
   
   Pcor <-1-ppois(c-1,lambda=(Ec+.Machine$double.eps)*Punc) 
-  z <-list(Pcor=Pcor, Punc=Punc, Ec=Ec, ek=ek,ec=Euler)
+  z <-list(Pcor=Pcor, Punc=Punc, Ec=Ec, ek=ek)
   return(z)
 }
