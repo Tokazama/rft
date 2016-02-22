@@ -2,19 +2,19 @@ What follows are some tests I've put together to compare the accuracy of my ANTs
 
 It's important to note that the norm in RFT is to use special parameters to account for various anomolies while fitting the data. Therefore, I'm actually using the resulting images from SPM8/12 to perform these tests (basically a more systematic test of each component).
 
-* [SPM8 Results]($SPM8 Results)
+* [SPM8 Results](spm8 results)
   * Summary of results from my SPM8/SPM12 output
 
-* [FWHM](FWHM)
+* [FWHM](fwhm)
   * Testing full width at half-maxima
   * to do: might need to adjust resels per voxel (RPV) image estimation for non-isotropy stuff
-* [Resels](Resels)
+* [Resels](resels)
   * Testing resolutions per image
   * to do: possibly implement sparsity for speed
-* [P-values](P-values)
+* [P-values](p-values)
   * Ensuring proper computation of p-values
   * to do: more fully test extent resels to control for non-isotropy in clusters
-* [Fitting data](Fitting data) 
+* [Fitting data](fitting data) 
   * Nowhere near ready...
   * to do: figure out fisher scoring 
 
