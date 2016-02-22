@@ -30,6 +30,7 @@ It's important to note that the norm in RFT is to use special parameters to acco
 * Voxel size: 1.0 1.0 1.0 mm mm mm; (resel = 4073.27 voxels)
 * set-level: .001
 
+## assume stationari
 Cluster 1
 * PFWE-corr: .003
 * PFDR-corr: .105
@@ -42,7 +43,7 @@ Peak 1
 * Z: 5.41
 * Puncorr: .000
 
-Cluster 1
+Cluster 2
 * PFWE-corr: .009
 * PFDR-corr: .178
 * k: 132
@@ -53,6 +54,34 @@ Peak 1
 * T: 6.68
 * Z: 5.22
 * Puncorr: .000
+
+## non-stationarity
+Cluster 1
+* PFWE-corr: 1.5602e-05
+* PFDR-corr: .107
+* k: 294
+* Puncorr: .3.0417e-04
+Peak 1
+* PFWE-corr: .002
+* PFDR-corr: .0672
+* T: 7.05
+* Z: 5.41
+* Puncorr: 9.0883e-08
+
+Cluster 2
+* PFWE-corr: 4.3266e-04
+* PFDR-corr: .107
+* k: 133
+* Puncorr: .0084
+Peak 1
+* PFWE-corr: .002
+* PFDR-corr: ..099
+* T: 6.68
+* Z: 5.22
+* Puncorr: 9.0883e-08
+
+## threshold free set-level
+* 
 
 
 ## FWHM
