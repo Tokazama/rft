@@ -38,17 +38,16 @@ rft.fit <-function(X, Y, conmat, conType, statdir){
   XX <-chol2inv(qr.R(x$qr))
   
   # df[degrees of interest, degrees of error]
-  z <-lappend(z,c(z$rank-1,n-z$rank))
-  names(z)[length(z)] <-"df"
-  
+  df <-c(z$rank-1,n-z$rank)
+
   # residual projecting matrix
-  z <-lappend(z,In-X %*% ginvSparse(X)) 
-  names(z)[length(z)] <-"R"
-  
+  R <-In-X %*% ginvSparse(X)
+
   # retain value for computing F contrasts
-  z <-lappend(z,t(Y) %*% R %*% Y) 
-  names(z)[length(z)] <-"YRY"
-  
+  YRY <-t(Y) %*% R %*% Y
+
+  qr <-z[c("qr", "qraux", "pivot", "tol", "rank")]
+  # Q <-qr.Q(qr)
   StatImgs <-list()
   for (i in 1:nrow(conmat)){
     if (conType[i]=="T"){
@@ -59,7 +58,7 @@ rft.fit <-function(X, Y, conmat, conType, statdir){
       c <-matrix(conmat[i,],ncol=1)
       X0 <-X %*% (Ip-c %*% ginvSparse(c))
       R0 <-In-X0 %*% ginvSparse(X0) # contrast projecting matrix
-      M <-R0-z$R
+      M <-R0-R
       statmat <-((t(z$coefficients) %*% t(X) %*% M %*% z$coefficients)/z$YRY)*(df[1]/z$df[2])
     }
     statimg <-makeImage(mask, statmat)
@@ -69,7 +68,5 @@ rft.fit <-function(X, Y, conmat, conType, statdir){
     StatImgs <-lappend(StatImgs,statimg)
     names(StatImgs)[length(StatImgs)] <-rownames(conmat)[i]
   }
-  qr <-z[c("qr", "qraux", "pivot", "tol", "rank")]
-  c(z[c("coefficients", "residuals", "effects")],
-    list(qr = structure(qr, class = "qr"), df=df))
+  c(z[c("coefficients", "residuals", "effects")], list(qr = structure(qr, class = "qr"), df=df, StatImgs=StatImgs))
   }
