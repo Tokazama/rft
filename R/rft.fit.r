@@ -48,6 +48,7 @@ rft.fit <-function(X, Y, conmat, conType, statdir){
 
   qr <-z[c("qr", "qraux", "pivot", "tol", "rank")]
   # Q <-qr.Q(qr)
+  
   StatImgs <-list()
   for (i in 1:nrow(conmat)){
     if (conType[i]=="T"){
@@ -68,5 +69,7 @@ rft.fit <-function(X, Y, conmat, conType, statdir){
     StatImgs <-lappend(StatImgs,statimg)
     names(StatImgs)[length(StatImgs)] <-rownames(conmat)[i]
   }
+  if (!is.null(rownames(conmat)))
+    names(StatImgs) <-rownames(conmat)
   c(z[c("coefficients", "residuals", "effects")], list(qr = structure(qr, class = "qr"), df=df, StatImgs=StatImgs))
   }
