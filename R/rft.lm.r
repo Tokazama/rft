@@ -3,7 +3,7 @@
 #' @param formula
 #' @param conmat contrast matrix of contrasts by conditions (see example for more details)
 #' @param mask object of type \code{antsImage}. Typically the same mask used to produce the image matrix.
-#' @param tol
+#' @param tol (default = 1e-07)
 #' @param statdir directory that statistical images are saved to (if not specified results are not saved)
 #' @param resSample how many of the residual images will be used to estimate FWHM and resels (default is all images)
 #' @param findSmooth if \cod{findSmooth="FALSE"} then FWHM and resels aren't calculated (default is \code{"TRUE"}
@@ -12,7 +12,7 @@
 #' @param subMean scales each subject by image mean intensity (also uses a rough scale to physiologically meaningful values in PET (50 mls of blood / 100 mls of brain tissue /min))
 #' @param regMean creates a control variable for each subjects mean image intensity value
 #' @param groupMean creates a control variable for the mean image intensity value of each level of the identified factor 
-#' @param grandMean scales the entire response variable by a desired value
+#' @param grandMean scales the entire by the mean of all images
 #' @param GG perform Greenhouse-Geisser correction for degrees of freedom?
 #'
 #' @return A list comprising:
@@ -60,7 +60,7 @@
 #' @export rft.lm
 rft.lm <-function(formula, conmat, mask, 
                   tol=1e-07, statdir, resSample, 
-                  intercept=TRUE, subMean=FALSE, regMean=FALSE, 
+                  intercept=TRUE, subMean=TRUE, regMean=FALSE, 
                   groupMean=FALSE, findSmooth=TRUE, concise=TRUE){
   # extract response and predictors
   #attr(data, "terms"), "response")
@@ -74,8 +74,6 @@ rft.lm <-function(formula, conmat, mask,
     g <-rowSums(y)/nvox
   }
   if (subMean=="TRUE"){
-    # very roughly scale to physiologically meaningful values in PET (50 mls of blood / 100 mls of brain tissue /min)
-    # also scales does grand mean scaling for each image (essentially weights regression for each image)
     X <-model.matrix(update(formula, ~ . - 1))
     for (sub in 1:nsub){
       Y[nsub,] <-Y[nsub,]*(50/g[nsub,])
@@ -95,8 +93,8 @@ rft.lm <-function(formula, conmat, mask,
     conmat <-cbind(conmat,0)
   }
   # Grand Mean Scaling
-  if (GMS=="TRUE"){
-  
+  if (!missing(grandMean)){
+    Y <-Y * mean(Y[Y !=0])
   }
   # formula is updated to not include intercepts because R doesn't allow all factors to be expressed with an intercept (R sets one of the factors as intercept)
   if (intercept="TRUE"){
@@ -106,7 +104,6 @@ rft.lm <-function(formula, conmat, mask,
   }
   
   #### Fit General Linear Model ####
-  
   # fit using OLS and calculate contrasts
   if (missing(statdir)){
     z <-rft.fit(X, Y, conmat, conType)
@@ -136,12 +133,12 @@ rft.lm <-function(formula, conmat, mask,
   }
   
   #### Prepare Output ####
-  ans <-list(X, resels, fwhm$fwhm, fwhm$RPVImg, z$coefficients)
+  ans <-list(X, resels, fwhm$fwhm, fwhm$RPVImg, z$coefficients, z$qr, z$df, z$StatImgs)
+  names(ans) <-c("design","resels","fwhm","RPVImg","coefficients","qr","df","StatImgs")
   
   if (concise=="FALSE"){
     ans <-lappend(ans, z$residuals)
     names(ans)[length(ans)] <-"residuals"
   }
-  
   ans
   }
