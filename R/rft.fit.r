@@ -23,6 +23,15 @@ rft.fit <-function(X, Y, conmat, conType, statdir){
   n <-nrow(X) # number of subjects
 
   z <-.lm.fit(X,Y,tol=tol)
+  #  # TEST THIS: may not be worth the initial computational time investment
+  #  z$qr <-Matrix(z$qr, sparse=TRUE)
+  #  z$coefficients <-Matrix(z$coefficients, sparse=TRUE)
+  #  z$residuals <-Matrix(z$residuals, sparse=TRUE)
+  #  z$effects <-Matrix(z$effects, sparse=TRUE)
+  #  
+  #  
+  
+  
   rss <-colSums(z$residuals^2)
   Ip <-Diagonal(z$rank)
   In <-Diagonal(n)
@@ -33,7 +42,7 @@ rft.fit <-function(X, Y, conmat, conType, statdir){
   names(z)[length(z)] <-"df"
   
   # residual projecting matrix
-  z <-lappend(z,In-X %*% pinv(X)) 
+  z <-lappend(z,In-X %*% ginvSparse(X)) 
   names(z)[length(z)] <-"R"
   
   # retain value for computing F contrasts
@@ -48,8 +57,8 @@ rft.fit <-function(X, Y, conmat, conType, statdir){
       statmat <-(conmat[i,] %*% z$coefficients)/se
     }else if(conType[i]=="F"){
       c <-matrix(conmat[i,],ncol=1)
-      X0 <-X %*% (Ip-c %*% pinv(c))
-      R0 <-In-X0 %*% pinv(X0) # contrast projecting matrix
+      X0 <-X %*% (Ip-c %*% ginvSparse(c))
+      R0 <-In-X0 %*% ginvSparse(X0) # contrast projecting matrix
       M <-R0-z$R
       statmat <-((t(z$coefficients) %*% t(X) %*% M %*% z$coefficients)/z$YRY)*(df[1]/z$df[2])
     }
@@ -60,8 +69,7 @@ rft.fit <-function(X, Y, conmat, conType, statdir){
     StatImgs <-lappend(StatImgs,statimg)
     names(StatImgs)[length(StatImgs)] <-rownames(conmat)[i]
   }
-  z <-lappend(z,StatImgs)
-  names(z)[length(z)] <-"StatImgs"
-  
-  z
+  qr <-z[c("qr", "qraux", "pivot", "tol", "rank")]
+  c(z[c("coefficients", "residuals", "effects")],
+    list(qr = structure(qr, class = "qr"), df=df))
   }
