@@ -1,9 +1,33 @@
 #' RFT p-values
 #'
-#' This function calculates the probability of obtaining a cluster the size of 
-#' code/{cMask} within a search region of code/{bMask} given the statistical threshold
-#' of code/{stat} used to extract said cluster. The degrees of freedom and statistical 
-#' field type used to obtain the original statistical map are also required. 
+#' Calculates p-values of a statistical field using random field theory
+#' 
+#' @param D image dimensions
+#' @param c Threshold
+#' @param k spatial extent in resels
+#' @param u Number of clusters
+#' @param n number of statistical field in conjunction
+#' @param resels resel measurements of the search region 
+#' @param df degrees of freedom expressed as df[degrees of interest, degrees of error]
+#' @param fieldType:
+#' \itemize{
+#' \item{"T"}{T-field} 
+#' \item{"F"}{F-field} 
+#' \item{"X"}{Chi-square field"} 
+#' \item{"Z"}{Gaussian field}
+#' }
+#' 
+#' @return The probability of obtaining the specified cluster
+#' \itemize{
+#' {"Pcor"}{"corrected p-value"}
+#' {"Pu"}{"uncorrected p-value"}
+#' {"Ec"}{"expected number of clusters"}
+#' {"ek"}{"expected number of resels per cluster"}
+#' }
+#' 
+#' @details 
+#' 
+#' This function calculates p-values of a thresholded statistical field at various levels:
 #' 
 #' set-level
 #' rft.pval(D, c, k, u, n, resels, df, fieldType)
@@ -11,36 +35,32 @@
 #' cluster-level
 #' rft.pval(D, 1, k, u, n, resels, df, fieldType)
 #' 
-#' voxel-level
+#' peak-level
 #' rft.pval(D, 1, 0, u, n, resels, df, fieldType)
 #' 
-#' @param D image dimensions
-#' @param c Threshold
-#' @param k Cluster size in resel space
-#' @param u Number of clusters
-#' @param df degrees of freedom expressed as df[degrees of interest, degrees of error]
-#' @param fieldType:
-#' \describe{
-#' \item{"T"}{T-field} 
-#' \item{"F"}{F-field} 
-#' \item{"X"}{Chi-square field"} 
-#' \item{"Z"}{Gaussian field}
-#' }
-#' @param n number of statistical fields in conjunction
+#' Where set-level refers to obtaining the set of clusters, cluster-level refers to a specific 
+#' cluster, and peak-level refers to the maximum (or peak) of a single cluster.
 #' 
-#' @return The probability of obtaining the specified cluster
-#' Pcor corrected p-value
-#' Pu uncorrected p-value
-#' Ec expected number of clusters
-#' ek expected number of resels per cluster
-#' @reference 
+#' @references 
 #' Friston K.J., (1994) Assessing the Significance of Focal Activations Using Their Spatial Extent.
 #' Friston K.J., (1996) Detecting Activations in PET and fMRI: Levels of Inference and Power.
 #' Worlsey K.J., (1996) A Unified Statistical Approach for Determining Significant Signals in Images of Cerebral Activation.
 #' @Author Zachary P. Christensen
-#' @note: function currently in beta phase. Waiting for acceptance of peer-reviewed paper
+#' 
+#' @seealso rft.results, rft.resels
+#' 
+#' @note: function currently in beta phase
 #' @examples
 #' 
+#' # generate some data as if we just fitted a linear regression
+#' outimg1 <-makeImage(c(10,10,10), rt(1000))
+#' maskimg <-getMask(outimg1)
+#' # create clusters using arbitrary threshold
+#' clusters <-image2ClusterImages(outimg1,minClusterSize=1, minThresh=2,maxThresh=Inf)
+#' fwhm <-estSmooth(outimg1, maskimg)
+#' resels <-rft.resels(mask,fwhm$fwhm)
+#' peak <-max(clusters[[1]])
+#' peakP <-rft.pval(3,1,0,2,1,resels,c(1,1),fieldType="T")
 #' 
 #' 
 #' @export rft.pval
@@ -55,28 +75,7 @@ rft.pval <-function(D, c, k, u, n, resels, df, fieldType){
     stop("Must atleast specify one of u, k, or c")
   }
   G <-sqrt(pi)/gamma((1:(D+1)/2))
-  ec <-c(0,0,0,0)
-  if (fieldType=="T"){
-    ec[1] <-1-pt(u,df[2])
-    ec[2] <-(((4*log(2))^(1/2))/(2*pi))*((1+((u^2)/df[2]))^(-1/2*(df[2]-1)))
-    ec[3] <-(4*log(2))/((2*pi)^(3/2))*((1+u^2/df[2])^((1-df[2])/2))*u/((df[2]/2)^(1/2))*exp(lgamma((df[2]+1)/2)-lgamma(df[2]/2))
-    ec[4] <-(((4*log(2))^(3/2))/((2*pi)^2))*((1+((u^2)/df[2]))^(-1/2*(df[2]-1)))*((((df[2]-1)/df[2])*(u^2))-1)
-  }else if(fieldType=="F"){
-    ec[1] <-1-pf(u,df[1],df[2])
-    ec[2] <-((4*log(2))/(2*pi))^(1/2)*exp(lgamma((df[2]+df[1]-1)/2)-(lgamma(df[2]/2) + lgamma(df[1]/2)))*2^(1/2)*(df[1]*u/df[2])^(1/2*(df[1]-1))*(1+df[1]*u/df[2])^(-1/2*(df[2]+df[1]-2))
-    ec[3] <-((4*log(2))/(2*pi))*exp(lgamma((df[2]+df[1]-2)/2)-(lgamma(df[2]/2) + lgamma(df[1]/2)))*(df[1]*u/df[2])^(1/2*(df[1]-2))*(1+df[1]*u/df[2])^(-1/2*(df[2]+df[1]-2))*((df[2]-1)*df[1]*u/df[2]-(df[1]-1))
-    ec[4] <-((4*log(2))/(2*pi))^(3/2)*exp(lgamma((df[2]+df[1]-3)/2)-(lgamma(df[2]/2) + lgamma(df[1]/2)))*2^(-1/2)*(df[1]*u/df[2])^(1/2*(df[1]-3))*(1+df[1]*u/df[2])^(-1/2*(df[2]+df[1]-2))*((df[2]-1)*(df[2]-2)*(df[1]*u/df[2])^2-(2*df[2]*df[1]-df[2]-df[1]-1)*(df[1]*u/df[2])+(df[1]-1)*(df[1]-2))
-  }else if(fieldType=="X"){
-    ec[1] <-1-pchisq(u,df[2])
-    ec[2] <-((4*log(2))/(2*pi))^(1/2)*(u^(1/2*(df[2] - 1))*exp(-u/2-lgamma(df[2]/2))/2^((df[2]-2)/2))
-    ec[3] <-((4*log(2))/(2*pi))*(u^(1/2*(df[2] - 1))*exp(-u/2-lgamma(df[2]/2))/2^((df[2]-2)/2))*(u-(df[2]-1))
-    ec[4] <-((4*log(2))/(2*pi))^(3/2)*(u^(1/2*(df[2] - 1))*exp(-u/2-lgamma(df[2]/2))/2^((df[2]-2)/2))*(u^2-(2*df[2]-1)*u+(df[2]-1)*(df[2]-2))
-  }else if(fieldType=="Z"){
-    ec[1] <-1-pnorm(u,df[2])
-    ec[2] <-(4*log(2))^(1/2)/(2*pi)*exp(-u^2/2)
-    ec[3] <-(4*log(2))/((2*pi)^(3/2))*exp(-u^2/2)*u
-    ec[4] <-(4*log(2))^(3/2)/((2*pi)^2)*exp(-u^2/2)*(u^2 - 1)
-  }
+  ec <-rft.euler(u,df,fieldType)
   ec <-pmax(ec[1:(D+1)],.Machine$double.eps)
   P <-toeplitz(as.numeric(ec*G))
   P[lower.tri(P)] <-0
