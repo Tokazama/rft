@@ -1,26 +1,28 @@
 #' Produces a threshold value based on cluster or voxel level statistics
 #' 
-#'
-#' @param img statistical map of class antsImage 
+#' @param x statistical map of class antsImage 
 #' @param pval-probability of false positive
-#' @param ka-minimum desired cluster size
+#' @param nvox minimum desired cluster size (in voxels)
+#' @param n number of images in conjunction
 #' @param fwhm-full width at half maxima
 #' @param mask-antsImage mask
 #' @param df-degrees of freedom expressed as df[degrees of interest, degrees of error]
 #' @param fieldType:
-#' \describe{
+#' \itemize{
 #' \item{"T"}{T-field} 
 #' \item{"F"}{F-field} 
 #' \item{"X"}{Chi-square field"} 
 #' \item{"Z"}{Gaussian field}
 #' }
 #' @param threshType:
-#' \describe{
-#'	\item{"cluster"}{computes a threshold per expected cluster level probability}
-#'	\item{"voxel"}{uses the mask and pval calculates the minimum statistical threshold}
-#'	\item{"cfdr"}{uses an uncorrected threshold at the alpha level and then computes and FDR threshold based on cluster maxima}
-#'	\item{"vfdr"}{computes the fdr threshold for the entire field of voxels}
+#' \itemize{
+#'	\item{"cRFT"}{computes a threshold per expected cluster level probability}
+#'	\item{"pRFT"}{uses the mask and pval calculates the minimum statistical threshold}
+#'	\item{"cFDR"}{uses an uncorrected threshold at the alpha level and then computes and FDR threshold based on cluster maxima}
+#'	\item{"pFDR"}{computes the fdr threshold for the entire field of voxels}
 #' }
+#' @param pp primary threshold used in FDR methods
+#' @param verbose enables verbose output
 #' @return Outputs a statistical value to be used for threshold a SPM
 #' @description
 #' 
@@ -48,95 +50,99 @@
 #' Friston K.J., (1994) Assessing the Significance of Focal Activations Using Their Spatial Extent
 #' Friston K.J., (1996) Detecting Activations in PET and fMRI: Levels of Inference and Power
 #' @Author Zachary P. Christensen
-#' @note: function currently in beta phase. Waiting for acceptance of peer-reviewed paper
+#' @note: function currently in beta phase
 #' @examples
 #'
-#' var1<-vardata[,10]
-#' subs<-nrow(varmat)
-#' voxels<-ncol(varmat)
-#' regpval<-matrix(nrow=1,ncol=voxels)
-#' regtstat<-matrix(nrow=1,ncol=voxels)
-#' resmat<-matrix(OL,nrow=subs,ncol=voxels)
-#' for (i in 1:voxels){
-#' vox<-varmat[,i]
-#' regfit<-lm(vox~var1)
-#' ##Extract statistical values
-#' resmat[,i]<-residuals(regfit)
-#' regsum<-summary(regfit)
-#' regtstat[,i]<-regsum$coefficients[3,3]
-#' }
-#' fwhm<-estPooled.smooth(res,rdf,mask)
 #'
 #'
 #' @export rft.thresh
-rft.thresh <-function(StatImg, pval, k, fwhm, resels, df, fieldType, threshType){
-  if (missing(threshType)){
-    stop("Must specify threshold type")
-  }
-  if (missing(pval)){
-    stop("Must specify pval")
-  }
-  D <-mask@dimension
-  if (threshType=="cluster" | threshType=="voxel"){
-    if (missing(fieldType)){
-      stop("Must specify fieldType if computing voxel or cluster level threshold")
+rft.thresh <-function(x, pval, nvox, n, fwhm, resels, df, fieldType, threshType, pp=.001,verbose=FALSE){
+  D <-x@dimension
+  vox2res <-1/prod(fwhm)
+  k <-nvox*vox2res
+  nvox <-length(as.vector(x[x !=0]))
+  # find minimum threshold value to acheive desired using RFT
+  if (threshType=="cRFT" | threshType=="pRFT"){
+    u <-max(x)
+    if (threshType=="cRFT"){
+      alpha <-rft.pval(D, 1, k, u, n, resels, df, fieldType)$Pcor
+    }else if(threshType=="pRFT"){
+      alpha <-rft.pval(D, 1, 0, u, n, resels, df, fieldType)$Pcor
     }
-    alpha <-pval-1
-    u <-15
-    Mfwhm <-mean(fwhm)
+    if (alpha > pval){
+      stop("No voxels survive threshold given the parameters")
+    }
     while(alpha < pval){
-      stat <-u-.01
-      if (threshType=="cluster"){
-        alpha <-rft.pval(D, 1, k, u, resels, df, fieldType)
-      }else if(threshType=="voxel"){
-        alpha <-rft.pval(1, 1, maxpeak, resels, df, fieldType)
-      }else{
-        cat("Must specify appropriate threshType \n")
+      u <-u-.01
+      if (threshType=="cRFT"){
+        alpha <-rft.pval(D, 1, k, u, n, resels, df, fieldType)$Pcor
+      }else if(threshType=="pRFT"){
+        alpha <-rft.pval(D, 1, 0, u, n, resels, df, fieldType)$Pcor
       }
     }
-  thresh <-u
-  }else if (threshType=="cfdr" | threshType=="vfdr"){
-    if (threshType=="cfdr"){
-      if (fieldType=="Z"){
-        stat <- qnorm(1 - pval)
-      }else if(fieldType=="T"){
-        stat <- qt(1 - pval, df = df[2])
-      }else if(fieldType=="F"){
-        stat <- qf(1 - pval, df1 = df[1], df2 = df[2])
-      }else if(fieldType=="X"){
-        stat <-qchisq(1-pval, df[1],df[2])
-      }
-      statimg <-image2ClusterImages(StatImg, minClusterSize=1,minThresh=stat,maxThresh=Inf)
+  }else if (threshType=="cFDR" | threshType=="pFDR"){
+    # FDR based thresholds 
+    # find initial threshold for given fieldType
+    if (fieldType=="Z"){
+      stat <-qnorm(1-pp)
+    }else if(fieldType=="T"){
+      stat <-qt(1-pp, df[2])
+    }else if(fieldType=="F"){
+      stat <-qf(1-pp, df[1], df[2])
+    }else if(fieldType=="X"){
+      stat <-qchisq(1-pp, df[1],df[2])
+    }
+    if (threshType=="cFDR"){
+      fdrclust <-labelClusters(x,k,u,Inf)
+      fdrlabs <-unique(clust[clust > 0])
       cmax <-c()
-      for (i in 1:length(clist)){
-        cmax <-cbind(cmax,max(clist[[i]]))
+      
+      if (verbose=="True"){
+        progress <-txtProgressBar(min=0, max=n, style=3)
+      }
+      for (i in 1:length(fdrlabs)){
+        cmax <-c(cmax,rft.pval(D, 1, 0, max(x[fdrclust]), n, resels, df, fieldType)$Ec)
+        if (verbose=="TRUE"){
+          setTxtProgressBar(progress,i)
         }
-      }else if (threshType=="vfdr"){
-        cmax <-as.array(StatImg)
       }
-      if (fieldType=="Z"){
-        p <-sort(1 - pnorm(cmax),decreasing=TRUE)
-      }else if(fieldType=="T"){
-        p <-sort(1 - pt(cmax, df = df[1]),decreasing=TRUE)
-      }else if(fieldType=="F"){
-        p <-sort(1 - pf(cmax, df1 = df[1], df2 = df[2]),decreasing=TRUE)
-      }else if(fieldType=="X"){
-        p <-sort(1-pchisq(cmax, df[1],df[2]),decreasing=TRUE)
+      if (verbose=="TRUE"){
+        close(progress)
       }
-      pfdr <-sort((alpha*(1:length(p))/length(p)),decreasing=TRUE)
-      i <- 1
-      while (p[i] >= pfdr[i]){
-        i <-i+1
+    }else if(threshType=="pFDR"){
+      fdrclust <-antsImageClone(x)
+      fdrclust[fdrclust < stat] <-0
+      cmax <-as.numeric(fdrclust)
+      if (verbose=="True"){
+        progress <-txtProgressBar(min=0, max=n, style=3)
       }
-      if (fieldType=="Z"){
-        thresh <- qnorm(1 - p[i])
-      }else if(fieldType=="T"){
-        thresh <- qt(1 - p[i], df = df[1])
-      }else if(fieldType=="F"){
-        thresh <- qf(1 - p[i], df1 = df[1], df2 = df[2])
-      }else if(fieldType=="X"){
-        thresh <-qchisq(1-p[i], df[1],df[2])
+      for (i in 1:length(cmax)){
+        cmax[i] <-rft.pval(D, 1, 0, max(x[fdrclust]), n, resels, df, fieldType)$Ec
+        if (verbose=="TRUE"){
+          setTxtProgressBar(progress,i)
+        }
       }
+      if (verbose=="TRUE"){
+        close(progress)
+      }
+    }
+    cmax <-cmax/rft.pval(D, 1, 0, stat, n, resels, df, fieldType)$Ec
+    cmax <-sort(cmax,decreasing=TRUE)
+    # find Q
+    fdrvec <-sort((pval*(1:length(cmax))/length(cmax)),decreasing=TRUE)
+    i <- 1
+    while (cmax[i] >= fdrvec[i]){
+      i <-i+1
+    }
+    if (fieldType=="Z"){
+      u <-qnorm(1-cmax[i])
+    }else if(fieldType=="T"){
+      u <-qt(1-cmax[i], df[1])
+    }else if(fieldType=="F"){
+      u <-qf(1-cmax[i], df[1], df[2])
+    }else if(fieldType=="X"){
+      u <-qchisq(1-cmax[i], df[1],df[2])
+    }
   }
-  thresh
+  u
   }
