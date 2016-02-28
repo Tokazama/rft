@@ -5,7 +5,7 @@
 #' @param mask object of type \code{antsImage}. Typically the same mask used to produce the image matrix.
 #' @param tol (default = 1e-07)
 #' @param statdir directory that statistical images are saved to (if not specified results are not saved)
-#' @param resSample how many of the residual images will be used to estimate FWHM and resels (default is all images)
+#' @param sample how many of the residual images will be used to estimate FWHM and resels (default is all images)
 #' @param findSmooth if \cod{findSmooth="FALSE"} then FWHM and resels aren't calculated (default is \code{"TRUE"}
 #' @param concise if \code{concise="FALSE"} then residuals and coefficients are returned (default is \code{"TRUE"})
 #' @param Intercept include intercept in design model
@@ -14,6 +14,7 @@
 #' @param groupMean creates a control variable for the mean image intensity value of each level of the identified factor 
 #' @param grandMean scales the entire by the mean of all images
 #' @param GG perform Greenhouse-Geisser correction for degrees of freedom?
+#' @param verbose
 #'
 #' @return A list comprising:
 #' \itemize{
@@ -29,10 +30,7 @@
 #' }
 #' @description
 #'
-#'
-#' This function is a wrapper for several functions necessary to performing a random field theory based
-#' statistical analysis of images. A matrix ,or data frame, of predictors (\code{x}) is fitted to an 
-#' image matrix (\code{y}) using \code{.lm.fit}. The images are each mean scaled to zero prior to
+#' The images are each mean scaled to zero prior to
 #' fitting (Friston K.J., 1995). As recommended by Stefan et al. (1999), the residuals are used to 
 #' estimate the full width at half-maxima (FWHM; or "smoothness") of the final statistical image. The
 #' residuals are standardized using the mean sum of squares of the residuals.
@@ -58,75 +56,69 @@
 #' 
 #'
 #' @export rft.lm
-rft.lm <-function(formula, conmat, mask, 
-                  tol=1e-07, statdir, resSample, 
+rft.lm <-function(formula, conmat, conType, mask, 
+                  tol=1e-07, statdir=NULL, sample=NULL, 
                   intercept=TRUE, subMean=TRUE, regMean=FALSE, 
-                  groupMean=FALSE, findSmooth=TRUE, concise=TRUE){
-  # extract response and predictors
-  #attr(data, "terms"), "response")
-  #terms(formula(myform))
+                  groupMean=NULL, findSmooth=TRUE, concise=TRUE, 
+                  grandMean=FALSE, verbose=TRUE){
+  
   Y <-model.frame(formula)[[1L]]
-  nsub <-nrow(y)
+  nsub <-nrow(Y)
   nvox <-sum(as.array(mask))
   #myresp <-as.character(formula(formula)[2])
   
-  if (subMean=="TRUE" | regMean=="TRUE" | groupMean=="TRUE"){
-    g <-rowSums(y)/nvox
-  }
-  if (subMean=="TRUE"){
-    X <-model.matrix(update(formula, ~ . - 1))
-    for (sub in 1:nsub){
-      Y[nsub,] <-Y[nsub,]*(50/g[nsub,])
-      X[nsub,] <-X[nsub,]*(g[nsub,]/50)
+  if (subMean=="TRUE" | regMean=="TRUE" | !is.null(groupMean)){
+    g <-rowSums(Y)/nvox
+    
+    if (subMean=="TRUE"){
+      X <-model.matrix(update(formula, ~ . - 1))
+      for (sub in 1:nsub){
+        Y[nsub,] <-Y[nsub,]*(50/g[nsub])
+        X[nsub,] <-X[nsub,]*(g[nsub]/50)
+      }
     }
-  }
-  if(regMean=="TRUE"){
-    X <-model.matrix(update(formula, ~ . + g - 1))
-    conmat <-cbind(conmat,0)
-  }
-  if(groupMean=="TRUE"){
-    gg <-ave(g,gg)
-    X <-model.matrix(update(formula, ~ . + gg - 1))
-    conmat <-cbind(conmat,0)
-  }
-    X <-model.matrix(update(formula, ~ . + gg - 1))
-    conmat <-cbind(conmat,0)
+    if(regMean=="TRUE"){
+      X <-model.matrix(update(formula, ~ . + g - 1))
+      conmat <-cbind(conmat,0)
+    }
+    if(!is.null(groupMean)){
+      gg <-ave(g, groupMean)
+      X <-model.matrix(update(formula, ~ . + gg - 1))
+      conmat <-cbind(conmat,0)
+    }
+  }else{
+    X <-model.matrix(update(formula, ~ . - 1))
   }
   # Grand Mean Scaling
-  if (!missing(grandMean)){
+  if (grandMean=="TRUE")
     Y <-Y * mean(Y[Y !=0])
-  }
-  # formula is updated to not include intercepts because R doesn't allow all factors to be expressed with an intercept (R sets one of the factors as intercept)
-  if (intercept="TRUE"){
+  
+  if (intercept=="TRUE"){
     X <-cbind(X, 1L)
+    colnames(X)[ncol(X)] <-"Intercept"
     conmat <-cbind(conmat,0)
     colnames(conmat)[ncol(conmat)] <-"Intercept"
   }
   
   #### Fit General Linear Model ####
   # fit using OLS and calculate contrasts
-  if (missing(statdir)){
-    z <-rft.fit(X, Y, conmat, conType)
-  }else{
-    z <-rft.fit(X, Y, conmat, conType, statdir)
-  }
+  z <-rft.fit(X, Y, conmat, conType, statdir=statdir)
   
   #### Estimate FWHM/RESELS ####
   if (findSmooth=="TRUE"){
     if (verbose)
       cat("Estimating FWHM. \n")
+    
     sr <-z$residuals/sqrt(z$rss/z$df[2])
-    if (missing(resSample)){
-      fwhm <-estSmooth(sr,mask,df)
-    }else{
-      fwhm <-estSmooth(sr, mask, df, resSample)
-    }
+    fwhm <-estSmooth(sr, mask, df, sample=sample)
     ans <-lappend(ans,fwhm$fwhm)
     names(ans)[length(ans)] <-"fwhm"
     ans <-lappend(ans,fwhm$RPVImg)
     names(ans)[length(ans)] <-"RPVImg"
+    
     if (verbose)
       cat("Calculating resels. \n")
+    
     resels <-rft.resels(mask, fwhm$fwhm)
     ans <-lappend(ans,resels)
     names(ans)[length(ans)] <-"resels"
@@ -141,4 +133,4 @@ rft.lm <-function(formula, conmat, mask,
     names(ans)[length(ans)] <-"residuals"
   }
   ans
-  }
+}
