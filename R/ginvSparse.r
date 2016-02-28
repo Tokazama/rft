@@ -12,7 +12,7 @@
 #' Xinv <-ginvSparse(X)
 #'
 #' @export ginvSparse
-ginvSparse <-function(X, tol=(.Machine$double.eps{
+ginvSparse <-function(X, tol=.Machine$double.eps){
     Xsvd <- svdSparse(X)
     if (is.complex(X)) 
         Xsvd$u <- Conj(Xsvd$u)
