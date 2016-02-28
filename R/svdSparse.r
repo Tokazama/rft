@@ -20,20 +20,22 @@
 #'
 #' @export svdSparse
 svdSparse <-function (x, nu=min(n,p), nv=min(n,p), k=min(n,p)){
-  if (!usePkg("Matrix") | !usePkg("aRPACK")){
+  if (!usePkg("Matrix") | !usePkg("rARPACK")){
     stop("Need Matrix and aRPACK packages")
   }
-  if (length(dim(x)) !=2) 
-    stop("x must be a matrix")
-  if (!is.matrix(X))
-    X <- Matrix::Matrix(x,sparse=TRUE)
+  if (class(x)=="numeric") 
+    x <- Matrix::Matrix(x, sparse=TRUE)
+  if (!is.matrix(x) | class(x) !="dgeMatrix")
+	x <- Matrix::Matrix(x, sparse=TRUE)
   dx <-dim(x)
   n <-dx[1L]
   p <-dx[2L]
   if (n >= 3 && p >= 3){
     z <-aRPACK::svds(x, k=k, nu=nu, nv=nv)
   }else{
-    La.res <-La.svd(x, nu, nv)
+	if (class(x) !="matrix")
+	  x <-matrix(x)
+    La.res <-La.svd(x, nu=nu, nv=nu)
     res <- list(d = La.res$d)
     if (nu) 
         res$u <- La.res$u
