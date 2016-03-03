@@ -95,12 +95,12 @@ estSmooth <-function(x, mask, df, makeRPV=TRUE, sample, verbose=FALSE){
   ym <-m[dimx1,dimy,dimz1]+m[dimx1,dimy1,dimz1]+m[dimx1,dimy2,dimz1]
   zm <-m[dimx1,dimy1,dimz]+m[dimx1,dimy1,dimz1]+m[dimx1,dimy1,dimz2]
   
+  imgar <-maskar # initialise array for loop
   if (verbose)
     progress <-txtProgressBar(min=0, max=n, style=3)
   for (i in 1:n){
-    # like matrixToImageList but it doesn't matter that we overwrite the same image
-    imgar <-maskar
-    imgar[imgar !=0] <-x[i,]
+    # like matrixToImages but it doesn't matter that we overwrite the same image
+    imgar[maskar==1] <-x[i,]
     
     #calculate partial derivatives x
     d[dimx1,dimy1,dimz1] <-imgar
