@@ -26,6 +26,7 @@
 #' @param df degrees of freedom
 #' @param makeRPV make resels per voxel image?
 #' @param sample number of images to use for estimating smoothing
+#' @param verbose enables verbose output
 #' @return Outputs the estimated covariance matrix and fwhm in as an object of class list.
 #' @references
 #' Hayasaka (2004) Nonstationary cluster-size inference with random field and permutation methods.
@@ -33,11 +34,14 @@
 #' Worsley K.J. (1996) A Unified Statistical Approach for Determining Significant Signals in Images of Cerebral Activation.
 #' Worsley K.J. (1999) Detecting Changes in Nonisotropic Images
 #' Stefan J.K. (1999) Robust Smoothness Estimation in Statistical Parametric Maps Using Standardized Residual from the General Linear Model
+#'
 #' @examples
+#'
 #' # estimatation of a single images smoothness
 #' outimg1 <-makeImage(c(10,10,10), rnorm(1000))
 #' maskimg <-getMask(outimg1)
-#' fwhm <-est.Smooth(outimg1,maskimg)
+#' fwhm <-estSmooth(outimg1,maskimg)
+#' 
 #' # estimation of smoothness of overall sample images in a statistical model
 #' outimg2 <-makeImage(c(10,10,10), rnorm(1000))
 #' imat <-imageListToMatrix(list(outimg1, outimg2), maskimg)
@@ -46,7 +50,7 @@
 #' res <-residuals(fit)
 #' 
 #' @export estSmooth
-estSmooth <-function(x,mask,df,makeRPV=TRUE,sample){
+estSmooth <-function(x, mask, df, makeRPV=TRUE, sample, verbose=FALSE){
   D <-mask@dimension
   dimx <-1:dim(mask)[1]
   dimy <-1:dim(mask)[2]
@@ -82,7 +86,7 @@ estSmooth <-function(x,mask,df,makeRPV=TRUE,sample){
     scale <-(nfull/df)*(1/n)
   }
   # used to find partial derivatives (taken out of loop to save time)
-  m<-d<-array(0, dim=dim(mask)+2)
+  m <-d <-array(0, dim=dim(mask)+2)
   Vxx<-Vyy<-Vzz<-Vxy<-Vxz<-Vyz<-array(0,dim=dim(mask))
   
   maskar <-as.array(mask)
@@ -91,16 +95,20 @@ estSmooth <-function(x,mask,df,makeRPV=TRUE,sample){
   ym <-m[dimx1,dimy,dimz1]+m[dimx1,dimy1,dimz1]+m[dimx1,dimy2,dimz1]
   zm <-m[dimx1,dimy1,dimz]+m[dimx1,dimy1,dimz1]+m[dimx1,dimy1,dimz2]
   
-  progress <-txtProgressBar(min=0, max=n, style=3)
+  if (verbose)
+    progress <-txtProgressBar(min=0, max=n, style=3)
   for (i in 1:n){
-    if (classval > 1){
-      imgar <-as.array(makeImage(mask,x[i,]))
-    }
+    # like matrixToImageList but it doesn't matter that we overwrite the same image
+    imgar <-maskar
+    imgar[imgar !=0] <-x[i,]
+    
     #calculate partial derivatives x
     d[dimx1,dimy1,dimz1] <-imgar
     dx <-(imgar-d[dimx,dimy1,dimz1])
+    
     #calculate partial derivatives y
     dy <-(imgar-d[dimx1,dimy,dimz1])
+    
     #calculate partial derivatives z
     dz <-(imgar-d[dimx1,dimy1,dimz])
     
@@ -112,9 +120,11 @@ estSmooth <-function(x,mask,df,makeRPV=TRUE,sample){
       Vxz <-Vxz+(dx*dz)
       Vyz <-Vyz+(dy*dz)
     }
-    setTxtProgressBar(progress,i)
+    if (verbose)
+      setTxtProgressBar(progress,i)
   }
-  close(progress)
+  if (verbose)
+    close(progress)
   rm(dx,dy,dz)
   Vxx <-Vxx*scale
   Vyy <-Vyy*scale
@@ -144,10 +154,9 @@ estSmooth <-function(x,mask,df,makeRPV=TRUE,sample){
     rpv <-sum(rpv)/nvox
     R <-rpv^(1/D)*(xyz/prod(xyz)^(1/D))
     fwhm <-1/R
-    results <-list(fwhm=fwhm,RPVImg=RPVImg,rpv=rpv,xyz=xyz)
+    list(fwhm=fwhm, RPVImg=RPVImg)
   }else if (classval==1 | classval==2){
     fwhm <-1/xyz
-    results <-list(fwhm=fwhm,xyx=xyz)
+    list(fwhm=fwhm)
   }
-  return(results)
 }
