@@ -14,7 +14,8 @@
 #' It is possible to use a single statistical field image to estimate the FWHM. However, it's
 #' recommended that FWHM estimates are obtained from the scaled residuals of statistical models
 #' (Stefan J.K et al., 1999). Therefore, this function is optimized to estimate the pooled 
-#' smoothness of the residual images from a fitted model. 
+#' smoothness of the residual images from a fitted model. By default residuals are scaled
+#' (\code{scaleResid = TRUE}).
 #' 
 #' A scaling factor is used to correct for differences when using the \code{sample} option.
 #' Scaling isn't effective when the number of images is very low and typically results in an 
@@ -90,7 +91,7 @@ estSmooth <- function(x, mask, rdf, scaleResid = TRUE, makeRPV = FALSE, sample, 
         n <- 1
         mrss <- 1
     } else if (class(x) == "matrix") {
-        mrss <- sqrt(colSums(x ^ 2) / rdf) # mean residual sum of squares for standardizing images later on
+        mrss <- as.matrix(sqrt(colSums(x ^ 2) / rdf), nrow = 1) # mean residual sum of squares for standardizing images later on
         if (missing(sample)) {
             nfull <- nrow(x) # original number of images (rows)
         } else {
@@ -99,15 +100,15 @@ estSmooth <- function(x, mask, rdf, scaleResid = TRUE, makeRPV = FALSE, sample, 
             x <- x[rsamples,]
         }
         n <- nrow(x) # number of images in sample (rows)
-        scale <- (nfull / df) * (1 / n)
+        scale <- (nfull / rdf) * (1 / n)
     }
 
     if (makeRPV == TRUE)
-        if (D > 1)
+        if (D == 2)
             Vxy <- matrix(0, nrow = dim(mask)[1], ncol = dim(mask)[2])
-    else if (D > 2)
+    else if (D == 3)
         Vxy <- Vxz <- Vyz <- array(0, dim = dim(mask))
-    if (D > 1) {
+    if (D == 2) {
         maskar <- as.array(mask)
         Vxx <- Vyy <- matrix(0, nrow = dim(mask)[1], ncol = dim(mask)[2])
         m <- d <- matrix(0, nrow = dim(mask)[1] + 2, ncol = dim(mask)[2] + 2)
@@ -116,7 +117,7 @@ estSmooth <- function(x, mask, rdf, scaleResid = TRUE, makeRPV = FALSE, sample, 
         xyzm[xyzm != 6] <- 0
         xyzm[xyzm == 6] <- 1
         imgar <- maskar
-    } else if (D > 2) {
+    } else if (D == 3) {
         maskar <- as.array(mask)
         Vxx <- Vyy <- Vzz <- array(0, dim = dim(mask))
         m <- d <- array(0, dim = dim(mask) + 2)
@@ -135,7 +136,7 @@ estSmooth <- function(x, mask, rdf, scaleResid = TRUE, makeRPV = FALSE, sample, 
         progress <- txtProgressBar(min = 0, max = n, style = 3)
     for (i in 1:n) {
         if (class(x) == "matrix")
-            imgar[maskar == 1] <- x[i,] / mrss
+            imgar <- as.array(makeImage(mask, x[i,] / mrss))
         if (D == 1) {
             d[dimx1] <- imgar
             dx <- (imgar - d[dimx])
@@ -143,7 +144,7 @@ estSmooth <- function(x, mask, rdf, scaleResid = TRUE, makeRPV = FALSE, sample, 
             d[dimx1, dimy1] <- imgar
             dx <- (imgar - d[dimx, dimy1])
             dy <- (imgar - d[dimx1, dimy])
-        } else if (D > 3) {
+        } else if (D == 3) {
             d[dimx1, dimy1, dimz1] <- imgar
             dx <- (imgar - d[dimx, dimy1, dimz1])
             dy <- (imgar - d[dimx1, dimy, dimz1])
@@ -190,7 +191,7 @@ estSmooth <- function(x, mask, rdf, scaleResid = TRUE, makeRPV = FALSE, sample, 
     }
     if (D == 2)
         xyz <- cbind(matrix((Vxx * xyzm), ncol = 1), matrix((Vyy * xyzm), ncol = 1))
-    else if (D > 2)
+    else if (D == 3)
         xyz <- cbind((Vxx * xyzm), (Vyy * xyzm), (Vzz * xyzm))
     xyz <- sqrt(xyz / (4 * log(2)))
     xyz <- colSums(xyz) / nvox
@@ -199,7 +200,7 @@ estSmooth <- function(x, mask, rdf, scaleResid = TRUE, makeRPV = FALSE, sample, 
         R <- rpv ^ (1 / D) * (xyz / prod(xyz) ^ (1 / D))
         fwhm <- 1 / R
         list(fwhm = fwhm, RPVImg = RPVImg)
-    } else if (classval == 1 | classval == 2) {
+    } else {
         fwhm <- 1 / xyz
         list(fwhm = fwhm, RPVImg = NULL)
     }
