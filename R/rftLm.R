@@ -18,12 +18,11 @@
 #'
 #' @return A list comprising:
 #' \itemize{
-#' \item{conmat}{contrast matrix used to create \code{Timgs}}
+#' \item{contrasts}{contrast matrix used to create \code{Timgs}}
 #' \item{Designmatrix}{the design matrix used to fit the model}
-#' \item{df}{degrees of freedom}
 #' \item{residuals}{image matrix of residuals}
 #' \item{coefficients}{image matrix of coefficients}
-#' \item{Timgs}{list of the t-field images } 
+#' \item{StatImgs}{a list of statistical images} 
 #' \item{fwhm}{the estimated FWHM}
 #' \item{RPVImg}{resels per voxel image}
 #' \item{resels}{estimated resels for the search space}
@@ -46,91 +45,67 @@
 #' @References 
 #' Friston K.J., (1995) Statistical Parametric Maps in Functional Imaging: A General Linear Approach 
 #' Worsley K.J., (1992) A Three-Dimensional Statistical Analysis for CBF Activation Studies in Human Brain.
-#' Worlsey K.J., et al. (1996) A Unified Statistical Approach for Determining Significant Signals in Images of Cerebral Activation.
+#' Worlsey K.J., (1996) A Unified Statistical Approach for Determining Significant Signals in Images of Cerebral Activation.
 #' Stefan J.K., (1999) Robust Smoothness Estimation in Statistical Parametric Maps Using Standardized Residual from the General Linear Model
 #' 
 #' @Author Zachary P. Christensen
-#' @kewords rft.pval, rft.euler, rft.resels
-#' @note: function currently in beta phase. Waiting for acceptance of peer-reviewed paper
+#' 
+#' @kewords rftPval, euler, resels
+#' @note: function currently in beta phase
 #' @examples
 #' 
 #'
 #' @export rft.lm
-rft.lm <-function(formula, conmat, conType, mask, 
-                  tol=1e-07, statdir=NULL, sample=NULL, 
-                  intercept=TRUE, subMean=TRUE, regMean=FALSE, 
-                  groupMean=NULL, findSmooth=TRUE, concise=TRUE, 
-                  grandMean=FALSE, verbose=TRUE){
-  
-  Y <-model.frame(formula)[[1L]]
-  nsub <-nrow(Y)
-  nvox <-sum(as.array(mask))
-  #myresp <-as.character(formula(formula)[2])
-  
-  if (subMean=="TRUE" | regMean=="TRUE" | !is.null(groupMean)){
-    g <-rowSums(Y)/nvox
-    
-    if (subMean=="TRUE"){
-      X <-model.matrix(update(formula, ~ . - 1))
-      for (sub in 1:nsub){
-        Y[nsub,] <-Y[nsub,]*(50/g[nsub])
-        X[nsub,] <-X[nsub,]*(g[nsub]/50)
-      }
+rftLm <- function(formula, contrasts, conType, mask,
+                  tol = 1e-07, statdir = NULL, sample = NULL,
+                  intercept = TRUE, subMean = TRUE, regMean = FALSE,
+                  groupMean = NULL, findSmooth = TRUE, concise = TRUE,
+                  grandMean = FALSE, fitMask = FALSE, verbose = TRUE) {
+
+    mf <- rftModelFormula(formula, ...)
+
+    # Create Mask ---------------------------------------
+    if (fitMask == "TRUE") {
+        Y0 <- Y
+        Y0[Y0 != 0] <- 1
+        Ymask <- colSums(Y0) / nsub
+        Ymask[Ymask != 1] <- 0
+        mask <- makeImage(mask, Ymask)
     }
-    if(regMean=="TRUE"){
-      X <-model.matrix(update(formula, ~ . + g - 1))
-      conmat <-cbind(conmat,0)
-    }
-    if(!is.null(groupMean)){
-      gg <-ave(g, groupMean)
-      X <-model.matrix(update(formula, ~ . + gg - 1))
-      conmat <-cbind(conmat,0)
-    }
-  }else{
-    X <-model.matrix(update(formula, ~ . - 1))
-  }
-  # Grand Mean Scaling
-  if (grandMean=="TRUE")
-    Y <-Y * mean(Y[Y !=0])
-  
-  if (intercept=="TRUE"){
-    X <-cbind(X, 1L)
-    colnames(X)[ncol(X)] <-"Intercept"
-    conmat <-cbind(conmat,0)
-    colnames(conmat)[ncol(conmat)] <-"Intercept"
-  }
-  
-  #### Fit General Linear Model ####
-  # fit using OLS and calculate contrasts
-  z <-rft.fit(X, Y, conmat, conType, statdir=statdir)
-  
-  #### Estimate FWHM/RESELS ####
-  if (findSmooth=="TRUE"){
+
+    # Fit General Linear Model --------------------------
     if (verbose)
-      cat("Estimating FWHM. \n")
-    
-    sr <-z$residuals/sqrt(z$rss/z$df[2])
-    fwhm <-estSmooth(sr, mask, df, sample=sample)
-    ans <-lappend(ans,fwhm$fwhm)
-    names(ans)[length(ans)] <-"fwhm"
-    ans <-lappend(ans,fwhm$RPVImg)
-    names(ans)[length(ans)] <-"RPVImg"
-    
-    if (verbose)
-      cat("Calculating resels. \n")
-    
-    resels <-rft.resels(mask, fwhm$fwhm)
-    ans <-lappend(ans,resels)
-    names(ans)[length(ans)] <-"resels"
-  }
-  
-  #### Prepare Output ####
-  ans <-list(X, resels, fwhm$fwhm, fwhm$RPVImg, z$coefficients, z$qr, z$df, z$StatImgs)
-  names(ans) <-c("design","resels","fwhm","RPVImg","coefficients","qr","df","StatImgs")
-  
-  if (concise=="FALSE"){
-    ans <-lappend(ans, z$residuals)
-    names(ans)[length(ans)] <-"residuals"
-  }
-  ans
+        cat("Fitting model. \n")
+    z <- rftFit(mf[[1]], mf[[2]], contrasts, conType, statdir = statdir)
+
+    # Estimate FWHM/RESELS -----------------------------
+    if (findSmooth == "TRUE") {
+        if (verbose)
+            cat("Estimating FWHM. \n")
+
+        sr <- z$residuals / sqrt(z$rss / z$df[2])
+        fwhm <- estSmooth(sr, mask, df, sample = sample)
+        ans <- lappend(ans, fwhm$fwhm)
+        names(ans)[length(ans)] <- "fwhm"
+        ans <- lappend(ans, fwhm$RPVImg)
+        names(ans)[length(ans)] <- "RPVImg"
+
+        if (verbose)
+            cat("Calculating resels. \n")
+
+        resels <- resels(mask, fwhm$fwhm)
+        ans <- lappend(ans, resels)
+        names(ans)[length(ans)] <- "resels"
+    }
+
+    # Prepare Output ---------------------------------
+    ans <- list(X, resels, fwhm$fwhm, fwhm$RPVImg, z$coefficients, z$qr, z$df, z$StatImgs)
+    names(ans) <- c("design", "resels", "fwhm", "RPVImg", "coefficients", "qr", "df", "StatImgs")
+
+    if (concise == "FALSE") {
+        ans <- lappend(ans, z$residuals)
+        names(ans)[length(ans)] <- "residuals"
+    }
+    class(ans) <- "rftLm"
+    ans
 }

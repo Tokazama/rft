@@ -1,4 +1,4 @@
-rft.model <-function(formula, conmat, data){
+rftModelFormula <-function(formula, conmat, data){
 	mf <-model.frame(mf, data=data)
 	y <-model.response(mf, "numeric")
 	x <-model.matrix(mt-1, data=mf)
