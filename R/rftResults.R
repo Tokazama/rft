@@ -97,7 +97,7 @@
 #'
 #'
 #' @export rftResults
-rftResults <- function(x, resels, fwhm, df = c(idf, rdf), fieldType, RPVImg, k = 1, threshType = "pRFT",
+rftResults <- function(x, resels, fwhm, df = c(idf, rdf), fieldType, RPVImg = NULL, k = 1, threshType = "pRFT",
                        pval = .05, pp = .001, n = 1, statdir = NULL, verbose = FALSE) {
     if (missing(x))
         stop("Must specify x")
@@ -148,28 +148,28 @@ rftResults <- function(x, resels, fwhm, df = c(idf, rdf), fieldType, RPVImg, k =
     Ez <- rftPval(D, 1, 0, u, n, resels, df, fieldType)$Ec
 
     # Cluster-Level--------------------------------------------------------------------------------------------------------------
-    ClusterStats[, 4] <- vapply(labs, function(tmp)(sum(as.array(clust[clust == tmp])) / tmp))
-    K <- vapply(ClusterStats[, 4], function(tmp)(
+    ClusterStats[, 4] <- sapply(labs, function(tmp)(sum(as.array(clust[clust == tmp])) / tmp))
+    K <- sapply(ClusterStats[, 4], function(tmp)(
                                 if (is.null(RPVImg)) {
-        # follows isotropic image assumptions
-        K <- tmp * vox2res
-    } else {
-        # extract resels per voxel in cluster (for non-isotropic image)
-        rkc <- RPVImg[cmask == 1]
-        lkc <- sum(rkc) / tmp
-        iv <- matrix(resels(cmask, c(1, 1, 1)), nrow = 1)
-        iv <- iv %*% matrix(c(1 / 2, 2 / 3, 2 / 3, 1), ncol = 1)
-        K <- iv * lkc
-    }))
-    ClusterStats[, 1] <- vapply(K, function(tmp)(rftPval(D, 1, tmp, u, n, resels, df, fieldType)$Pcor)) # fwe p-value (cluster)
-    ClusterStats[, 3] <- vapply(K, function(tmp)(rftPval(D, 1, tmp, u, n, resels, df, fieldType)$Punc)) # uncorrected p-value (cluster)
+                                  # follows isotropic image assumptions
+                                  K <- tmp * vox2res
+                                } else {
+                                  # extract resels per voxel in cluster (for non-isotropic image)
+                                  rkc <- RPVImg[cmask == 1]
+                                  lkc <- sum(rkc) / tmp
+                                  iv <- matrix(resels(cmask, c(1, 1, 1)), nrow = 1)
+                                  iv <- iv %*% matrix(c(1 / 2, 2 / 3, 2 / 3, 1), ncol = 1)
+                                  K <- iv * lkc
+                                }))
+    ClusterStats[, 1] <- sapply(K, function(tmp)(rftPval(D, 1, tmp, u, n, resels, df, fieldType)$Pcor)) # fwe p-value (cluster)
+    ClusterStats[, 3] <- sapply(K, function(tmp)(rftPval(D, 1, tmp, u, n, resels, df, fieldType)$Punc)) # uncorrected p-value (cluster)
     ClusterStats[, 2] <- p.adjust(ClusterStats[, 3], "BH") # FDR (cluster)
 
     # Peak-Level-----------------------------------------------------------------------------------------------------------------
-    PeakStats[, 4] <- vapply(labs, function(tmp)(max(x[clust[clust == tmp]]))) # max value for each cluster
-    PeakStats[, 1] <- vapply(PeakStats[, 4], function(tmp)(rftPval(D, 1, 0, tmp, n, resels, df, fieldType)$Pcor)) # fwe p-value (peak)
-    PeakStats[, 2] <- vapply(PeakStats[, 4], function(tmp)(p.adjust(rftPval(D, 1, 0, tmp, n, resels, df, fieldType)$Ec / Ez, "BH", n = nclus))) # FDR (peak)
-    PeakStats[, 3] <- vapply(PeakStats[, 4], function(tmp)(
+    PeakStats[, 4] <- sapply(labs, function(tmp)(max(x[clust == tmp]))) # max value for each cluster
+    PeakStats[, 1] <- sapply(PeakStats[, 4], function(tmp)(rftPval(D, 1, 0, tmp, n, resels, df, fieldType)$Pcor)) # fwe p-value (peak)
+    PeakStats[, 2] <- sapply(PeakStats[, 4], function(tmp)(p.adjust(rftPval(D, 1, 0, tmp, n, resels, df, fieldType)$Ec / Ez, "BH", n = nclus))) # FDR (peak)
+    PeakStats[, 3] <- sapply(PeakStats[, 4], function(tmp)(
                                                 if (fieldType == "Z")
                                                     1 - pnorm(tmp)
                                                 else if (fieldType == "T")
@@ -178,11 +178,13 @@ rftResults <- function(x, resels, fwhm, df = c(idf, rdf), fieldType, RPVImg, k =
                                                     1 - pf(tmp, df[1], df[2])
                                                 else if (fieldType == "X")
                                                     1 - pchisq(tmp, df[1], df[2]))) # uncorrected p-value (peak)
-    PeakStats[, 5] <- vapply(PeakStats[, 4], function(tmp)(qnorm(1 - tmp))) # comparable Z-statistic
+    PeakStats[, 5] <- suppressWarnings(sapply(PeakStats[, 4], function(tmp)(qnorm(1 - tmp)))) # comparable Z-statistic
 
     # prepare output-------------------------------------------------------------------------------------------------------------
+    ClusterStats <- round(ClusterStats, 4)
+    PeakStats <- round(PeakStats, 4)
     results <- list("SetStats" = Pset, "ClusterStats" = ClusterStats, "PeakStats" = PeakStats,
-                 "LabeledClusters" = nclus, "threshTypeold" = u, "ClusterImage" = clust)
+                 "LabeledClusters" = nclus, "threshold" = u, "ClusterImage" = clust)
 
     if (!is.null(statdir)) {
         write.csv(ClusterStats, file = paste(statdir, "ClusterStats", sep = ""))
