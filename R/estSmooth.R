@@ -63,18 +63,16 @@
 estSmooth <- function(x, mask, rdf, scaleResid = TRUE, makeRPV = FALSE, sample, verbose = FALSE) {
     D <- mask@dimension
 
+    # create iterators-----------------------------------------------------------------------------
     dimx  <- 1:dim(mask)[1]
     dimx1 <- 2:(dim(mask)[1] + 1)
-    dimx2 <- 3:(dim(mask)[1] + 2)
     if (D > 1) {
         dimy  <- 1:dim(mask)[2]
         dimy1 <- 2:(dim(mask)[2] + 1)
-        dimy2 <- 3:(dim(mask)[2] + 2)
     }
     if (D > 2) {
         dimz  <- 1:dim(mask)[3]
         dimz1 <- 2:(dim(mask)[3] + 1)
-        dimz2 <- 3:(dim(mask)[3] + 2)
     }
 
     if (class(x) == "antsImage") {
@@ -103,64 +101,73 @@ estSmooth <- function(x, mask, rdf, scaleResid = TRUE, makeRPV = FALSE, sample, 
         scale <- (nfull / rdf) * (1 / n)
     }
 
-    if (makeRPV == TRUE)
-        if (D == 2)
-            Vxy <- matrix(0, nrow = dim(mask)[1], ncol = dim(mask)[2])
-    else if (D == 3)
-        Vxy <- Vxz <- Vyz <- array(0, dim = dim(mask))
-    if (D == 2) {
-        maskar <- as.array(mask)
-        Vxx <- Vyy <- matrix(0, nrow = dim(mask)[1], ncol = dim(mask)[2])
-        m <- d <- matrix(0, nrow = dim(mask)[1] + 2, ncol = dim(mask)[2] + 2)
-        xyzm <- m[dimx, dimy1] + m[dimx1, dimy1] + m[dimx2, dimy1] +
-                m[dimx1, dimy] + m[dimx1, dimy1] + m[dimx1, dimy2]
-        xyzm[xyzm != 6] <- 0
-        xyzm[xyzm == 6] <- 1
-        imgar <- maskar
+    # set up for loop------------------------------------------------------------------------------
+    if (D == 1) {
+        maskar <- as.numeric(mask)
+        d1 <- dx2 <- m1 <- xm2 <- Vxx <- array(0, dim = dim(mask) + 1)
+    } else if (D == 2) {
+        maskar <- as.matrix(mask)
+        d1 <- dx2 <- dy2 <- m1 <- xm2 <- ym2 <- Vxx <- Vyy <- array(0, dim = dim(mask) + 1)
+        if (makeRPV == "TRUE")
+            Vxy <- array(0, dim = dim(mask) + 1)
+        if (makeRPV == "TRUE")
+            Vxy <- Vxz <- Vyz <- array(0, dim = dim(mask) + 1)
+        m1[dimx1, dimy1] <- maskar
+        xm2[dimx, dimy1] <- maskar
+        ym2[dimx1, dimy] <- maskar
+        xm3 <- (m1 + xm2) == 2
+        ym3 <- (m1 + ym2) == 2
+        xyzm <- (xm3 * ym3)
+        Vxx <- Vyy <- array(0, dim = dim(mask))
     } else if (D == 3) {
         maskar <- as.array(mask)
+        d1 <- dx2 <- dy2 <- dz2 <- m1 <- xm2 <- ym2 <- zm2 <- Vxx <- Vyy <- Vzz <- array(0, dim = dim(mask) + 1)
+        if (makeRPV == "TRUE")
+            Vxy <- Vxz <- Vyz <- array(0, dim = dim(mask) + 1)
+        m1[dimx1, dimy1, dimz1] <- maskar
+        xm2[dimx, dimy1, dimz1] <- maskar
+        ym2[dimx1, dimy, dimz1] <- maskar
+        zm2[dimx1, dimy1, dimz] <- maskar
+        xm3 <- (m1 + xm2) == 2
+        ym3 <- (m1 + ym2) == 2
+        zm3 <- (m1 + zm2) == 2
+        xyzm  <- (xm3 * ym3 * zm3)
         Vxx <- Vyy <- Vzz <- array(0, dim = dim(mask))
-        m <- d <- array(0, dim = dim(mask) + 2)
-        m[dimx1, dimy1, dimz1] <- maskar
-        xyzm <- m[dimx, dimy1, dimz1] + m[dimx1, dimy1, dimz1] + m[dimx2, dimy1, dimz1] +
-                m[dimx1, dimy, dimz1] + m[dimx1, dimy1, dimz1] + m[dimx1, dimy2, dimz1] +
-                m[dimx1, dimy1, dimz] + m[dimx1, dimy1, dimz1] + m[dimx1, dimy1, dimz2]
-        xyzm[xyzm != 9] <- 0
-        xyzm[xyzm == 9] <- 1
-        imgar <- maskar
     }
 
+    # partial derivatives of each image------------------------------------------------------------
     nvox <- sum(xyzm)
-
     if (verbose)
         progress <- txtProgressBar(min = 0, max = n, style = 3)
     for (i in 1:n) {
         if (class(x) == "matrix")
             imgar <- as.array(makeImage(mask, x[i,] / mrss))
         if (D == 1) {
-            d[dimx1] <- imgar
-            dx <- (imgar - d[dimx])
+            d1[dimx1] <- imgar # fixed image
+            dx2[dimx] <- imgar 
         } else if (D == 2) {
-            d[dimx1, dimy1] <- imgar
-            dx <- (imgar - d[dimx, dimy1])
-            dy <- (imgar - d[dimx1, dimy])
+            d1[dimx1, dimy1] <- imgar # fixed image
+            dx2[dimx, dimy1] <- imgar
+            dy2[dimx1, dimy] <- imgar
         } else if (D == 3) {
-            d[dimx1, dimy1, dimz1] <- imgar
-            dx <- (imgar - d[dimx, dimy1, dimz1])
-            dy <- (imgar - d[dimx1, dimy, dimz1])
-            dz <- (imgar - d[dimx1, dimy1, dimz])
+            d1[dimx1, dimy1, dimz1] <- imgar # fixed image
+            dx2[dimx, dimy1, dimz1] <- imgar
+            dy2[dimx1, dimy, dimz1] <- imgar
+            dz2[dimx1, dimy1, dimz] <- imgar
         }
 
-        Vxx <- Vxx + (dx * dx)
-
-        if (D > 1)
+        dx  <- d1 - dx2
+        Vxx <- Vxx - (dx * dx)
+        if (D > 1) {
+            dy  <- d1 - dy2
             Vyy <- Vyy + (dy * dy)
-        if (D > 2)
-            Vzz <- Vzz + (dz * dz)
-        if (makeRPV == "TRUE") {
-            if (D > 1)
+            if (makeRPV == "TRUE")
                 Vxy <- Vxy + (dx * dy)
-            if (D > 2) {
+        }
+        if (D > 2) {
+            dz  <- d1 - dz2
+            Vzz <- Vzz + (dz * dz)
+            if (makeRPV == "TRUE") {
                 Vxz <- Vxz + (dx * dz)
                 Vyz <- Vyz + (dy * dz)
             }
@@ -171,11 +178,14 @@ estSmooth <- function(x, mask, rdf, scaleResid = TRUE, makeRPV = FALSE, sample, 
     if (verbose)
         close(progress)
 
+    # scale variance/covariances-------------------------------------------------------------------
     Vxx <- Vxx * scale
     if (D > 1)
         Vyy <- Vyy * scale
     if (D > 2)
         Vzz <- Vzz * scale
+
+    # RPV image------------------------------------------------------------------------------------
     if (makeRPV == "TRUE") {
         if (D > 1)
             Vxy <- Vxy * scale
@@ -183,7 +193,11 @@ estSmooth <- function(x, mask, rdf, scaleResid = TRUE, makeRPV = FALSE, sample, 
             Vxz <- Vxz * scale
             Vyz <- Vyz * scale
         }
-        rpv <- Vxx * Vyy * Vzz + Vxy * Vyz * Vxz * 2 - Vyz * Vyz * Vxx - Vxy * Vxy * Vzz - Vxz * Vxz * Vyy
+        rpv <- Vxx * Vyy * Vzz +
+               Vxy * Vyz * Vxz * 2 -
+               Vyz * Vyz * Vxx -
+               Vxy * Vxy * Vzz -
+               Vxz * Vxz * Vyy
         rpv[rpv < 0] <- 0
         rpv <- sqrt(rpv / (4 * log(2)) ^ D)
         rpv <- rpv * maskar
