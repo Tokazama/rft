@@ -37,7 +37,7 @@ resels <- function(mask, fwhm, quick = TRUE) {
     if (max(mask) > 1 | min(mask) < 0)
         stop("mask must be binarized and only contain 0s and 1s")
 
-    D <- mask@dimensions
+    D <- mask@dimension
     if (missing(fwhm)) (fwhm <- rep(1, D))
 
     resels <- rep(0, 4)
@@ -84,7 +84,7 @@ resels <- function(mask, fwhm, quick = TRUE) {
         xzm  <- m + mask[x2, y1, z1] + mask[x1, y1, z2] + mask[x2, y1, z2]
         yzm  <- m + mask[x1, y2, z1] + mask[x1, y1, z2] + mask[x1, y2, z2]
         xyzm <- m + mask[x2, y1, z1] + mask[x1, y2, z1] + mask[x1, y1, z2] +
-                            mask[x2, y2, z1] + mask[x2, y1, z2] + mask[x1, y2, z2] + mask[x2, y2, z2]
+                    mask[x2, y2, z1] + mask[x2, y1, z2] + mask[x1, y2, z2] + mask[x2, y2, z2]
 
         # extract number of voxels that fits each set of parameters (see Worsley 1996 for exact definition of parameters)
         Ex   <- sum(xm[xm == 2]) / 2
