@@ -48,12 +48,23 @@ aa <- png::readPNG(paste(statdir, "anterior.png", sep = ""))
 
 png(paste(statdir, "anterior.png", sep = ""), width = dim(aa)[2], height = dim(aa)[1])
 grid::grid.raster(aa)
+plot(0:10, 0:10,
+type = "n",
+xaxt = 'n',
+yaxt = 'n',
+ann = FALSE, asp = 1,
+mar = c(0, 0, 0, 0),
+oma = c(0, 0, 0, 0))
+
 title(main = "Anterior")
+mtext("I", 1, col = "black")
+mtext("L", 2, col = "black")
+mtext("S", 3, col = "black")
+mtext("R", 4, col = "black")
 #lim <-par()
 #xmidline <- mean(lim$usr[1:2])
 #ymidline <- mean(lim$usr[3:4])
 #text(xmidline, (lim$usr[3] + .01 * ymidline), "I") # inferior label
-#plot(1:dim(aa)[1], 1:dim(aa)[2], type = "n", xaxt = 'n', yaxt = 'n', ann = FALSE, asp = 1)
 
 bb <- png::readPNG(paste(statdir, "left.png", sep = ""))
 png(paste(statdir, "left.png", sep = ""), width = dim(aa)[2], height = dim(aa)[1])
