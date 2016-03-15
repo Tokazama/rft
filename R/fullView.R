@@ -23,8 +23,7 @@ z90n <- rotationMatrix(-pi/2, 0, 0, 1)
 z180p <- rotationMatrix(pi, 0, 0, 1)
 z180n <- rotationMatrix(-pi, 0, 0, 1)
 
-
-
+# extract each viewpoint
 rgl::par3d(userMatrix = x90n) # anterior view
 rgl::rgl.snapshot(paste(statdir, "anterior.png", sep = ""), fmt = "png",
                   top = TRUE)
@@ -44,12 +43,42 @@ rgl::par3d(userMatrix = z180p) # superior view
 rgl::rgl.snapshot(paste(statdir, "superior.png", sep = ""), fmt = "png",
                   top = TRUE)
 
+# Create anterior view image
 aa <- png::readPNG(paste(statdir, "anterior.png", sep = ""))
+
+png(paste(statdir, "anterior.png", sep = ""), width = dim(aa)[2], height = dim(aa)[1])
+grid::grid.raster(aa)
+title(main = "Anterior")
+#lim <-par()
+#xmidline <- mean(lim$usr[1:2])
+#ymidline <- mean(lim$usr[3:4])
+#text(xmidline, (lim$usr[3] + .01 * ymidline), "I") # inferior label
+#plot(1:dim(aa)[1], 1:dim(aa)[2], type = "n", xaxt = 'n', yaxt = 'n', ann = FALSE, asp = 1)
+
 bb <- png::readPNG(paste(statdir, "left.png", sep = ""))
+png(paste(statdir, "left.png", sep = ""), width = dim(aa)[2], height = dim(aa)[1])
+grid::grid.raster(bb)
+title(main = "Left")
+
 cc <- png::readPNG(paste(statdir, "right.png", sep = ""))
+png(paste(statdir, "right.png", sep = ""), width = dim(aa)[2], height = dim(aa)[1])
+grid::grid.raster(c)
+title(main = "Right")
+
 dd <- png::readPNG(paste(statdir, "inferior.png", sep = ""))
+png(paste(statdir, "inferior.png", sep = ""), width = dim(aa)[2], height = dim(aa)[1])
+grid::grid.raster(dd)
+title(main = "Inferior")
+
 ee <- png::readPNG(paste(statdir, "posterior.png", sep = ""))
+png(paste(statdir, "posterior.png", sep = ""), width = dim(aa)[2], height = dim(aa)[1])
+grid::grid.raster(ee)
+title(main = "Posterior")
+
 ff <- png::readPNG(paste(statdir, "superior.png", sep = ""))
+png(paste(statdir, "superior.png", sep = ""), width = dim(aa)[2], height = dim(aa)[1])
+grid::grid.raster(bb)
+title(main = "Superior")
 
 abcdef <- abind::abind(abind::abind(abind::abind(ff, dd, along = 1), # superior/inferior
                        abind::abind(aa, ee, along = 1), along = 2), # anterior/posterior
