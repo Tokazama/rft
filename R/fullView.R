@@ -1,6 +1,6 @@
 #'
 #' bm <-getMask( antsImageRead( getANTsRData("ch2") ) )
-#' brain <-renderSurfaceFunction( surfimg =list( bm ) , alphasurf=0.1 ,smoothsval = 1.5 )
+#' brain <-renderSurfaceFunction( surfimg =list( bm ) , alphasurf=0.1, smoothsval = 1.5 )
 #' fullView(tempfile( fileext='.png'))
 #'
 #' @export fullView
@@ -46,57 +46,70 @@ rgl::rgl.snapshot(paste(statdir, "superior.png", sep = ""), fmt = "png",
 # Create anterior view image
 aa <- png::readPNG(paste(statdir, "anterior.png", sep = ""))
 
+#lim$usr[1] = left x
+#lim$usr[2] = y bottom
+#lim$usr[3] = right x
+#lim$usr[4] = y top
+
 png(paste(statdir, "anterior.png", sep = ""), width = dim(aa)[2], height = dim(aa)[1])
 grid::grid.raster(aa)
-plot(0:10, 0:10,
-type = "n",
-xaxt = 'n',
-yaxt = 'n',
-ann = FALSE, asp = 1,
-mar = c(0, 0, 0, 0),
-oma = c(0, 0, 0, 0))
+grid.text("Anterior", .95, .5)
+grid.text("L", .9, .5) 
+grid.text("R", .1, .5)
+grid.text("S", .5, .9)
+grid.text("I", .5, .1)
 
-title(main = "Anterior")
-mtext("I", 1, col = "black")
-mtext("L", 2, col = "black")
-mtext("S", 3, col = "black")
-mtext("R", 4, col = "black")
-#lim <-par()
-#xmidline <- mean(lim$usr[1:2])
-#ymidline <- mean(lim$usr[3:4])
-#text(xmidline, (lim$usr[3] + .01 * ymidline), "I") # inferior label
-
+grid.newpage()
 bb <- png::readPNG(paste(statdir, "left.png", sep = ""))
 png(paste(statdir, "left.png", sep = ""), width = dim(aa)[2], height = dim(aa)[1])
 grid::grid.raster(bb)
-title(main = "Left")
+grid.text("Left", .95, .5)
+grid.text("A", .9, .5) 
+grid.text("P", .1, .5)
+grid.text("S", .5, .9)
+grid.text("I", .5, .1)
 
 cc <- png::readPNG(paste(statdir, "right.png", sep = ""))
 png(paste(statdir, "right.png", sep = ""), width = dim(aa)[2], height = dim(aa)[1])
 grid::grid.raster(c)
-title(main = "Right")
+grid.text("Right", .95, .5)
+grid.text("P", .9, .5)
+grid.text("A", .1, .5)
+grid.text("S", .5, .9)
+grid.text("I", .5, .1)
 
 dd <- png::readPNG(paste(statdir, "inferior.png", sep = ""))
 png(paste(statdir, "inferior.png", sep = ""), width = dim(aa)[2], height = dim(aa)[1])
 grid::grid.raster(dd)
-title(main = "Inferior")
+grid.text("Inferior", .95, .5)
+grid.text("L", .9, .5) 
+grid.text("R", .1, .5)
+grid.text("A", .5, .9)
+grid.text("P", .5, .1)
 
 ee <- png::readPNG(paste(statdir, "posterior.png", sep = ""))
 png(paste(statdir, "posterior.png", sep = ""), width = dim(aa)[2], height = dim(aa)[1])
 grid::grid.raster(ee)
-title(main = "Posterior")
+grid.text("Posterior", .95, .5)
+grid.text("R", .9, .5) 
+grid.text("L", .1, .5)
+grid.text("S", .5, .9)
+grid.text("I", .5, .1)
 
 ff <- png::readPNG(paste(statdir, "superior.png", sep = ""))
 png(paste(statdir, "superior.png", sep = ""), width = dim(aa)[2], height = dim(aa)[1])
 grid::grid.raster(bb)
-title(main = "Superior")
+grid.text("Superior", .95, .5)
+grid.text("R", .9, .5) 
+grid.text("L", .1, .5)
+grid.text("A", .5, .9)
+grid.text("P", .5, .1)
 
-abcdef <- abind::abind(abind::abind(abind::abind(ff, dd, along = 1), # superior/inferior
-                       abind::abind(aa, ee, along = 1), along = 2), # anterior/posterior
-                       abind::abind(bb, cc, along = 1), along = 2) # left/right
+abcdef <- abind::abind(abind::abind(abind::abind(ff, dd, along = 1),
+                       abind::abind(aa, ee, along = 1), along = 2),
+                       abind::abind(bb, cc, along = 1), along = 2)
 
 png(paste(statdir, "FullView.png", sep = ""), width = dim(abcdef)[2], height = dim(abcdef)[1])
 grid::grid.raster(abcdef)
 dev.off()
 }            
-
