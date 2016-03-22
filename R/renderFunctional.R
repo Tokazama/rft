@@ -45,53 +45,55 @@ renderFunctional <- function(funcimg, surfval = .5, colorGradient = "rainbow", m
       max <- unique_vox
   }
   surf_img <- round((surf_img - min(surf_img)) / max(surf_img - min(surf_img)) * (max - min) + min)
-
+  
   # create color lookup table--------------------------------------------------
   if (verbose)
     cat("Creating color palette. \n")
+
   brain.colors <- colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan",
                                      "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"),
                                    interpolate = c("spline"), space = "Lab")
-  if (colorGradient[1] == "terrain") {
+  if (colorGradient[1] == "terrain") 
     mycolors <- terrain.colors(max, alpha = 0)
-    col <- mycolors[surf_img]
-  } else if (colorGradient[1]  == "heat") {
+  else if (colorGradient[1]  == "heat") 
     mycolors <- heat.colors(max, alpha = 0)
-    col <- mycolors[surf_img]
-  } else if (colorGradient[1]  == "topo") {
+  else if (colorGradient[1]  == "topo") 
     mycolors <- topo.colors(max, alpha = 0)
-    col <- mycolors[surf_img]
-  } else if (colorGradient[1]  == "cm") {
+  else if (colorGradient[1]  == "cm") 
     mycolors <- cm.colors(max, alpha = 0)
-    col <- mycolors[surf_img]
-  } else if (colorGradient[1] == "brain") {
+  else if (colorGradient[1] == "brain") 
     mycolors <- brain.colors(max, alpha = 0)
-    col <- mycolors[surf_img]
-  } else if (colorGradient[1] == "rainbow") {
+  else if (colorGradient[1] == "rainbow") 
     mycolors <- rainbow(max, alpha = 0)
-    col <- mycolors[surf_img]
-  } else if (colorGradient[1] == "gs") {
+  else if (colorGradient[1] == "gs") 
     mycolors <- grey.colors(max, alpha = 0)
-    col <- mycolors[surf_img]
-  } else {
+  else 
     mycolors <- colorGradient(max, alpha = 0)
-    col <- mycolors[surf_img]
-  }
   
   # white out upper or lower percentage of image
   if (lower < 1)
-    mycolors[1:floor()] <- "white"
+    mycolors[1:floor(lower * max)] <- "white"
   if (upper < 1)
     mycolors[ceiling(upper * max):max] <- "white"
+  findColor <- function(x, y, z) {
+    voxval <- surf_img[x, y, z]
+    mycolors[voxval]
+  }
   
+  # render surface-------------------------------------------------------------
   if (verbose)
     cat("Computing surface \n")
-  brain <- misc3d::contour3d(surf_img, level = surfval, alpha = alpha, draw = FALSE, smooth = 1, material = material, depth = depth, color = col)
+  mycoord <- which(surf_img > min, arr.ind = )
+  de <- misc3d::kde3d(mycoord[,1], mycoord[,2], mycoord[,3], n = 40,
+              lims = c(range(mycoord[,1]), range(mycoord[,2]), range(mycoord[,3])))
+  brain <- misc3d::contour3d(de$d, .1, de$x, de$y, de$z, color = findColor,
+                             alpha = alpha,  draw = FALSE, smooth = 1,
+                             material = material, depth = depth)
   brain$v1 <- antsTransformIndexToPhysicalPoint(img, brain$v1)
   brain$v2 <- antsTransformIndexToPhysicalPoint(img, brain$v2)
   brain$v3 <- antsTransformIndexToPhysicalPoint(img, brain$v3)
-    
+  
   .check3d()
   misc3d::drawScene.rgl(brain)
   brain
-  }
+}
