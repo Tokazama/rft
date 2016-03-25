@@ -18,15 +18,13 @@
 #' @param alpha opacity
 #' @param smoothval
 #' @param material
-#' @param depth
-#' @param verbose
 #' mnit <- antsImageRead(getANTsRData('mni'))
 #'
 #'
 #'
 #'
 #' @export renderFunctional
-renderFunctional <- function(funcimg, colorGradient = "rainbow", max, min = 1, upper = 1, lower = 1, alpha = 1, smoothval, material = "metal", depth = .6, verbose = TRUE) {
+renderFunctional <- function(funcimg, colorGradient = "rainbow", max, min = 1, upper = 1, lower = 1, alpha = 1, smoothval, material = "metal") {
   if (missing(smoothval))
     img <- antsImageClone(funcimg)
   else
@@ -34,18 +32,6 @@ renderFunctional <- function(funcimg, colorGradient = "rainbow", max, min = 1, u
 
   # Perona malik edge preserving smoothing
   # iMath(img, "PeronaMalike", iterations (ex. 10), conductance (ex. .5) 
-  origin <- antsGetOrigin(img)
-  # DIM <- dim(img)
-  # 
-  # as.antsImage(img[1:origin[1], 1:DIM[2], 1:DIM[3]])
-  # coronal_post <- img[1:DIM[1], 1:origin[2], 1:DIM[3]]
-  # coronal_post <- img[1:DIM[1], origin[2]:DIM[2], 1:DIM[3]]
-  # 
-  # left_sagittal <- img[1:origin[1], 1:DIM[2], 1:DIM[3]]
-  # right_sagittal <- img[origin[1]:DIM[1], 1:DIM[2], 1:DIM[3]]
-  # 
-  # superior_axial
-  # inferior_axial
   func <- as.array(img)
   unique_vox <- length(unique(func))
   if (missing(max)) {
@@ -111,11 +97,11 @@ renderFunctional <- function(funcimg, colorGradient = "rainbow", max, min = 1, u
     brain$v2 <- antsTransformIndexToPhysicalPoint(img, brain$v2)
     brain$v3 <- antsTransformIndexToPhysicalPoint(img, brain$v3)
     }
+    scene <- c(scene, list(brain))
     if (verbose)
       setTxtProgressBar(progress, i)
   }
   if (verbose)
       close(progress)
-  scene <- c(scene, list(brain))
   scene
 }
