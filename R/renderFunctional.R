@@ -32,17 +32,23 @@ renderFunctional <- function(funcimg, surfval = .5, colorGradient = "rainbow", m
   # iMath(img, "PeronaMalike", iterations (ex. 10), conductance (ex. .5) 
   
   img <- smoothImage(funcimg, smoothval)
-  surf_img <- as.array(img)
-  mask <- surf_img
+  mask <- antsImageClone(img)
   mask[mask != 0] <- 1
-  unique_vox <- length(unique(surf_img))
+  mask <- iMath(mask, "FillHoles")
+  emask <- iMath(mask, "ME", 1)
+  surf <- as.array(mask - emask)
+  xyz <- which(surf != 0, arr.ind = TRUE)
+  func <- as.array(img)
+  unique_vox <- length(unique(func))
   if (missing(max)) {
     if (unique_vox > 2^8)
       max <- 2^8
     else
       max <- unique_vox
   }
-  surf_img <- round((surf_img - min(surf_img)) / max(surf_img - min(surf_img)) * (max - min) + min)
+  func <- round((func - min(func)) / max(func - min(func)) * (max - min) + min)
+  vox_val <- as.numeric(func, sur > 0)
+  
   
   # create color lookup table--------------------------------------------------
   if (verbose)
@@ -102,3 +108,29 @@ renderFunctional <- function(funcimg, surfval = .5, colorGradient = "rainbow", m
   misc3d::drawScene.rgl(brain)
   brain
 }
+
+origin <- antsGetOrigin(img)
+DIM <- dim(img)
+
+as.antsImage(img[1:origin[1], 1:DIM[2], 1:DIM[3]])
+coronal_post <- img[1:DIM[1], 1:origin[2], 1:DIM[3]]
+coronal_post <- img[1:DIM[1], origin[2]:DIM[2], 1:DIM[3]]
+
+left_sagittal <- img[1:origin[1], 1:DIM[2], 1:DIM[3]]
+right_sagittal <- img[origin[1]:DIM[1], 1:DIM[2], 1:DIM[3]]
+
+superior_axial 
+inferior_axial
+
+
+
+
+
+img <- smoothImage(funcimg, smoothval)
+mask <- antsImageClone(img)
+mask[mask != 0] <- 1
+mask <- iMath(mask, "FillHoles")
+emask <- iMath(mask, "ME", 1)
+surf <- as.array(mask - emask)
+xyz <- which(surf != 0, arr.ind = TRUE)
+spheres3d(xyz[, 1], xyz[, 2], xyz[, 3])
