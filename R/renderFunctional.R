@@ -27,18 +27,15 @@
 #'
 #' @export renderFunctional
 renderFunctional <- function(funcimg, surfval = .5, colorGradient = "rainbow", max, min = 0, upper = 1, lower = 1, alpha = 1, smoothval = 0, material = "metal", depth = .6, verbose = TRUE) {
-  # mask <- antsImageClone(img)
-  # if (max(img) != 1 | min(img) != 0)
-  #   mask[mask !=0] <- 1
-  # surf_mask <- as.array(mask - iMath(mask, "ME", 1))
-  # surf_img <- surf_mask * as.array(img)
-  # mycoord <- which(surf_img != 0, arr.ind = TRUE) # coordinate for each voxel
-  
   img <- antsImageClone(funcimg)
+  # Perona malik edge preserving smoothing
+  # iMath(img, "PeronaMalike", iterations (ex. 10), conductance (ex. .5) 
+  
   img <- smoothImage(funcimg, smoothval)
   surf_img <- as.array(img)
   mask <- surf_img
   mask[mask != 0] <- 1
+  unique_vox <- length(unique(surf_img))
   if (missing(max)) {
     if (unique_vox > 2^8)
       max <- 2^8
@@ -69,7 +66,7 @@ renderFunctional <- function(funcimg, surfval = .5, colorGradient = "rainbow", m
   else if (colorGradient[1] == "gs") 
     mycolors <- grey.colors(max, alpha = 0)
   else 
-    mycolors <- colorGradient(max, alpha = 0)
+    mycolors <- colorGradient
   
   # white out upper or lower percentage of image
   if (lower < 1)
@@ -81,19 +78,22 @@ renderFunctional <- function(funcimg, surfval = .5, colorGradient = "rainbow", m
   if (verbose)
     cat("Computing surface \n")
   brain <- misc3d::contour3d(mask, level = surfval, alpha = alpha, draw = FALSE, smooth = 1, material = material, depth = depth)
-  
-  n <- length(brain$v1[,1])
-  vox_vec <- rep(0, n)
-  for (i in 1:n) {
-    myv1[i] <- surf_img[brain$v1[i, 1], brain$v1[i, 2], brain$v1[i, 2]]
-    myv2[i] <- surf_img[brain$v2[i, 1], brain$v2[i, 2], brain$v2[i, 2]]
-    myv3[i] <- surf_img[brain$v3[i, 1], brain$v3[i, 2], brain$v3[i, 2]]
+
+  if (length(colorGradient > 1)) {
+    n <- length(brain$v1[, 1])
+    vox_vec <- rep(0, n)
+    findColor <- function(x) {
+      surf_img[floor(x[i, 1]), floor(x[i, 2]), floor(x[i, 2])]
+    }
+    brain$color <- apply(brain$v1, 1, findColor)
+    brain$color2 <- apply(brain$v2, 1, findColor)
+    brain$color.mesh <- apply(brain$v3, 1, findColor)
+  } else {
+    brain$color <- mycolors
+    # surf_img$color2 <- mycolors[myv2]
+    # surf_img$col.mesh <- mycolors[myv3]
   }
-  
-  brain$color <- mycolors[myv1]
-  # surf_img$color2 <- mycolors[myv2]
-  # surf_img$col.mesh <- mycolors[myv3]
-  
+    
   brain$v1 <- antsTransformIndexToPhysicalPoint(img, brain$v1)
   brain$v2 <- antsTransformIndexToPhysicalPoint(img, brain$v2)
   brain$v3 <- antsTransformIndexToPhysicalPoint(img, brain$v3)
