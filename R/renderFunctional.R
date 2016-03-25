@@ -38,18 +38,18 @@ renderFunctional <- function(funcimg, surfval = .5, colorGradient = "rainbow", m
   img <- smoothImage(funcimg, smoothval)
   surf_img <- as.array(img)
   if (missing(max)) {
-    unique_vox <- length(unique(surf_img))
-    if (unique_vox > 2^8)
-      max <- 2^8
-    else
-      max <- unique_vox
+    max <- length(unique(surf_img))
+    # if (unique_vox > 2^8)
+    #   max <- 2^8
+    # else
+    #   max <- unique_vox
   }
   # surf_img <- round((surf_img - min(surf_img)) / max(surf_img - min(surf_img)) * (max - min) + min)
   
   # create color lookup table--------------------------------------------------
   if (verbose)
     cat("Creating color palette. \n")
-
+  
   brain.colors <- colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan",
                                      "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"),
                                    interpolate = c("spline"), space = "Lab")
@@ -88,12 +88,12 @@ renderFunctional <- function(funcimg, surfval = .5, colorGradient = "rainbow", m
   # render surface-------------------------------------------------------------
   if (verbose)
     cat("Computing surface \n")
-  brain <- misc3d::contour3d(surf_img, .1, color = findColor,
+  brain <- misc3d::contour3d(surf_img, level = surfval, color = findColor,
                              alpha = alpha,  draw = FALSE, smooth = 1,
                              material = material, depth = depth)
-  brain$v1 <- antsTransformIndexToPhysicalPoint(img, brain$v1)
-  brain$v2 <- antsTransformIndexToPhysicalPoint(img, brain$v2)
-  brain$v3 <- antsTransformIndexToPhysicalPoint(img, brain$v3)
+  # brain$v1 <- antsTransformIndexToPhysicalPoint(img, brain$v1)
+  # brain$v2 <- antsTransformIndexToPhysicalPoint(img, brain$v2)
+  # brain$v3 <- antsTransformIndexToPhysicalPoint(img, brain$v3)
   
   .check3d()
   misc3d::drawScene.rgl(brain)
