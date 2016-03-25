@@ -37,14 +37,15 @@ renderFunctional <- function(funcimg, surfval = .5, colorGradient = "rainbow", m
   img <- antsImageClone(funcimg)
   img <- smoothImage(funcimg, smoothval)
   surf_img <- as.array(img)
+  mask <- surf_img
+  mask[mask != 0] <- 1
   if (missing(max)) {
-    max <- length(unique(surf_img))
-    # if (unique_vox > 2^8)
-    #   max <- 2^8
-    # else
-    #   max <- unique_vox
+    if (unique_vox > 2^8)
+      max <- 2^8
+    else
+      max <- unique_vox
   }
-  # surf_img <- round((surf_img - min(surf_img)) / max(surf_img - min(surf_img)) * (max - min) + min)
+  surf_img <- round((surf_img - min(surf_img)) / max(surf_img - min(surf_img)) * (max - min) + min)
   
   # create color lookup table--------------------------------------------------
   if (verbose)
@@ -76,24 +77,26 @@ renderFunctional <- function(funcimg, surfval = .5, colorGradient = "rainbow", m
   if (upper < 1)
     mycolors[ceiling(upper * max):max] <- "white"
   
-  findColor <- function(x, y, z) {
-    n <- length(x)
-    vox_vec <- rep(0, n)
-    for (i in 1:n) {
-      vox_vec[i] <- surf_img[floor(x[i]), floor(y[i]), floor(z[i])]
-    }
-    mycolors[cut(vox_vec, max, levels = FALSE)]
-  }
-  
   # render surface-------------------------------------------------------------
   if (verbose)
     cat("Computing surface \n")
-  brain <- misc3d::contour3d(surf_img, level = surfval, color = findColor,
-                             alpha = alpha,  draw = FALSE, smooth = 1,
-                             material = material, depth = depth)
-  # brain$v1 <- antsTransformIndexToPhysicalPoint(img, brain$v1)
-  # brain$v2 <- antsTransformIndexToPhysicalPoint(img, brain$v2)
-  # brain$v3 <- antsTransformIndexToPhysicalPoint(img, brain$v3)
+  brain <- misc3d::contour3d(mask, level = surfval, alpha = alpha, draw = FALSE, smooth = 1, material = material, depth = depth)
+  
+  n <- length(brain$v1[,1])
+  vox_vec <- rep(0, n)
+  for (i in 1:n) {
+    myv1[i] <- surf_img[brain$v1[i, 1], brain$v1[i, 2], brain$v1[i, 2]]
+    myv2[i] <- surf_img[brain$v2[i, 1], brain$v2[i, 2], brain$v2[i, 2]]
+    myv3[i] <- surf_img[brain$v3[i, 1], brain$v3[i, 2], brain$v3[i, 2]]
+  }
+  
+  brain$color <- mycolors[myv1]
+  # surf_img$color2 <- mycolors[myv2]
+  # surf_img$col.mesh <- mycolors[myv3]
+  
+  brain$v1 <- antsTransformIndexToPhysicalPoint(img, brain$v1)
+  brain$v2 <- antsTransformIndexToPhysicalPoint(img, brain$v2)
+  brain$v3 <- antsTransformIndexToPhysicalPoint(img, brain$v3)
   
   .check3d()
   misc3d::drawScene.rgl(brain)
