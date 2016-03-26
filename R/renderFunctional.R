@@ -30,27 +30,30 @@ renderFunctional <- function(surfimg, funcimg, colorGradient = "rainbow", max, m
     img <- antsImageClone(funcimg)
   else
     img <- smoothImage(funcimg, smoothval)
-  nviews <- length(views)
-  nfunc <- length(funcimg)
+  ilist <- list(surfimg)
+  ilist <- lappend(ilist, funcimg)
+  nfunc <- length(ilist)
   if (!is.null(slice)) {
+  
     part1 <- list()
     part2 <- list()
     for (i in 1:nfunc) {
+      img <- as.array(ilist[[i]])
       if (axis == 1) {
         part1 <- lappend(part1, list(img[1:slice, 1:DIM[2], 1:DIM[3]]))
         part1[[i]][slice[1],,] <- 0
         part2 <- lappend(part1, list(img[slice:DIM[1], 1:DIM[2], 1:DIM[3]]))
         part2[[i]][,slice,] <- 0
       } else if (axis == 2) {
-        part1 <- img[1:DIM[1], 1:DIM[2], 1:slice]
-        part1[,, slice] <- 0
-        part2 <- img[1:DIM[1], 1:DIM[2], slice:DIM[3]]
-        part2[,, slice] <- 0
+        part1 <- lappend(part1, list(img[1:DIM[1], 1:DIM[2], 1:slice]))
+        part1[[i]][,, slice] <- 0
+        part2 <- lappend(part2, list(img[1:DIM[1], 1:DIM[2], slice:DIM[3]]))
+        part2[[i]][,, slice] <- 0
       } else if (axis == 3) {
-        part1 <- img[1:DIM[1], 1:slice, 1:DIM[3]]
-        part1[, slice,] <- 0
-        part2 <- img[1:DIM[1], slice:DIM, 1:DIM[3]]
-        part2[, slice,] <- 0
+        part1 <- lappend(part1, list(img[1:DIM[1], 1:slice, 1:DIM[3]]))
+        part1[[i]][, slice,] <- 0
+        part2 <- lappend(part2, list(img[1:DIM[1], slice:DIM, 1:DIM[3]]))
+        part2[[i]][, slice,] <- 0
       }
     }
   }
