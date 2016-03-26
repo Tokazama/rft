@@ -24,21 +24,23 @@
 #'
 #'
 #' @export renderFunctional
-renderFunctional <- function(surfimg, funcimg, colorGradient = "rainbow", max, min = 1, upper = 1, lower = 1, alpha = 1, slice = NULL, axis, smoothval, material = "metal") {
+renderFunctional <- function(ilist, color, max, min = 1, upper = 1, lower = 1, alpha = 1, slice = NULL, axis, smoothval, material = "metal") {
   DIM <- dim(surfimg)
-  if (missing(smoothval))
-    img <- antsImageClone(funcimg)
-  else
-    img <- smoothImage(funcimg, smoothval)
-  ilist <- list(surfimg)
-  ilist <- lappend(ilist, funcimg)
-  nfunc <- length(ilist)
-  if (!is.null(slice)) {
-  
-    part1 <- list()
-    part2 <- list()
-    for (i in 1:nfunc) {
-      img <- as.array(ilist[[i]])
+  nimg <- length(ilist)
+  part1 <- list()
+  part2 <- list()
+  for (i in 1:nimg) {
+    if (is.null(slice)) {
+      if (missing(smoothval))
+        img <- as.array(ilist[[i]])
+      else
+        img <- smoothImage(ilist[[i]], smoothval)
+      part1 <- lappend(part1, img)
+    } else {
+      if (missing(smoothval))
+        img <- as.array(ilist[[i]])
+      else
+        img <- smoothImage(ilist[[i]], smoothval)
       if (axis == 1) {
         part1 <- lappend(part1, list(img[1:slice, 1:DIM[2], 1:DIM[3]]))
         part1[[i]][slice[1],,] <- 0
@@ -56,79 +58,79 @@ renderFunctional <- function(surfimg, funcimg, colorGradient = "rainbow", max, m
         part2[[i]][, slice,] <- 0
       }
     }
-  }
-  # Perona malik edge preserving smoothing
-  # iMath(img, "PeronaMalike", iterations (ex. 10), conductance (ex. .5) 
-  func <- as.array(img)
-  unique_vox <- length(unique(func))
-  if (missing(max)) {
-    if (unique_vox > 2^8)
-      max <- 2^8
-    else
-      max <- unique_vox
-  }
-  func <- round((func - min(func)) / max(func - min(func)) * (max - min) + min)
-  vox_vec <- as.numeric(func, func > 0)
-  
-  # create color lookup table--------------------------------------------------
-  if (verbose)
-    cat("Creating color palette. \n")
-  
-  brain.colors <- colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan",
-                                     "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"),
-                                   interpolate = c("spline"), space = "Lab")
-  if (colorGradient[1] == "terrain") 
-    mycolors <- terrain.colors(max, alpha = 0)
-  else if (colorGradient[1]  == "heat") 
-    mycolors <- heat.colors(max, alpha = 0)
-  else if (colorGradient[1]  == "topo") 
-    mycolors <- topo.colors(max, alpha = 0)
-  else if (colorGradient[1]  == "cm") 
-    mycolors <- cm.colors(max, alpha = 0)
-  else if (colorGradient[1] == "brain") 
-    mycolors <- brain.colors(max, alpha = 0)
-  else if (colorGradient[1] == "rainbow") 
-    mycolors <- rainbow(max, alpha = 0)
-  else if (colorGradient[1] == "gs") 
-    mycolors <- grey.colors(max, alpha = 0)
-  else 
-    mycolors <- colorGradient
-  # white out upper or lower percentage of image
-  if (lower < 1)
-    mycolors[1:floor(lower * max)] <- "white"
-  if (upper < 1)
-    mycolors[ceiling(upper * max):max] <- "white"
-  cols <- mycolors[vox_vec]
-  
-  # render surface-------------------------------------------------------------
-  if (verbose)
-    cat("Computing surface \n")
-  if (verbose)
-        progress <- txtProgressBar(min = 0, max = max, style = 3)
-  level_seq <- c(min:max)
-  for (i in 1:max) {
-    eps <- .Machine$double.eps
-    tmp <- array(FALSE, dim = (dim(img)))
-    mlev <- level_seq
-    if (i == max)
-      nlev <- max + eps
-    else
-      nlev <- level_seq[i + 1]
-    tmp[ func >= mlev & func < nlev ] <- 1
-    if (sum(tmp != 0, na.rm=TRUE) == 0) {
-      warning("No contour to make")
-      next
-    } else {
-    brain <- contour3d(tmp, level = 0, alpha = alpha[i], color = cols[i], draw = FALSE)
-    brain$v1 <- antsTransformIndexToPhysicalPoint(img, brain$v1)
-    brain$v2 <- antsTransformIndexToPhysicalPoint(img, brain$v2)
-    brain$v3 <- antsTransformIndexToPhysicalPoint(img, brain$v3)
+    # Perona malik edge preserving smoothing
+    # iMath(img, "PeronaMalike", iterations (ex. 10), conductance (ex. .5) 
+    for (ifunc in 1:ilist) {
+    unique_vox <- length(unique(func))
+    if (missing(max)) {
+      if (unique_vox > 2^8)
+        max <- 2^8
+      else
+        max <- unique_vox
     }
-    scene <- c(scene, list(brain))
+    func <- round((func - min(func)) / max(func - min(func)) * (max - min) + min)
+    vox_vec <- as.numeric(func, func > 0)
+    
+    # create color lookup table--------------------------------------------------
     if (verbose)
-      setTxtProgressBar(progress, i)
+      cat("Creating color palette. \n")
+    
+    brain.colors <- colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan",
+                                       "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"),
+                                     interpolate = c("spline"), space = "Lab")
+    if (colorGradient[1] == "terrain") 
+      mycolors <- terrain.colors(max, alpha = 0)
+    else if (colorGradient[1]  == "heat") 
+      mycolors <- heat.colors(max, alpha = 0)
+    else if (colorGradient[1]  == "topo") 
+      mycolors <- topo.colors(max, alpha = 0)
+    else if (colorGradient[1]  == "cm") 
+      mycolors <- cm.colors(max, alpha = 0)
+    else if (colorGradient[1] == "brain") 
+      mycolors <- brain.colors(max, alpha = 0)
+    else if (colorGradient[1] == "rainbow") 
+      mycolors <- rainbow(max, alpha = 0)
+    else if (colorGradient[1] == "gs") 
+      mycolors <- grey.colors(max, alpha = 0)
+    else 
+      mycolors <- colorGradient
+    # white out upper or lower percentage of image
+    if (lower < 1)
+      mycolors[1:floor(lower * max)] <- "white"
+    if (upper < 1)
+      mycolors[ceiling(upper * max):max] <- "white"
+    cols <- mycolors[vox_vec]
+    
+    # render surface-------------------------------------------------------------
+    if (verbose)
+      cat("Computing surface \n")
+    if (verbose)
+          progress <- txtProgressBar(min = 0, max = max, style = 3)
+    level_seq <- c(min:max)
+    for (i in 1:max) {
+      eps <- .Machine$double.eps
+      tmp <- array(FALSE, dim = (dim(img)))
+      mlev <- level_seq
+      if (i == max)
+        nlev <- max + eps
+      else
+        nlev <- level_seq[i + 1]
+      tmp[ func >= mlev & func < nlev ] <- 1
+      if (sum(tmp != 0, na.rm=TRUE) == 0) {
+        warning("No contour to make")
+        next
+      } else {
+      brain <- contour3d(tmp, level = 0, alpha = alpha[i], color = cols[i], draw = FALSE)
+      brain$v1 <- antsTransformIndexToPhysicalPoint(img, brain$v1)
+      brain$v2 <- antsTransformIndexToPhysicalPoint(img, brain$v2)
+      brain$v3 <- antsTransformIndexToPhysicalPoint(img, brain$v3)
+      }
+      scene <- c(scene, list(brain))
+      if (verbose)
+        setTxtProgressBar(progress, i)
+    }
+    if (verbose)
+        close(progress)
   }
-  if (verbose)
-      close(progress)
   scene
 }
