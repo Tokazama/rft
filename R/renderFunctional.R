@@ -24,12 +24,36 @@
 #'
 #'
 #' @export renderFunctional
-renderFunctional <- function(funcimg, colorGradient = "rainbow", max, min = 1, upper = 1, lower = 1, alpha = 1, smoothval, material = "metal") {
+renderFunctional <- function(surfimg, funcimg, colorGradient = "rainbow", max, min = 1, upper = 1, lower = 1, alpha = 1, slice = NULL, axis, smoothval, material = "metal") {
+  DIM <- dim(surfimg)
   if (missing(smoothval))
     img <- antsImageClone(funcimg)
   else
     img <- smoothImage(funcimg, smoothval)
-
+  nviews <- length(views)
+  nfunc <- length(funcimg)
+  if (!is.null(slice)) {
+    part1 <- list()
+    part2 <- list()
+    for (i in 1:nfunc) {
+      if (axis == 1) {
+        part1 <- lappend(part1, list(img[1:slice, 1:DIM[2], 1:DIM[3]]))
+        part1[[i]][slice[1],,] <- 0
+        part2 <- lappend(part1, list(img[slice:DIM[1], 1:DIM[2], 1:DIM[3]]))
+        part2[[i]][,slice,] <- 0
+      } else if (axis == 2) {
+        part1 <- img[1:DIM[1], 1:DIM[2], 1:slice]
+        part1[,, slice] <- 0
+        part2 <- img[1:DIM[1], 1:DIM[2], slice:DIM[3]]
+        part2[,, slice] <- 0
+      } else if (axis == 3) {
+        part1 <- img[1:DIM[1], 1:slice, 1:DIM[3]]
+        part1[, slice,] <- 0
+        part2 <- img[1:DIM[1], slice:DIM, 1:DIM[3]]
+        part2[, slice,] <- 0
+      }
+    }
+  }
   # Perona malik edge preserving smoothing
   # iMath(img, "PeronaMalike", iterations (ex. 10), conductance (ex. .5) 
   func <- as.array(img)
