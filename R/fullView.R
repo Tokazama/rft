@@ -7,27 +7,6 @@
 #'
 #' @export fullView
 fullView <- function(SurfaceImage, FunctionalImage, views, slice, axis, statdir){
-  DIM <- dim(img)
-  nviews <- length(views)
-  if (!missing(slice)) {
-    if (axis == 1) {
-      left_sagittal <- img[1:slice, 1:DIM[2], 1:DIM[3]]
-      left_sagittal[slice[1],,] <- 0
-      right_sagittal <- img[slice:DIM[1], 1:DIM[2], 1:DIM[3]]
-      right_sagittal[,slice,] <- 0
-    } else if (axis == 2) {
-      superior_axial <- img[1:DIM[1], 1:DIM[2], 1:slice]
-      superior_axial[,, slice] <- 0
-      inferior_axial <- img[1:DIM[1], 1:DIM[2], slice:DIM[3]]
-      inferior_axial[,, slice] <- 0
-    } else if (axis == 3) {
-      posterior_coronal <- img[1:DIM[1], 1:slice, 1:DIM[3]]
-      posterior_coronal[, slice,] <- 0
-      anterior_coronal <- img[1:DIM[1], slice:DIM, 1:DIM[3]]
-      anterior_coronal[, slice,] <- 0
-    }
-  }
-  
   # create indicies of rotation--------------------------
   x90p <- rotationMatrix(pi/2, 1, 0, 0)
   x90n <- rotationMatrix(-pi/2, 1, 0, 0)
@@ -45,30 +24,6 @@ fullView <- function(SurfaceImage, FunctionalImage, views, slice, axis, statdir)
   z180n <- rotationMatrix(-pi, 0, 0, 1)
   
   # extract each viewpoint
-  if (any(views == "right_sagittal")) {
-    rgl::par3d(userMatrix = x90n %*% z90n) # left view
-    rgl::rgl.snapshot(paste(statdir, "left.png", sep = ""), fmt = "png", top = TRUE)
-    rgl::rgl.snapshot(paste(statdir, "right_sagittal.png", sep = ""), fmt = "png", top = TRUE)
-    aa <- grid::grid.raster(aa)
-    grid::grid.text("Left Sagittal", .5, .95)
-    grid::grid.text("A", .9, .5) 
-    grid::grid.text("P", .1, .5)
-    grid::grid.text("S", .5, .9)
-    grid::grid.text("I", .5, .1)
-    dev.off()
-  }
-  if (any(views == "left_sagittal")) {
-    rgl::par3d(userMatrix = x90n %*% z90p) # right view
-    rgl::rgl.snapshot(paste(statdir, "right.png", sep = ""), fmt = "png", top = TRUE)
-    rgl::rgl.snapshot(paste(statdir, "left_sagittal.png", sep = ""), fmt = "png", top = TRUE)
-    aa <- grid::grid.raster(aa)
-    grid::grid.text("Right Sagittal", .5, .95)
-    grid::grid.text("P", .9, .5)
-    grid::grid.text("A", .1, .5)
-    grid::grid.text("S", .5, .9)
-    grid::grid.text("I", .5, .1)
-    dev.off()
-  }
   if (any(views == "anterior")) {
     rgl::par3d(userMatrix = x90n) # anterior view
     rgl::rgl.snapshot(paste(statdir, "anterior.png", sep = ""), fmt = "png", top = TRUE)
