@@ -1,30 +1,23 @@
-#' @param img image to render
+#' @param ImageList image to render
 #' @param surfval intensity level that defines isosurface
-#' @param color
-#' \itemize{
-#' \item{terrain: } {}
-#' \item{heat: } {heat map}
-#' \item{topo: } {topological}
-#' \item{cm: } {}
-#' \item{gs: } {grey scale}
-#' \item{rainbow: } {}
-#' \item{brain: } {}
-#' \item{colorRamp: } {custom colorRamp function}
-#' }
+#' @param color may either be a color function (i.e. colorRamp) for each image or a single color for the entire image
 #' @param max integer. upper end of image scale
 #' @param upper fraction of upper values to use
 #' @param lower fraction of lower values to use
 #' @param alpha opacity
-#' @param smoothval
+#' @param smoothval smoothing for image
+#' @param material options are "dull", "shiny", "metal", or "default"
+#' @param draw logical.
+#' @example
+#' /dontrun{
 #' mnit <- antsImageRead(getANTsRData('mni'))
-#'
-#'
-#'
-#'
+#' myscene <- brainView(list(mnit), color = "rainbow")
+#' brain.colors <- colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"), interpolate = c("spline"), space = "Lab")
+#'}
 #' @export renderFunctional
 renderFunctional <- function(ImageList, color, max, upper = 1, lower = 1,
                              alpha = 1, slice = NULL, axis, smoothval,
-                             material = "metal") {
+                             material = "metal", draw = TRUE) {
   # set/check parameters-------------------------------------------------------
   nimg <- length(ImageList)
   if (nimg > 1) {
@@ -86,8 +79,8 @@ renderFunctional <- function(ImageList, color, max, upper = 1, lower = 1,
   for (ifunc in 1:nimg) {
     unique_vox <- length(unique(ilist[[ifunc]]))
     if (max[ifunc] == 0) {
-      if (unique_vox > 2^7)
-        max[ifunc] <- 2^7
+      if (unique_vox > 100)
+        max[ifunc] <- 100
       else
         max[ifunc] <- rainbow(nimg)[ifunc]
     }
@@ -95,34 +88,13 @@ renderFunctional <- function(ImageList, color, max, upper = 1, lower = 1,
     func <- round((ilist[[ifunc]] - min(ilist[[ifunc]])) / max(ilist[[ifunc]] - min(ilist[[ifunc]])) * (max[ifunc] - 1) + 1)
 
     # acquire colors
-    if (color[ifunc] == "terrain" | color[ifunc] == "heat" | color[ifunc] == "topo" |
-        color[ifunc] == "cm" | color[ifunc] == "brain" | color[ifunc] == "rainbow" |
-        color[ifunc] == "gs" | class(color[ifunc]) == "function") {
-      brain.colors <- colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan",
-                                         "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"),
-                                       interpolate = c("spline"), space = "Lab")
-      if (color[ifunc] == "terrain")
-        mycolors <- terrain.colors(max[ifunc], alpha = 0)
-      else if (color[ifunc]  == "heat")
-        mycolors <- heat.colors(max[ifunc], alpha = 0)
-      else if (color[ifunc]  == "topo")
-        mycolors <- topo.colors(max[ifunc], alpha = 0)
-      else if (color[ifunc]  == "cm")
-        mycolors <- cm.colors(max[ifunc], alpha = 0)
-      else if (color[ifunc] == "brain")
-        mycolors <- brain.colors(max[ifunc], alpha = 0)
-      else if (color[ifunc] == "rainbow")
-        mycolors <- rainbow(max[ifunc], alpha = 0)
-      else if (color[ifunc] == "gs")
-        mycolors <- grey.colors(max[ifunc], alpha = 0)
-      else if (class(color[ifunc]) == "function")
-        mycolors <- color(max[ifunc])
+    if (class(color[ifunc]) == "function") {
+      mycolors <- color(max[ifunc])
       # white out upper or lower percentage of image
       if (lower < 1)
         mycolors[1:floor(lower * max[ifunc])] <- "white"
       if (upper < 1)
         mycolors[ceiling(upper * max[ifunc]):max[ifunc]] <- "white"
-  
       # render surface-------------------------------------------------------------
       progress <- txtProgressBar(min = 0, max = max[ifunc], style = 3)
       level_seq <- c(1:max[ifunc])
@@ -131,7 +103,7 @@ renderFunctional <- function(ImageList, color, max, upper = 1, lower = 1,
           if (any(func == level_seq[i])) {
             tmp <- array(0, dim = dim(func))
             tmp[func == level_seq[i]] <- 1
-            brain <- misc3d::contour3d(tmp, level = 0, alpha = alpha[ifunc], color = mycolors[i], draw = FALSE, material = material)
+            brain <- misc3d::contour3d(tmp, level = 0, alpha = alpha[ifunc], smooth = FALSE, depth = 0.6, color = mycolors[i], draw = draw, material = material)
             brain$v1 <- antsTransformIndexToPhysicalPoint(ImageList[[ifunc]], brain$v1)
             brain$v2 <- antsTransformIndexToPhysicalPoint(ImageList[[ifunc]], brain$v2)
             brain$v3 <- antsTransformIndexToPhysicalPoint(ImageList[[ifunc]], brain$v3)
@@ -144,13 +116,14 @@ renderFunctional <- function(ImageList, color, max, upper = 1, lower = 1,
       # for solid color structures
       tmp <- array(0, dim = dim(func))
       tmp[func != 0] <- 1
-      brain <- misc3d::contour3d(tmp, level = 0, alpha = alpha[ifunc], color = mycolors, draw = FALSE, material = material)
+      brain <- misc3d::contour3d(tmp, level = 0, alpha = alpha[ifunc], smooth = FALSE, depth = 0.6, color = mycolors, draw = draw, material = material)
       brain$v1 <- antsTransformIndexToPhysicalPoint(ImageList[[ifunc]], brain$v1)
       brain$v2 <- antsTransformIndexToPhysicalPoint(ImageList[[ifunc]], brain$v2)
       brain$v3 <- antsTransformIndexToPhysicalPoint(ImageList[[ifunc]], brain$v3)
       scene <- lappend(scene, list(brain))
     }
   }
-  misc3d::drawScene.rgl(scene)
+  if (draw == "TRUE")
+    misc3d::drawScene.rgl(scene)
   scene
   }
