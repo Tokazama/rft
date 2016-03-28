@@ -8,20 +8,20 @@
 #' @export fullView
 fullView <- function(SurfaceImage, FunctionalImage, views, statdir =  tempfile( fileext = '.png')){
   # create indicies of rotation--------------------------
-  x90p <- rotationMatrix(pi/2, 1, 0, 0)
-  x90n <- rotationMatrix(-pi/2, 1, 0, 0)
-  x180p <- rotationMatrix(pi, 1, 0, 0)
-  x180n <- rotationMatrix(pi, 1, 0, 0)
+  x90p <- rgl::rotationMatrix(pi/2, 1, 0, 0)
+  x90n <- rgl::rotationMatrix(-pi/2, 1, 0, 0)
+  x180p <- rgl::rotationMatrix(pi, 1, 0, 0)
+  x180n <- rgl::rotationMatrix(pi, 1, 0, 0)
   
-  y90p <- rotationMatrix(pi/2, 0, 1, 0)
-  y90n <- rotationMatrix(-pi/2, 0, 1, 0)
-  y180p <- rotationMatrix(pi, 0, 1, 0)
-  y180n <- rotationMatrix(-pi, 0, 1, 0)
+  y90p <- rgl::rotationMatrix(pi/2, 0, 1, 0)
+  y90n <- rgl::rotationMatrix(-pi/2, 0, 1, 0)
+  y180p <- rgl::rotationMatrix(pi, 0, 1, 0)
+  y180n <- rgl::rotationMatrix(-pi, 0, 1, 0)
   
-  z90p <- rotationMatrix(pi/2, 0, 0, 1)
-  z90n <- rotationMatrix(-pi/2, 0, 0, 1)
-  z180p <- rotationMatrix(pi, 0, 0, 1)
-  z180n <- rotationMatrix(-pi, 0, 0, 1)
+  z90p <- rgl::rotationMatrix(pi/2, 0, 0, 1)
+  z90n <- rgl::rotationMatrix(-pi/2, 0, 0, 1)
+  z180p <- rgl::rotationMatrix(pi, 0, 0, 1)
+  z180n <- rgl::rotationMatrix(-pi, 0, 0, 1)
   
   # extract each viewpoint
   if (any(views == "anterior")) {
