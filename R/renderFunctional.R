@@ -3,14 +3,13 @@
 #' Creates functional surface images with color gradient options using misc3d.
 #' 
 #' @param ImageList image to render
-#' @param surfval intensity level that defines isosurface
-#' @param color may either be a color function (i.e. rainbow()) for each image or a single color for the entire image
-#' @param max integer. upper end of image scale
-#' @param upper fraction of upper values to use
-#' @param lower fraction of lower values to use
-#' @param alpha opacity
-#' @param smoothval smoothing for image
-#' @param material options are "dull", "shiny", "metal", or "default"
+#' @param color list of color functions (i.e. rainbow()) or a single color for each image
+#' @param max maximum number of color values for a given surface ( numeric vector for multiple images)
+#' @param upper fraction of upper values to use ( numeric vector for multiple images)
+#' @param lower fraction of lower values to use ( numeric vector for multiple images)
+#' @param alpha fractional opacity ( numeric vector for multiple images)
+#' @param smoothval smoothing for image ( numeric vector for multiple images)
+#' @param material options are "dull", "shiny", "metal", or "default" ( numeric vector for multiple images)
 #' @param draw logical.If \code{TRUE} an rgl surface image is produced
 #' @param depth 
 #' @return a 3D surface image (if \code{draw = TRUE}) and list that can be passed to drawScene.rgl()
@@ -19,6 +18,7 @@
 #' mnit <- antsImageRead(getANTsRData('mni'))
 #' myscene <- brainView(list(mnit), color = "rainbow")
 #' brainColors <- colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"), interpolate = c("spline"), space = "Lab")
+#' brain <- renderFunctional( list(mnit), color = list(rainbow), alpha = c(.8))
 #'}
 #' @export renderFunctional
 renderFunctional <- function(ImageList, color, max, upper, lower,
@@ -63,16 +63,16 @@ renderFunctional <- function(ImageList, color, max, upper, lower,
       imgar <- as.array(smoothImage(ImageList[[ifunc]], smoothval))
     unique_vox <- length(unique(imgar))
     if (max[ifunc] == 0) {
-      if (unique_vox > 100)
-        max[ifunc] <- 100
+      if (unique_vox > 32)
+        max[ifunc] <- 32
       else
         max[ifunc] <- unique_vox
     }
     # enforce voxel range
     imgar <- round((imgar - min(imgar)) / max(imgar - min(imgar)) * (max[ifunc] - 1) + 1)
     # acquire colors
-    if (class(color[ifunc]) == "function") {
-      mycolors <- color(max[ifunc])
+    if (class(color[[ifunc]]) == "function") {
+      mycolors <- color[[ifunc]](max[ifunc])
       # white out upper or lower percentage of image
       if (lower < 1)
         mycolors[1:floor(lower * max[ifunc])] <- "white"
