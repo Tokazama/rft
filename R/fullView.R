@@ -6,7 +6,7 @@
 #' fullView(tempfile( fileext='.png'))
 #'
 #' @export fullView
-fullView <- function(SurfaceImage, FunctionalImage, views, slice, axis, statdir){
+fullView <- function(SurfaceImage, FunctionalImage, views, statdir =  tempfile( fileext = '.png')){
   # create indicies of rotation--------------------------
   x90p <- rotationMatrix(pi/2, 1, 0, 0)
   x90n <- rotationMatrix(-pi/2, 1, 0, 0)
@@ -37,10 +37,10 @@ fullView <- function(SurfaceImage, FunctionalImage, views, slice, axis, statdir)
     grid::grid.text("I", .5, .1)
     dev.off()
   }
-  if (any(views == "lef")) {
+  if (any(views == "left")) {
     rgl::par3d(userMatrix = x90n %*% z90n) # left view
     rgl::rgl.snapshot(paste(statdir, "left.png", sep = ""), fmt = "png", top = TRUE)
-    aa <- png::readPNG(paste(statdir, "left.png", sep = ""))
+    bb <- png::readPNG(paste(statdir, "left.png", sep = ""))
     png(paste(statdir, "left.png", sep = ""), width = dim(aa)[2], height = dim(aa)[1])
     grid::grid.raster(aa)
     grid::grid.text("Left", .5, .95)
@@ -53,7 +53,7 @@ fullView <- function(SurfaceImage, FunctionalImage, views, slice, axis, statdir)
   if (any(views == "right")) {
     rgl::par3d(userMatrix = x90n %*% z90p) # right view
     rgl::rgl.snapshot(paste(statdir, "right.png", sep = ""), fmt = "png", top = TRUE)
-    aa <- png::readPNG(paste(statdir, "right.png", sep = ""))
+    cc <- png::readPNG(paste(statdir, "right.png", sep = ""))
     png(paste(statdir, "right.png", sep = ""), width = dim(aa)[2], height = dim(aa)[1])
     grid::grid.raster(aa)
     grid::grid.text("Right", .5, .95)
@@ -66,7 +66,7 @@ fullView <- function(SurfaceImage, FunctionalImage, views, slice, axis, statdir)
   if (any(views == "inferior")) {
     rgl::par3d(userMatrix = x180p) # inferior view
     rgl::rgl.snapshot(paste(statdir, "inferior.png", sep = ""), fmt = "png", top = TRUE)
-    aa <- png::readPNG(paste(statdir, "inferior.png", sep = ""))
+    dd <- png::readPNG(paste(statdir, "inferior.png", sep = ""))
     png(paste(statdir, "inferior.png", sep = ""), width = dim(aa)[2], height = dim(aa)[1])
     grid::grid.raster(aa)
     grid::grid.text("Inferior", .5, .95)
@@ -79,7 +79,7 @@ fullView <- function(SurfaceImage, FunctionalImage, views, slice, axis, statdir)
   if (any(views == "posterior")) {
     rgl::par3d(userMatrix = x90p %*% y180p) # posterior view
     rgl::rgl.snapshot(paste(statdir, "posterior.png", sep = ""), fmt = "png", top = TRUE)
-    aa <- png::readPNG(paste(statdir, "posterior.png", sep = ""))
+    ee <- png::readPNG(paste(statdir, "posterior.png", sep = ""))
     png(paste(statdir, "posterior.png", sep = ""), width = dim(aa)[2], height = dim(aa)[1])
     grid::grid.raster(aa)
     grid::grid.text("Posterior", .5, .95)
@@ -92,7 +92,7 @@ fullView <- function(SurfaceImage, FunctionalImage, views, slice, axis, statdir)
   if (any(views == "superior")) {
     rgl::par3d(userMatrix = z180p) # superior view
     rgl::rgl.snapshot(paste(statdir, "superior.png", sep = ""), fmt = "png", top = TRUE)
-    aa <- png::readPNG(paste(statdir, "superior.png", sep = ""))
+    ff <- png::readPNG(paste(statdir, "superior.png", sep = ""))
     png(paste(statdir, "superior.png", sep = ""), width = dim(aa)[2], height = dim(aa)[1])
     grid::grid.raster(aa)
     grid::grid.text("Superior", .5, .95)
@@ -102,34 +102,8 @@ fullView <- function(SurfaceImage, FunctionalImage, views, slice, axis, statdir)
     grid::grid.text("P", .5, .1)
     dev.off()
   }
-  # Create anterior view image
-  
-  #lim$usr[1] = left x
-  #lim$usr[2] = y bottom
-  #lim$usr[3] = right x
-  #lim$usr[4] = y top
-  
-  if (nviews == 3 | nviews
-  
-  gridView1 <- png::readPNG(paste(statdir, views[1], ".png", sep = ""))
-  for (i in 2:nviews) {
-    view_name <- paste(statdir, views[i], ".png", sep = "")
-    mypic <- png::readPNG(view_name)
-    if (i ==2 ) {
-      gridView1 <- abind::abind(gridView1, mypic, along = 1)
-    } else if (i == 3) {
-      gridView1 <- abind::abind(gridView1, mypic, along = 1)
-    } else if (i == 4) {
-      if (nviews == 4 | nviews == 8) {
-        gridView1 <- abind::abind(gridView1, mypic, along = 1)
-      } else {
-        
-      }
-    } else if (
-  
-  
   abcdef <- abind::abind(abind::abind(abind::abind(ff, dd, along = 1),
-                                      abind::abind(aa, ee, along = 1), along = 2),
+                         abind::abind(aa, ee, along = 1), along = 2),
                          abind::abind(bb, cc, along = 1), along = 2)
   
   png(paste(statdir, "FullView.png", sep = ""), width = dim(abcdef)[2], height = dim(abcdef)[1])
