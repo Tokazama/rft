@@ -1,23 +1,29 @@
+#' Render Functional Surface Image
+#' 
+#' Creates functional surface images with color gradient options using misc3d.
+#' 
 #' @param ImageList image to render
 #' @param surfval intensity level that defines isosurface
-#' @param color may either be a color function (i.e. colorRamp) for each image or a single color for the entire image
+#' @param color may either be a color function (i.e. rainbow()) for each image or a single color for the entire image
 #' @param max integer. upper end of image scale
 #' @param upper fraction of upper values to use
 #' @param lower fraction of lower values to use
 #' @param alpha opacity
 #' @param smoothval smoothing for image
 #' @param material options are "dull", "shiny", "metal", or "default"
-#' @param draw logical.
+#' @param draw logical.If \code{TRUE} an rgl surface image is produced
+#' @param depth 
+#' @return a 3D surface image (if \code{draw = TRUE}) and list that can be passed to drawScene.rgl()
 #' @example
 #' /dontrun{
 #' mnit <- antsImageRead(getANTsRData('mni'))
 #' myscene <- brainView(list(mnit), color = "rainbow")
-#' brain.colors <- colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"), interpolate = c("spline"), space = "Lab")
+#' brainColors <- colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan", "#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"), interpolate = c("spline"), space = "Lab")
 #'}
 #' @export renderFunctional
-renderFunctional <- function(ImageList, color, max, upper = 1, lower = 1,
-                             alpha = 1, slice = NULL, axis, smoothval,
-                             material = "metal", draw = TRUE) {
+renderFunctional <- function(ImageList, color, max, upper, lower,
+                             alpha, smoothval, material, depth = depth,
+                             draw = TRUE) {
   # set/check parameters-------------------------------------------------------
   nimg <- length(ImageList)
   if (nimg > 1) {
@@ -27,66 +33,43 @@ renderFunctional <- function(ImageList, color, max, upper = 1, lower = 1,
     }
   }
   if (missing(max)) {
-    if (is.null(slice))
-      max <- rep(0, nimg)
-    else
-      max <- rep(0, 2*nimg)
+    max <- rep(0, nimg)
   } else if (length(max) != nimg) {
     cat("Length of max doesn't equal number of images. Resetting max.")
-    if (is.null(slice))
-      max <- rep(0, nimg)
-    else
-      max <- rep(0, 2*nimg)
+    max <- rep(0, nimg)
   }
-  ilist <- list()
+  if (missing(depth))
+    depth <- rep(.6, nimg)
+  if (missing(upper))
+    upper <- rep(1, nimg)
+  if (missing(lower))
+    lower <- rep(1, nimg)
+  if (missing(material))
+    material <- rep("material", nimg)
+  if (missing(alpha)) {
+    if (nimg > 1)
+      alpha <- rep(.8, nimg)
+    else
+      alpha <- 1
+  }
   eps <- .Machine$double.eps
   DIM <- dim(ImageList[[1]])
-  # slice/array images---------------------------------------------------------
-  for (i in 1:nimg) {
-    if (is.null(slice)) {
-      if (missing(smoothval))
-        ilist <- lappend(ilist, as.array(ImageList[[i]]))
-      else
-        # Perona malik edge preserving smoothing
-        # iMath(img, "PeronaMalike", iterations (ex. 10), conductance (ex. .5) 
-        ilist <- lappend(ilist, as.array(smoothImage(ImageList[[i]], smoothval)))
-    } else {
-      if (missing(smoothval))
-        img <- as.array(ImageList[[i]])
-      else
-        img <- smoothImage(ImageList[[i]], smoothval)
-      if (axis == 1) {
-        ilist <- lappend(part1, list(img[1:slice, 1:DIM[2], 1:DIM[3]]))
-        ilist[[i]][slice[1],,] <- 0
-        ilist <- lappend(part1, list(img[slice:DIM[1], 1:DIM[2], 1:DIM[3]]))
-        ilist[[i]][,slice,] <- 0
-      } else if (axis == 2) {
-        ilist <- lappend(part1, list(img[1:DIM[1], 1:DIM[2], 1:slice]))
-        ilist[[i]][,, slice] <- 0
-        ilist <- lappend(part2, list(img[1:DIM[1], 1:DIM[2], slice:DIM[3]]))
-        ilist[[i]][,, slice] <- 0
-      } else if (axis == 3) {
-        ilist <- lappend(part1, list(img[1:DIM[1], 1:slice, 1:DIM[3]]))
-        ilist[[i]][, slice,] <- 0
-        ilist <- lappend(part2, list(img[1:DIM[1], slice:DIM, 1:DIM[3]]))
-        ilist[[i]][, slice,] <- 0
-      }
-    }
-  }
   scene <- list()
-  nimg <- length(ilist)
   # big for loop begins--------------------------------------------------------
   for (ifunc in 1:nimg) {
-    unique_vox <- length(unique(ilist[[ifunc]]))
+    if (missing(smoothval))
+      imgar <- as.array(ImageList[[ifunc]])
+    else
+      imgar <- as.array(smoothImage(ImageList[[ifunc]], smoothval))
+    unique_vox <- length(unique(imgar))
     if (max[ifunc] == 0) {
       if (unique_vox > 100)
         max[ifunc] <- 100
       else
-        max[ifunc] <- rainbow(nimg)[ifunc]
+        max[ifunc] <- unique_vox
     }
     # enforce voxel range
-    func <- round((ilist[[ifunc]] - min(ilist[[ifunc]])) / max(ilist[[ifunc]] - min(ilist[[ifunc]])) * (max[ifunc] - 1) + 1)
-
+    imgar <- round((imgar - min(imgar)) / max(imgar - min(imgar)) * (max[ifunc] - 1) + 1)
     # acquire colors
     if (class(color[ifunc]) == "function") {
       mycolors <- color(max[ifunc])
@@ -98,25 +81,30 @@ renderFunctional <- function(ImageList, color, max, upper = 1, lower = 1,
       # render surface-------------------------------------------------------------
       progress <- txtProgressBar(min = 0, max = max[ifunc], style = 3)
       level_seq <- c(1:max[ifunc])
-        # render each level of functional images
-        for (i in 1:max[ifunc]) {
-          if (any(func == level_seq[i])) {
-            tmp <- array(0, dim = dim(func))
-            tmp[func == level_seq[i]] <- 1
-            brain <- misc3d::contour3d(tmp, level = 0, alpha = alpha[ifunc], smooth = FALSE, depth = 0.6, color = mycolors[i], draw = draw, material = material)
-            brain$v1 <- antsTransformIndexToPhysicalPoint(ImageList[[ifunc]], brain$v1)
-            brain$v2 <- antsTransformIndexToPhysicalPoint(ImageList[[ifunc]], brain$v2)
-            brain$v3 <- antsTransformIndexToPhysicalPoint(ImageList[[ifunc]], brain$v3)
-            scene <- lappend(scene, list(brain))
-          }
-        setTxtProgressBar(progress, i)
+      # render each level of functional images
+      for (i in 1:max[ifunc]) {
+        if (any(imgar == level_seq[i])) {
+          tmp <- array(0, dim = dim(imgar))
+          tmp[imgar == level_seq[i]] <- 1
+          brain <- misc3d::contour3d(tmp, level = 0, alpha = alpha[ifunc],
+                                     smooth = FALSE, depth = depth,
+                                     color = mycolors[i], draw = FALSE,
+                                     material = material)
+          brain$v1 <- antsTransformIndexToPhysicalPoint(ImageList[[ifunc]], brain$v1)
+          brain$v2 <- antsTransformIndexToPhysicalPoint(ImageList[[ifunc]], brain$v2)
+          brain$v3 <- antsTransformIndexToPhysicalPoint(ImageList[[ifunc]], brain$v3)
+          scene <- lappend(scene, list(brain))
         }
+        setTxtProgressBar(progress, i)
+      }
       close(progress)
     } else {
       # for solid color structures
-      tmp <- array(0, dim = dim(func))
-      tmp[func != 0] <- 1
-      brain <- misc3d::contour3d(tmp, level = 0, alpha = alpha[ifunc], smooth = FALSE, depth = 0.6, color = mycolors, draw = draw, material = material)
+      imgar[imgar != 0] <- 1
+      brain <- misc3d::contour3d(imgar, level = 0, alpha = alpha[ifunc],
+                                 smooth = FALSE, depth = depth,
+                                 color = mycolors, draw = FALSE,
+                                 material = material)
       brain$v1 <- antsTransformIndexToPhysicalPoint(ImageList[[ifunc]], brain$v1)
       brain$v2 <- antsTransformIndexToPhysicalPoint(ImageList[[ifunc]], brain$v2)
       brain$v3 <- antsTransformIndexToPhysicalPoint(ImageList[[ifunc]], brain$v3)
@@ -126,4 +114,4 @@ renderFunctional <- function(ImageList, color, max, upper = 1, lower = 1,
   if (draw == "TRUE")
     misc3d::drawScene.rgl(scene)
   scene
-  }
+}
