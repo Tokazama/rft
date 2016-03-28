@@ -202,7 +202,13 @@ age <- data$AgeAtScan
 # fitting data
 fit.cv <- cv.glmnet(imat, age, alpha = .5)
 fit <- glmnet(imat, age, alpha = .5)
-betas.glm.age <- as.matrix(coef(fit, s = fit.cv$lambda.min))
-mysmooth <- estSmooth(resid(fit), df)
+betas <- as.matrix(coef(fit, s = fit.cv$lambda.min))
+betas <- betas[-1]
+res <- imat - age %*% betas
+mysmooth <- estSmooth(res, mask, 31)
 myresels <- resels(mask, mysmooth$fwhm)
 ```
+FWHM = 16.16699 16.42337 15.22776
+resels = 1.00000  30.50399 259.12680 605.08508
+
+
