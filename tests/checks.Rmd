@@ -186,20 +186,23 @@ Pp1 <-rftPval(3, 1, 0, max(timg[clusters[[1]]==1]), 1, resels, df, fieldType="T"
 I only used a handful of images for quick comparisons between SPM8 and ANTsR.
 ```
 root <-"/Users/zach8769/Desktop/"
+# data prep
 statdir <-"/Users/zach8769/Desktop/papers/RFT_vs_SCCAN/"
 ptbp <-read.csv(paste(root,"/ptbp/data/ptbp_summary_demographics.csv",sep=""),header=TRUE,sep=",")
-data <-ptbp[1:33,]
+data <-ptbp[1:33,1:13]
+sub <- data$SubID
+date <- data$ScanDate
+# make very exact mask so that cross validation doesn't include empty voxels
+mask <- antsImageRead(paste("s", sub, "_", date, ".nii", sep = "")[1])
+mask[mask !=0] <- 1
+# these images have already been smoothed in SPM to avoid disparities in how data is prepared for comparison
+imat <- imagesToMatrix(paste("s", sub, "_", date, ".nii", sep = ""), mask) 
+age <- data$AgeAtScan
+
+# fitting data
+fit.cv <- cv.glmnet(imat, age, alpha = .5)
+fit <- glmnet(imat, age, alpha = .5)
+betas.glm.age <- as.matrix(coef(fit, s = fit.cv$lambda.min))
+mysmooth <- estSmooth(resid(fit), df)
+myresels <- resels(mask, mysmooth$fwhm)
 ```
-
-Here I'm fitting a linear model but have opted out of the default settings and chosen not to estimate smoothing (FWHM and resels). I've also set \code{concise=FALSE}. This preserves the coefficients and residuals created by the model. In contrast, the default (\code{concise=TRUE}) saves RAM by eliminating these at the end of the function call. Because image analysis uses a large amount of RAM it's typically fine to throw these away once FWHM and resels are estimated and the t-statistical map is created. Default settings will typically do this automatically, although the example directly below has changed these defaults.
-```
-mycon <-matrix(nrow=2,ncol=2)
-mycon[1,] <-c(0,1)
-mycon[2,] <-c(0,-1)
-colnames(mycon) <-c("Intercept","Age")
-rownames(mycon) <-c("Age+","Age-")
-fit <-rft.lm(dm, imat, mycon, mask,findSmooth=FALSE,concise=FALSE)
-```
-
-
-
