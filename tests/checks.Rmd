@@ -211,4 +211,8 @@ myresels <- resels(mask, mysmooth$fwhm)
 FWHM = 16.16699 16.42337 15.22776
 resels = 1.00000  30.50399 259.12680 605.08508
 
-
+  mydata <- cbind(age, imat)
+  colnames(mydata)[1] <- "age"
+  mydata <- as.data.frame(mydata)
+  melt(mydata, id = c("age"))
+  fit <- glmer( value ~ (1 | age), data = mydata )
