@@ -57,10 +57,15 @@ renderFunctional <- function(ImageList, color, max, upper, lower,
   scene <- list()
   # big for loop begins--------------------------------------------------------
   for (ifunc in 1:nimg) {
+    mask_full <- antsImageClone(ImageList[[ifunc]])
+    mask_full[mask_full != 0 ] <- 1
+    mask_full <- iMath(mask_full, "FillHoles")
+    mask_erode <- iMath(mask_full, "ME", 1)
+    mask_shell <- mask_full - mask_erode
     if (missing(smoothval))
-      imgar <- as.array(ImageList[[ifunc]])
+      imgar <- as.array(ImageList[[ifunc]]) * mask_shell
     else
-      imgar <- as.array(smoothImage(ImageList[[ifunc]], smoothval))
+      imgar <- as.array(smoothImage(ImageList[[ifunc]], smoothval)) * mask_shell
     unique_vox <- length(unique(imgar))
     if (max[ifunc] == 0) {
       if (unique_vox > 32)
