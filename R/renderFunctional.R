@@ -21,7 +21,7 @@
 #' brain <- renderFunctional( list(mnit), color = list(rainbow), alpha = c(.8))
 #'}
 #' @export renderFunctional
-renderFunctional <- function(ImageList, color, max, upper, lower,
+renderFunctional <- function(ImageList, color = list(rainbow), max, upper, lower,
                              alpha, smoothval, material, depth = depth,
                              draw = TRUE) {
   # set/check parameters-------------------------------------------------------
@@ -63,9 +63,9 @@ renderFunctional <- function(ImageList, color, max, upper, lower,
     mask_erode <- iMath(mask_full, "ME", 1)
     mask_shell <- mask_full - mask_erode
     if (missing(smoothval))
-      imgar <- as.array(ImageList[[ifunc]]) * mask_shell
+      imgar <- as.array(ImageList[[ifunc]]) * as.array(mask_shell)
     else
-      imgar <- as.array(smoothImage(ImageList[[ifunc]], smoothval)) * mask_shell
+      imgar <- as.array(smoothImage(ImageList[[ifunc]], smoothval)) *as.array(mask_shell)
     unique_vox <- length(unique(imgar))
     if (max[ifunc] == 0) {
       if (unique_vox > 32)
