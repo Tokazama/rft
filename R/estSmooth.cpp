@@ -40,12 +40,9 @@ List estSmooth_test(NumericMatrix x, NumericVector m, double rdf, double nfull, 
          (point(2) < v) && (point(2) >= 0) && (m(point(2)) == 1) ) {
       vtotal = vtotal + 1;
       for ( int j = 0; j < n; j++ ) {
-        if ( (point(0) < v) && (point(0) >= 0) && (m(point(0)) == 1) )
-          dx = sr(j, indx(i)) - sr(j, point(0));
-        if ( (point(1) < v) && (point(1) >= 0) && (m(point(1)) == 1) )
-          dy = sr(j, indx(i)) - sr(j, point(1));
-        if ( (point(2) < v) && (point(2) >= 0) && (m(point(2)) == 1) )
-          dz = sr(j, indx(i)) - sr(j, point(2));
+          dx = (sr(j, indx(i)) - sr(j, point(0)));
+          dy = (sr(j, indx(i)) - sr(j, point(1)));
+          dz = (sr(j, indx(i)) - sr(j, point(2)));
         
         Vxx(i) = Vxx(i) + (dx * dx);
         Vyy(i) = Vyy(i) + (dy * dy);
@@ -62,25 +59,22 @@ List estSmooth_test(NumericMatrix x, NumericVector m, double rdf, double nfull, 
       Vxz(i) = Vxz(i) * scale;
       
       rpv_img(i) = (Vxx(i) * Vyy(i) * Vzz(i)) +
-                   (Vxy(i) * Vyz(i) * Vxz(i) * 2.0) -
-                   (Vyz(i) * Vyz(i) * Vxx(i)) -
-                   (Vxy(i) * Vxy(i) * Vzz(i)) -
-                   (Vxz(i) * Vxz(i) * Vyy(i));
+        (Vxy(i) * Vyz(i) * Vxz(i) * 2.0) -
+        (Vyz(i) * Vyz(i) * Vxx(i)) -
+        (Vxy(i) * Vxy(i) * Vzz(i)) -
+        (Vxz(i) * Vxz(i) * Vyy(i));
       if (rpv_img(i) < 0.0)
         rpv_img(i) = 0.0;
       else {
         rpv_img(i) = sqrt(rpv_img(i) / pow(4.0 * log(2.0), 3.0));
         rpv = rpv + rpv_img(i);
       }
+      fwhm(0) = fwhm(0) + sqrt(Vxx(i) / (4.0 * log(2.0)));
+      fwhm(1) = fwhm(1) + sqrt(Vyy(i) / (4.0 * log(2.0)));
+      fwhm(2) = fwhm(2) + sqrt(Vzz(i) / (4.0 * log(2.0)));
     }
   }
-  
-  for ( int i = 0; i < xv; i++ ) {
-    // estimate fwhm:
-    fwhm(0) = fwhm(0) + (sqrt(Vxx(i) / (4.0 * log(2.0))) / vtotal);
-    fwhm(1) = fwhm(1) + (sqrt(Vyy(i) / (4.0 * log(2.0))) / vtotal);
-    fwhm(2) = fwhm(2) + (sqrt(Vzz(i) / (4.0 * log(2.0))) / vtotal);
-  }
+  fwhm = fwhm / vtotal;
   rpv = pow((rpv / vtotal), (1.0 / 3.0));
   double fwhm_prod = (fwhm(0) * fwhm(1) * fwhm(2));
   fwhm(0) = rpv * (fwhm(0) / pow(fwhm_prod, (1.0 / 3.0)));
