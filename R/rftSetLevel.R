@@ -3,97 +3,60 @@
 #' @references
 #' Barnes et al., (2013) Set-level threshold-free tests on the intrinsic volumes of SPMs
 #'
-#' @export rft.setlevel
+#' @export rftSetlevel
 
-rft.setlevel <-function(x, r, sr, df, mask,fwhm,resels){
-  D <-mask@dimension
-  if (class(x)=="numeric"){
-    x <-sparseMatrix(x,nrow=1)
-  }
-  vox <-ncol(x)
-  testEC <-sparseMatrix(nrow=4,ncol=vox)
-  res2lkc <-matrix(c(1, (4*log(2))^(1/2), 4*log(2), (4*log(2))^(3/2)), ncol=1)
+rftSetLevel <- function(object, mask, k, interval = .5) {
+  p <- dim(coefficients(object))[1]
+  r <- residuals(object)
+  nsub <- dim(r)[1]
+  edf <- p - 1
+  rdf <- nsub - p
+  myfwhm <- estSmooth(residuals(object), mask, rdf)
+  myresel <- resels(mask, myfwhm$fwhm)
+  # standardize residuals and create test image--------------------------------
+  r <- r / (colSums(r) / rdf)
+  r <- rbind(colMeans(r), r)
   
-  for (i in x[x !=0]){
-    testEC[,i] <-rft.euler(x[,i],df, fieldType)*res2lkc
-  }
+  # set gradient and loop constants--------------------------------------------
+  glevels <- seq(min(r), max(r), by = interval)
+  vox2res <- 1 / prod(r)
+  k <- k * vox2res
+  iter <- length(glevels)
+  nimg <- dim(r)[1]
+  LKC <- matrix(nrow = nimg, ncol = iter)
   
-  # might be a quicker way to make testEC as follows
-  testUniques <-unique(x)
-  for (i in testUniques){
-    testEC[,x[x==testUniques[i]]] <-rft.euler(testUniques[i], df, fieldType)
-  }
-  
-  # threshold matrix
-  h <-seq(floor(min(x)),ceiling(cmax(x)),by=.2)
-  nh <-length(h)
-  trialEC <-sparseMatrix(nrow=4,ncol=nh)
-  for (i in 1:nh){
-    trialEC[,i] <-rft.euler(h[i], df, fieldType="Z")/res2lkc
-  }
-  
-  # get resel estimates based on smoothness
-  lkcres <-resels/t(res2lkc)
-  
-  # no idea what this is yet
-  ecR0 <-sparseMatrix(nrow=n+1,ncol=1)
-  alleuler2_spm <-sparseMatrix(nrow=n+1,ncol=nh)
-  
-  n <-nrow(r)
-  
-  # combine beta matrix and residuals for one loop
-  imat <-rbind(x,r)
-  for (thr in 1:nh){
-    thresh <-h[thr]
-    
-    # work around negative values (if thresh==0 then everything stays the same)
-    threshmat <-imat
-    if (thresh > 0){
-      threshmat[threshmat < thresh] <-0
-    }else if(thresh < 0){
-      threshmat[threshmat > thresh] <-0
+  # get set levels-------------------------------------------------------------
+  for (i in 1:iter) {
+    for (j in 1:nimg) {
+      if (setLevels[i, 1] > 0)
+        clust <- labelClusters(makeImage(mask, object$residuals[j,]), k, glevels[i], Inf)
+      else if (glevels[i] < 0)
+        clust <- labelClusters(makeImage(mask, object$residuals[j,]), k, -Inf, glevels[i])
+      nclus <- length(unique(clust[clust > 0]))
+      LKC[j, i] <- rftPval(mask@dimension, nclus, k, glevels[i], n, myresel, c(dfe, rdf), fieldType = "Z")$Pcor
     }
-    
-    for (i in 1:n+1){
-      img <-makeImage(mask,threshmat[i,])
-      resels <-rft.resels(img,fwhm)
-    }
-    
-    
-    
   }
   
-  # LKC based on average EC through basic regression
-   for (i in 1:n+2){
-     if (i==n+2){
-       Q <-colMeans(imat[2:n+1,]) # average of residuals
-     }else{
-       Q <-sparseMatrix(imat[i,],nrow=1)
-     }
-     
-     if (i==1){
-       Qdash <-Q-LKC0 %*% testEC
-       LKC_est <-ginv(testEC[,2:4]) %*% Qdash
-     }else{
-       Qdash <-Q-LKC0 %*% trialEC
-       LKC_est <-ginv(trialEC[,2:4]) %*% Qdash
-     }
-     
-     
-     
-   }
+  # multivariate analysis------------------------------------------------------
+  X <- rbind(c(1, 0), cbind(rep(0, n), rep(1, n)))
+  fit <- anova(lm(LKC ~ X))
+  sumfit <- summary(fit, test = "Wilks")
   
+  # empericial mean
+  meanECtest <- mean(allLKCreg) * allpju_test
+  # EC sd of original images
+  sdECtest <- sd(allLKCreg) * allpju_test
+  # EC profile based on image smoothness
+  meanECtest_resel <- LKCresel * allpju_test
   
-  # multivariate test
-  ## create design matrix
-  gX <-sparseMatrix(nrow=n+1,ncol=2)
-  gX[1,1] <-1
-  gX[2:n+1,2] <-1
+  # probably should just use generic plot.rftSetLevel for this
+  # plot results---------------------------------------------------------------
   
-  ## beta parameters 
-  ### 1st row = test/statistical field LKC estimates
-  ### 2nd row = mean of residual field LKC estimates
-  
-  
+  # title = Probability that this is a random field  p<%3.4f ',CVA.p
+  # legend
+  # xlabel = threshold
+  # ylabel = EC
+  # observed EC for s field', test_stat
+  # random filed based on regression, test_stat
+  #random field based on smoothness, test_stat
   }
-
