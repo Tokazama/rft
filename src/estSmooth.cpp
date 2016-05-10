@@ -82,7 +82,5 @@ List estSmooth_test(NumericMatrix x, NumericVector m, double rdf, double nfull, 
   fwhm(2) = rpv * (fwhm(2) / pow(fwhm_prod, (1.0 / 3.0)));
   fwhm = 1 / fwhm;
   return List::create( _["fwhm"] = fwhm,
-                       _["rpvImage"] = rpv_img,
-                       _["scale"] = scale,
-                       _["rpv"] = rpv);
+                       _["rpvImage"] = rpv_img);
 }
