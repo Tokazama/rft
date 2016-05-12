@@ -2,35 +2,75 @@
 using namespace Rcpp;
 
 // [[Rcpp::export]]
-NumericVector resels(IntegerVector m, NumericVector fwhm, IntegerVector DIM) {
-  int D = DIM.size();
+NumericVector resels(IntegerVector m, NumericVector fwhm, NumericVector DIM) {
+  double D = DIM.size();
   NumericVector resels(4);
-  int v = m.size();
+  double v = m.size();
+  double Ex = 0.0, Ey = 0.0, Ez = 0.0, Fxy = 0.0, Fyz = 0.0, Fxz = 0.0, Fxyz = 0.0;
+  double rx = 1.0 / fwhm(0);
+  double ry = 1.0 / fwhm(1);
+  double rz;
+  NumericVector point;
   
-  int xm, ym, zm, xym, yzm, xz, xyzm;
-  int Ex, Ey, Ez, Fxy, Fyz, Fxz, Fxyz;
-  double rx = 1 / fwhm(0);
-  double ry = 1 / fwhm(1);
   if (D == 2) {
-    double rz = 0;
-    for (int i = 0; i < v; i++ ) {
+    NumericVector point_indx(3);
+    point_indx(0)  = (0.0 + 1.0) + ((0.0 + 0.0) * DIM(0));  // 322
+    point_indx(1)  = (0.0 + 0.0) + ((0.0 + 1.0) * DIM(0));  // 232
+    point_indx(2)  = (0.0 + 1.0) + ((0.0 + 1.0) * DIM(0));  // 332
+    
+    rz = 0.0;
+    for (double i = 0.0; i < v; i++ ) {
       if (m(i) == 1) {
-        IntegerVector point = indx_helper(i, DIM(0), DIM(1));
-        if ( (point(1) > 0) && (point(1) < v) && (m(point(1)) == 1) )
+        point = i + point_indx;
+        if ( (point(0) > 0) && (point(0) < v) && (m(point(0)) == 1) )
           Ex++;
-        if ( (point(3) > 0) && (point(3) < v) && (m(point(3)) == 1) )
+        if ( (point(1) > 0) && (point(1) < v) && (m(point(1)) == 1) )
           Ey++;
-        if ( ((point(1) > 0) && (point(1) < v) && (m(point(1)) == 1)) &&
-             ((point(3) > 0) && (point(3) < v) && (m(point(3)) == 1)) &&
-             ((point(5) > 0) && (point(5) < v) && (m(point(5)) == 1)) )
+        if ( ((point(0) > 0) && (point(0) < v) && (m(point(0)) == 1)) &&
+             ((point(1) > 0) && (point(1) < v) && (m(point(1)) == 1)) &&
+             ((point(2) > 0) && (point(2) < v) && (m(point(2)) == 1)) )
           Fxy++;
       }
     }
-  } else if (D == 3) {
-    double rz = 1 / fwhm(2);
-    for (int i = 0; i < v; i++ ) {
+  } else {
+    rz = 1.0 / fwhm(2);
+    NumericVector point_indx(26);
+    // x:
+    point_indx(0)  = (0.0 - 1.0) + ((0.0 + 0.0) * DIM(0)) + ((0.0 + 0.0) * DIM(0) * DIM(1));  // 122
+    point_indx(1)  = (0.0 + 1.0) + ((0.0 + 0.0) * DIM(0)) + ((0.0 + 0.0) * DIM(0) * DIM(1));  // 322
+    // y:
+    point_indx(2)  = (0.0 + 0.0) + ((0.0 - 1.0) * DIM(0)) + ((0.0 + 0.0) * DIM(0) * DIM(1));  // 212
+    point_indx(3)  = (0.0 + 0.0) + ((0.0 + 1.0) * DIM(0)) + ((0.0 + 0.0) * DIM(0) * DIM(1));  // 232
+    // z:
+    point_indx(4)  = (0.0 + 0.0) + ((0.0 + 0.0) * DIM(0)) + ((0.0 - 1.0) * DIM(0) * DIM(1));  // 221
+    point_indx(5)  = (0.0 + 0.0) + ((0.0 + 0.0) * DIM(0)) + ((0.0 + 1.0) * DIM(0) * DIM(1));  // 223
+    // xy:
+    point_indx(6)  = (0.0 - 1.0) + ((0.0 - 1.0) * DIM(0)) + ((0.0 + 0.0) * DIM(0) * DIM(1));  // 112
+    point_indx(7)  = (0.0 + 1.0) + ((0.0 + 1.0) * DIM(0)) + ((0.0 + 0.0) * DIM(0) * DIM(1));  // 332
+    point_indx(8)  = (0.0 - 1.0) + ((0.0 + 1.0) * DIM(0)) + ((0.0 + 0.0) * DIM(0) * DIM(1));  // 132
+    point_indx(9)  = (0.0 + 1.0) + ((0.0 - 1.0) * DIM(0)) + ((0.0 + 0.0) * DIM(0) * DIM(1));  // 312
+    // yz:
+    point_indx(10) = (0.0 + 0.0) + ((0.0 - 1.0) * DIM(0)) + ((0.0 - 1.0) * DIM(0) * DIM(1));  // 211
+    point_indx(11) = (0.0 + 0.0) + ((0.0 + 1.0) * DIM(0)) + ((0.0 + 1.0) * DIM(0) * DIM(1));  // 233
+    point_indx(12) = (0.0 + 0.0) + ((0.0 - 1.0) * DIM(0)) + ((0.0 + 1.0) * DIM(0) * DIM(1));  // 213
+    point_indx(13) = (0.0 + 0.0) + ((0.0 + 1.0) * DIM(0)) + ((0.0 - 1.0) * DIM(0) * DIM(1));  // 231
+    // xz:
+    point_indx(14) = (0.0 - 1.0) + ((0.0 + 0.0) * DIM(0)) + ((0.0 - 1.0) * DIM(0) * DIM(1));  // 121
+    point_indx(15) = (0.0 + 1.0) + ((0.0 + 0.0) * DIM(0)) + ((0.0 + 1.0) * DIM(0) * DIM(1));  // 323
+    point_indx(16) = (0.0 - 1.0) + ((0.0 + 0.0) * DIM(0)) + ((0.0 + 1.0) * DIM(0) * DIM(1));  // 123
+    point_indx(17) = (0.0 + 1.0) + ((0.0 + 0.0) * DIM(0)) + ((0.0 - 1.0) * DIM(0) * DIM(1));  // 321
+    // xyz:
+    point_indx(18) = (0.0 - 1.0) + ((0.0 - 1.0) * DIM(0)) + ((0.0 - 1.0) * DIM(0) * DIM(1));  // 111
+    point_indx(19) = (0.0 + 1.0) + ((0.0 + 1.0) * DIM(0)) + ((0.0 + 1.0) * DIM(0) * DIM(1));  // 333
+    point_indx(20) = (0.0 - 1.0) + ((0.0 + 1.0) * DIM(0)) + ((0.0 + 1.0) * DIM(0) * DIM(1));  // 133
+    point_indx(21) = (0.0 + 1.0) + ((0.0 - 1.0) * DIM(0)) + ((0.0 - 1.0) * DIM(0) * DIM(1));  // 311
+    point_indx(22) = (0.0 - 1.0) + ((0.0 - 1.0) * DIM(0)) + ((0.0 + 1.0) * DIM(0) * DIM(1));  // 113
+    point_indx(23) = (0.0 + 1.0) + ((0.0 + 1.0) * DIM(0)) + ((0.0 - 1.0) * DIM(0) * DIM(1));  // 331
+    point_indx(24) = (0.0 - 1.0) + ((0.0 + 1.0) * DIM(0)) + ((0.0 - 1.0) * DIM(0) * DIM(1));  // 131
+    point_indx(25) = (0.0 + 1.0) + ((0.0 - 1.0) * DIM(0)) + ((0.0 + 1.0) * DIM(0) * DIM(1));  // 313
+    for (double i = 0; i < v; i++ ) {
       if (m(i) == 1) {
-        IntegerVector point = indx_helper(i, DIM(0), DIM(1), DIM(2));
+        point = i + point_indx;
         if ( (point(1) > 0) && (point(1) < v) && (m(point(1)) == 1) )
           Ex++;
         if ( (point(3) > 0) && (point(3) < v) && (m(point(3)) == 1) )
