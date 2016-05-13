@@ -11,7 +11,7 @@ NumericVector resels(IntegerVector m, NumericVector fwhm, NumericVector DIM) {
   double ry = 1.0 / fwhm(1);
   double rz;
   NumericVector point;
-  
+  double vtotal = 0.0;
   if (D == 2) {
     NumericVector point_indx(3);
     point_indx(0)  = (0.0 + 1.0) + ((0.0 + 0.0) * DIM(0));  // 322
@@ -21,6 +21,7 @@ NumericVector resels(IntegerVector m, NumericVector fwhm, NumericVector DIM) {
     rz = 0.0;
     for (double i = 0.0; i < v; i++ ) {
       if (m(i) == 1) {
+        vtotal++;
         point = i + point_indx;
         if ( (point(0) > 0) && (point(0) < v) && (m(point(0)) == 1) )
           Ex++;
@@ -70,6 +71,7 @@ NumericVector resels(IntegerVector m, NumericVector fwhm, NumericVector DIM) {
     point_indx(25) = (0.0 + 1.0) + ((0.0 - 1.0) * DIM(0)) + ((0.0 + 1.0) * DIM(0) * DIM(1));  // 313
     for (double i = 0; i < v; i++ ) {
       if (m(i) == 1) {
+        vtotal++;
         point = i + point_indx;
         if ( (point(1) > 0) && (point(1) < v) && (m(point(1)) == 1) )
           Ex++;
@@ -100,7 +102,7 @@ NumericVector resels(IntegerVector m, NumericVector fwhm, NumericVector DIM) {
       }
     }
   }
-  resels(0) = v - (Ex +Ey + Ez) + (Fyz + Fxz + Fxy) - Fxyz;
+  resels(0) = vtotal - (Ex +Ey + Ez) + (Fyz + Fxz + Fxy) - Fxyz;
   resels(1) = (Ex - Fxy - Fxz + Fxyz) * rx + (Ey - Fxy - Fyz + Fxyz) * ry + (Ez - Fxz - Fyz + Fxyz) * rz;
   resels(2) = (Fxy - Fxyz) * rx * ry + (Fxz - Fxyz) * rx * rz + (Fyz - Fxyz) * ry * rz;
   resels(3) = Fxyz * rx * ry * rz;
