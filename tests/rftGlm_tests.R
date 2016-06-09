@@ -16,14 +16,16 @@ remlparams <- rftREML(rftmod$varParams$Cy, X, rftmod$varParams$V)
 # update
 fm2 <- update(fm1, V = remlparams$V)
 
-# residuals
-
 
 # rftGlm
+fm3 <- rftGlm(imat, ~AgeAtScan, mask, data = ptbp, intercept = TRUE, conmat,
+              statdir = '/Users/zach8769/Desktop/', verbose = TRUE)
 
 # summary
+sumfm3 <- summary(fm3)
 
 # anova
+aovfm3 <- anova(fm3)
 
 # predict
 
