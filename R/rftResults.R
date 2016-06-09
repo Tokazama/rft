@@ -15,27 +15,28 @@
 #' }
 #' @param rpvImage resels per voxel image
 #' @param k minimum desired cluster size (default = 1)
-#' @param threshType a numeric value to threshTypeold the statistical field or a character of the following methods:
+#' @param threshType a numeric value to threshold the statistical field or a character of the following methods:
 #' \itemize{
-#'	\item{cRFT: } {computes a threshTypeold per expected cluster level probability }
-#'	\item{pRFT: } {uses the mask and pval calculates the minimum statistical threshTypeold}
-#'	\item{cFDR: } {uses an uncorrected threshTypeold at the alpha level and then computes and FDR threshTypeold based on cluster maxima}
-#'	\item{pFDR: } {computes the fdr threshTypeold for the entire field of voxels}
+#'	\item{cRFT: } {computes a threshold per expected cluster level probability }
+#'	\item{pRFT: } {uses the mask and pval calculates the minimum statistical threshold}
+#'	\item{cFDR: } {uses an uncorrected threshold at the alpha level and then computes and FDR threshold based on cluster maxima}
+#'	\item{pFDR: } {computes the fdr threshold for the entire field of voxels}
 #' }
-#' @param pval the p-value for estimating the threshTypeold (default = .05)
-#' @param pp the primary (initial) p-value for threshTypeolding (only used for FDR methods; default = .001)
+#' @param pval the p-value for estimating the threshold (default = .05)
+#' @param pp the primary (initial) p-value for thresholding (only used for FDR methods; default = .001)
 #' @param n number of images in conjunction
 #' @param statdir directory where output is saved (if not specified images are not saved)
 #' @param verbose enables verbose output
 #'
-#' @return Outputs a statistical value to be used for threshTypeold a statistical field image
-#' \itemize{
-#' \item{set.stats: } {set-level statistics and number of clusters}
-#' \item{cluster.stats: } {cluster-level statistics and descriptors}
-#' \item{peak.stats: } {peak-level statistics and descriptor"}
-#' \item{labeled.clusters: } {image of labeled clusters}
-#' \item{threshold: } {the threshold used}
-#' }
+#' @return
+#' \item{set.level} {set-level statistics and number of clusters}
+#' \item{cluster.level} {cluster-level statistics and descriptors}
+#' \item{peak.level} {peak-level statistics and descriptor"}
+#' \item{clusters} {number of clusters}
+#' \item{threshold} {the threshold used}
+#' \item{k} {}
+#' \item{clusterImage}{image of labeled clusters}
+#' 
 #' 
 #' @details 
 #' 
@@ -138,7 +139,7 @@ rftResults <- function(x, resels, fwhm, df, fieldType,
   # extract clusters at threshold
   clust <- labelClusters(x, k, u, Inf)
   if (!is.null(statdir))
-    antsImageWrite(clust, filename = paste(statdir, "clusterImage.nii.gz", sep = ""))
+    antsImageWrite(clust, filename = file.path(statdir, "clusterImage.nii.gz"))
   labs <- unique(clust[clust > 0])
   nclus <- length(labs) # number of clusters
   cnames <- paste("Cluster", 1:nclus, sep = "") # create name for each cluster
@@ -185,7 +186,7 @@ rftResults <- function(x, resels, fwhm, df, fieldType,
   PeakStats[, 4] <- sapply(labs, function(tmp)(max(x[clust == tmp]))) # max value for each cluster
   PeakStats[, 1] <- sapply(PeakStats[, 4], function(tmp)(rftPval(D, 1, 0, tmp, n, resels, df, fieldType)$Pcor)) # fwe p-value (peak)
   PeakStats[, 2] <- sapply(PeakStats[, 4], function(tmp)(p.adjust(rftPval(D, 1, 0, tmp, n, resels, df, fieldType)$Ec / Ez, "BH", n = nclus))) # FDR (peak)
-  PeakStats[, 3] <- sapply(PeakStats[, 4], function(tmp)(
+  PeakStats[, 3] <- sapply(PeakStats[, 4], function(tmp)(qt(tmp, df[2])
     if (fieldType == "Z")
       1 - pnorm(tmp)
     else if (fieldType == "T")
@@ -200,14 +201,14 @@ rftResults <- function(x, resels, fwhm, df, fieldType,
   results <- list(set.level = Pset,
                   cluster.level = ClusterStats,
                   peak.level = PeakStats,
-                  labeled.clusters = nclus,
+                  clusters = nclus,
                   threshold = u,
                   k = k,
                   clusterImage = clust)
   
   if (!is.null(statdir)) {
-    write.csv(ClusterStats, file = paste(statdir, "ClusterStats", sep = ""))
-    write.csv(PeakStats, file = paste(statdir, "PeakStats", sep = ""))
+    write.csv(ClusterStats, file = file.path(statdir, "ClusterStats"))
+    write.csv(PeakStats, file = file.path(statdir, "PeakStats"))
   }
   results
 }
