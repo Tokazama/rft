@@ -8,14 +8,16 @@ X <- model.matrix(~ptbp$AgeAtScan)
 conmat <- matrix(c(0, 1, 0, -1), 2, 2, byrow = TRUE)
 
 # rftModel
-fm1 <- rftModel(imat, X, mask, contrastMatrix, diag(n), findVar = TRUE, findResels = FALSE, "rftGlm")
+fm1 <- rftModel(X, imat, mask, conmat)
 
+# rftREML
+remlparams <- rftREML(rftmod$varParams$Cy, X, rftmod$varParams$V)
 
 # update
+fm2 <- update(fm1, V = remlparams$V)
 
 # residuals
 
-# rftREML
 
 # rftGlm
 
