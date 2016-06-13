@@ -24,7 +24,7 @@
 # 
 # need to figure out what spm_svd does exactly
 
-rftREML <- function(YY, X, Q, N, D, t, hE, hP) {
+rftREML <- function(YY, X, Q, N, D, t, hE, hP, maxIter) {
   if (missing(N))
     N <- 1
   if (missing(D))
@@ -35,46 +35,50 @@ rftREML <- function(YY, X, Q, N, D, t, hE, hP) {
     hE <- 0
   if (missing(hP))
     hP <- 1e-16
-  niter <- 32 # default number of iterations (K in SPM)
+  
   # ortho-normalise X----------------------------------------------------------
   if (missing(X))
     stop("Please specify X")
   else
     X <- svd(X)$u
+  if (!is.list(Q))
+    Q <- list(Q)
+  
+  # dimensions-----------------------------------------------------------------
+  n <- nrow(Q[[1]])
+  m <- length(Q)
   
   # catch NaNs-----------------------------------------------------------------
   W <- Q
-  q <- is.finite(YY)
-  YY <- YY(q, q)
-  for (i in 1:m)
-    Q[[i]] <- Q[[i]][q, q]
-  
-  # dimensions-----------------------------------------------------------------
-  n <- length(Q[[1]])
-  m <- length(Q)
+  #q <- is.finite(YY)
+  #YY <- YY[q, q]
+  #for (i in 1:m)
+  #  Q[[i]] <- Q[[i]][q, q]
   
   # initialise h and specify hyperpriors---------------------------------------
-  h <- rep(0, m)
+  h <- matrix(0, m, 1)
   for (i in 1:m)
-    h[i] <- sum(diag(Q[[i]]))
+    h[i, 1] <- sum(diag(Q[[i]]))
   hE <- matrix(0, m, 1) + hE
   hP <- matrix(0, m, m) * hP
   dF <- Inf
-  dh <- rep(0, m)
-  dFdh <- rep(0, m)
+  dh <- matrix(0, m, 1)
+  dFdh <- matrix(0, m, 1)
   dFdhh <- matrix(0, m, m)
+  PQ <- list()
   
   # ReML (EM/VB)---------------------------------------------------------------
-  for (it in 1:niter) {
+  for (it in 1:maxIter) {
     # compute current estimate of covariance-------------------------------------
-    C <- matrix(0, n, n)
+    #C <- matrix(0, n, n)
+    C <- 0
     for (i in 1:m)
       C <- C + Q[[i]] * h[i]
     
     # positive [semi]-definite check---------------------------------------------
     # might be able to use nlme::pdMat()
     for (i in 1:D) {
-      if (min(eigen(C)) < 0) {
+      if (min(eigen(C)$values) < 0) {
         t <- t - 1
         h <- h - dh
         dh <- .rft_dx(dFdhh, dFdh, t)
@@ -88,10 +92,11 @@ rftREML <- function(YY, X, Q, N, D, t, hE, hP) {
     # E-step: conditional covariance cov(B|y) {Cq}-------------------------------
     iC <- solve(C)
     iCX <- iC %*% X
-    if (all.equal(X, 0))
-      Cq <- solve(crossprod(X, iCX))
-    else
-      Cq <- 0
+    Cq <- solve(crossprod(X, iCX))
+    # if (!any(X != 0))
+    #   Cq <- solve(crossprod(X, iCX))
+    # else
+    #   Cq <- 0
     
     # M-step: ReML estimate of hyperparameters-----------------------------------
     P <- iC - iCX %*% Cq %*% t(iCX) # P = iV - iV %*% X %*% solve(crossprod(X, iV) %*% X) %*% crossprod(X, iV)
@@ -100,21 +105,21 @@ rftREML <- function(YY, X, Q, N, D, t, hE, hP) {
     # dF/dh
     for (i in 1:m) {
       PQ[[i]] <- P %*% Q[[i]]
-      dFdh[i, 1] <- -sum(crossprod(PQ[[i]], U)) * N / 2
+      dFdh[i] <- -sum(diag(PQ[[i]] %*% U)) * N / 2
     }
     
     # expected curvature E{dF / dhhh}
     for (i in 1:m) {
       for (j in 1:m) {
         # dF/dhh
-        dFdhh[i, j] <- sum(crossprod(PQ[[i]], PQ[[j]])) * N / 2
+        dFdhh[i, j] <- -sum(diag(PQ[[i]] %*% PQ[[j]])) * N / 2
         dFdhh[j, i] <- dFdhh[i, j]
       }
     }
     
     # add hyperpriors
     e <- h - hE
-    dFdh <- dFdh - hP * e
+    dFdh <- dFdh - hP %*% e
     dFdhh <- dFdhh - hP
     
     # fisher scoring: update dh = -inv(ddF/dhh) * dF / dh
@@ -141,7 +146,7 @@ rftREML <- function(YY, X, Q, N, D, t, hE, hP) {
   
   # check V is positive semi-definite
   if (!D) {
-    if (min(eigen(V)) < 0)
+    if (min(eigen(V)$values) < 0)
       rftREML(YY, X, Q, N, 1, 2, hE[1], hP[1])
   }
   
@@ -151,23 +156,25 @@ rftREML <- function(YY, X, Q, N, D, t, hE, hP) {
 
   if (nargs() > 3) {
     # tr(hP * inv(Ph)) - nh + tr...
-    Ft <- sum(diag(hP %*% inv(Ph))) - length(Ph) - length(Cq)
+    Ft <- sum(diag(hP %*% MASS::ginv(Ph))) - length(Ph) - length(Cq)
     
     # complexity 
     Fc <- Ft / 2 +
           crossprod(e, hP) %*% e/2 +
-          determinant(Ph %*% inv(hP), logarithm = TRUE) / 2
+          determinant(Ph %*% MASS::ginv(hP), logarithm = TRUE)$modulus / 2
     
     # accuracy - lnp(Y|h)
     Fa = Ft / 2 -
          sum(diag(C * P * YY * P)) / 2 -
          N * n * log(2 * pi) / 2 -
-         N * determinant(C, logarithm = TRUE) / 2
+         N * determinant(C, logarithm = TRUE)$modulus / 2
     
     # free-energy
     FE <- Fa - Fc
+    return(list(V = V, h = h, Ph = Ph, FE = FE, Fa = Fa, Fc = Fc))
+  } else {
+    return(list(V = V, h = h, Ph = Ph))
   }
-  list(V = V, h = h, Ph = Ph, FE = FE, Fa = Fa, Fc = Fc)
 }
 
 #' @param dfdx = df/dx
@@ -198,7 +205,7 @@ rftREML <- function(YY, X, Q, N, D, t, hE, hP) {
     # augment Jacobian and take matrix exponential
     Jx <- rbind(0, cbind(t %*% f, t %*% dfdx))
     dx <- Matrix::expm(Jx) %*% q
-    dx <- as.arry(dx[2:nrow(dx), ], dim = dim(f))
+    dx <- dx[2:nrow(dx), ]
   }
   dx
 }
