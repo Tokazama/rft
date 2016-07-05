@@ -1,29 +1,23 @@
-#' 
-#' 
-#' @param YY sample covariance matrix tcrossprod(Y) {Y = image matrix}
-#' @param X design matrix
-#' @param Q covariance components
-#' @param N number of samples (default 1)
-#' @param D flage for positive-definite scheme (default 0)
-#' @param t regularisation (default 4)
-#' @param hE hyperprior (default 0)
-#' @param hP hyperprecision (default 1e-16)
-#' 
-#' @return
-#' \item{V} {m x m estimated errors = h[1]*Q[[1]] + h[2]*Q[[2]] + ...}
-#' \item{h} {q x 1 ReML hyperparameters}
-#' \item{Ph} {q x q conditional precision of h}
-#' \item{F} {free energy F = log evidence = p(Y|X,Q) = ReML objective}
-#' \item{Fa} {accuracy}
-#' \item{Fc} {complexity (F = Fa - Fc)}
-#' 
-#' 
-#' 
-#' @export rftREML
-# 
-# 
-# need to figure out what spm_svd does exactly
-
+## @param YY sample covariance matrix tcrossprod(Y) {Y = image matrix}
+## @param X design matrix
+## @param Q covariance components
+## @param N number of samples (default 1)
+## @param D flage for positive-definite scheme (default 0)
+## @param t regularisation (default 4)
+## @param hE hyperprior (default 0)
+## @param hP hyperprecision (default 1e-16)
+## 
+## @return
+## \item{V} {m x m estimated errors = h[1]*Q[[1]] + h[2]*Q[[2]] + ...}
+## \item{h} {q x 1 ReML hyperparameters}
+## \item{Ph} {q x q conditional precision of h}
+## \item{F} {free energy F = log evidence = p(Y|X,Q) = ReML objective}
+## \item{Fa} {accuracy}
+## \item{Fc} {complexity (F = Fa - Fc)}
+## 
+## 
+##
+## need to figure out what spm_svd does exactly
 rftREML <- function(YY, X, Q, N, D, t, hE, hP, maxIter) {
   if (missing(N))
     N <- 1
@@ -81,7 +75,7 @@ rftREML <- function(YY, X, Q, N, D, t, hE, hP, maxIter) {
       if (min(eigen(C)$values) < 0) {
         t <- t - 1
         h <- h - dh
-        dh <- .rft_dx(dFdhh, dFdh, t)
+        dh <- dx(dFdhh, dFdh, t)
         h <- h + dh
         C <- matrix(0, n, n)
         for (j in 1:m)
@@ -123,7 +117,7 @@ rftREML <- function(YY, X, Q, N, D, t, hE, hP, maxIter) {
     dFdhh <- dFdhh - hP
     
     # fisher scoring: update dh = -inv(ddF/dhh) * dF / dh
-    dh <- .rft_dx(dFdhh, dFdh, {t})
+    dh <- dx(dFdhh, dFdh, {t})
     h <- h + dh
     
     # predicted change in F - increase regularisation if increasing
@@ -153,21 +147,21 @@ rftREML <- function(YY, X, Q, N, D, t, hE, hP, maxIter) {
   # log evidence = ln p(y|X, Q) = ReML objective = F = trace(R' *iC * R * YY) / 2 ...
   Ph <- - dFdhh
   
-
-  if (nargs() > 3) {
+  
+  if (nargs() > 4) {
     # tr(hP * inv(Ph)) - nh + tr...
     Ft <- sum(diag(hP %*% MASS::ginv(Ph))) - length(Ph) - length(Cq)
     
     # complexity 
     Fc <- Ft / 2 +
-          crossprod(e, hP) %*% e/2 +
-          determinant(Ph %*% MASS::ginv(hP), logarithm = TRUE)$modulus / 2
+      crossprod(e, hP) %*% e/2 +
+      determinant(Ph %*% MASS::ginv(hP), logarithm = TRUE)$modulus / 2
     
     # accuracy - lnp(Y|h)
     Fa = Ft / 2 -
-         sum(diag(C * P * YY * P)) / 2 -
-         N * n * log(2 * pi) / 2 -
-         N * determinant(C, logarithm = TRUE)$modulus / 2
+      sum(diag(C * P * YY * P)) / 2 -
+      N * n * log(2 * pi) / 2 -
+      N * determinant(C, logarithm = TRUE)$modulus / 2
     
     # free-energy
     FE <- Fa - Fc
@@ -175,37 +169,4 @@ rftREML <- function(YY, X, Q, N, D, t, hE, hP, maxIter) {
   } else {
     return(list(V = V, h = h, Ph = Ph))
   }
-}
-
-#' @param dfdx = df/dx
-#' @param f = dx/dt
-#' @param t = integration time: (default t = Inf);
-#' if t is a cell (i.e., {t}) then t is set to:
-#' exp(t - log(diag(-dfdx))
-#' 
-#' 
-#'
-#' 
-.rft_dx <- function(dfdx, f, t = Inf) {
-  # t is a regulariser
-  if (length(t) == 1)
-    t <- exp(t - log(diag(-dfdx)))
-  
-  if (min(t) > exp(16)) {
-    dx = - MASS::ginv(dfdx) %*% as.matrix(f, ncol = 1)
-    dx =  as.array(dx, dim = dim(f));
-  } else {
-    # ensure t is a scalar or matrix
-    if (length(t) > 1)
-      t = diag(t)
-    
-    q <- matrix(0, nrow = max(dim(dfdx)) + 1, ncol = 1)
-    q[1, 1] <- 1
-    
-    # augment Jacobian and take matrix exponential
-    Jx <- rbind(0, cbind(t %*% f, t %*% dfdx))
-    dx <- Matrix::expm(Jx) %*% q
-    dx <- dx[2:nrow(dx), ]
-  }
-  dx
 }
