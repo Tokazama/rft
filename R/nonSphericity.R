@@ -1,3 +1,18 @@
+## return error covariance constraints for basic ANOVA designs
+##
+## required fields:
+## xVi.I    - n x 4 matrix of factor level indicators
+##              I(n,i) is the level of factor i for observation n
+## xVi.var  - 1 x 4 vector of flags
+##              var(i) = 1; different variance among levels of factor i
+## xVi.dep  - 1 x 4 vector of flags
+##              dep(i) = 1;      dependencies within levels of factor i
+##
+## Output:
+## xVi.Vi   -  cell of covariance components
+## or
+## xVi.V    -  speye(n,n)
+##
 nonSphericity <- function(xVi) {
   # create covariance components Q{:}
   n <- nrow(xVi$I)
