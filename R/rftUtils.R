@@ -47,8 +47,8 @@ eachinspp = function(x, c, tol) {
     return(all(abs(util_opp(x) %*% c - c) <= tol))
 }
 
+'test wether two spaces are the same'
 util_equal = function(x, X2) {
-  'test wether two spaces are the same'
   x2 <- util_set(X2)
   maxtol <- max(x$tol, x2$tol)
   return(all(util_isinsp, x, X2, maxtol) && all(util_isinsp(x2, x$X, maxtol))
@@ -67,36 +67,34 @@ util_isset <- function(x) {
       is.null(x$toll) | is.null(x$rk))
 }
 
+'orthonormal partitioning implied by F-contrast'
 util_c2tsp = function(x, c, oneout = FALSE, plus = FALSE) {
-  'orthonormal partitioning implied by F-contrast'
-  if (missing(x))
-    x <- KWX
   if (oneout) {
     if (is.list(c) && is.null(c)) {
       if (plus)
-        out <- .self$getCUKXt(x, c, check = FALSE)
+        out <- util_cukxp(x, c, check = FALSE)
       else
         out <- x$X %*% c
     } else if (!is.list(c)) {
-      if (plust)
-        out <- .self$getCUKXp(x, c, check = TRUE)
+      if (plus)
+        out <- util_cukxp(x, c, check = TRUE)
       else
-        out <- .self$getXp(x, c, check = TRUE)
+        out <- util_xp(x, c, check = TRUE)
     }
   } else {
     if (is.list(c) && is.null(c)) {
       if (plus)
-        out <- c(.self$getCUKXt(x, c), .self$getCUKX(x, .self$getR(util_set(c))))
+        out <- c(util_cukxp(x, c), util_cukx(x, util_r(util_set(c))))
       else {
-        out <- .self$getXp(x, c, check = FALSE)
+        out <- util_xp(x, c, check = FALSE)
         out[out < x$tol] <- 0
-        out <- c(out, x$X %*% .self$getR(.self$setKWX(c)))
+        out <- c(out, x$X %*% util_r(util_set(c)))
       }
     } else if (!is.list(c)) {
       if (plust) {
-        out <- .self$getCUKX(x, c)
+        out <- util_cukx(x, c)
         out[out < x$tol] <- 0
-        out2 <- .self$getCUKX(x)
+        out2 <- util_cukxp(x)
         out2[out2 < x$tol] <- 0
         out <- c(out, out2)
       } else
@@ -297,7 +295,7 @@ util_pinvXt = function(x, y, check = FALSE) {
 }
 
 'pseudo-inverse of crossprod(X)'
-util_pinvXtX = function(x, y, check = FALSE) {
+util_pinvxpx = function(x, y, check = FALSE) {
   if (x$rk > 0)
     out <- x$v[, seq_len(x$rk)] %*%
       tcrossprod(diag(rep(1, x$rk) / x$d[seq_len(x$rk)]), x$v[, seq_len(x$rk)])
@@ -311,7 +309,7 @@ util_pinvXtX = function(x, y, check = FALSE) {
 }
 
 'pseudo-inverse of tcrossprod(X)'
-util_-invXXt <- function(x, y, check = FALSE) {
+util_pinvxxp <- function(x, y, check = FALSE) {
   if (x$rk > 0) {
     out <- x$u[, seq_len(x$rk)] %*%
       tcrossprod(diag(x$d[seq_len(x$rk)]^(-2)),
@@ -348,7 +346,7 @@ util_power <- function(x, n, y, check = FALSE) {
 }
 
 'computes v * (diag(x^n)) * t(v)'
-util_powert <- function(x, n, y, check = FALSE) {
+util_powerp <- function(x, n, y, check = FALSE) {
   if (missing(n))
     n <- 1
   if (x$rk > 0)
@@ -365,7 +363,7 @@ util_powert <- function(x, n, y, check = FALSE) {
 
 'residual projecting matrix'
 util_r <- function(x) {
-  diag(ncol(x$X)) - .self$getOP(x)
+  diag(ncol(x$X)) - util_op(x)
 }
 
 'computation of crossprod(X)'
@@ -398,40 +396,6 @@ util_xxp <- function(x, y, check = FALSE) {
   if (check)
     out[abs(out) < x$tol] <- 0
   return(out)
-}
-
-'set contrast fields'
-set_con <- function(x, name, fieldType, c, iX0 = FALSE) {
-  if (missing(x))
-    x <- KWX
-  out <- list()
-  out$c <- matrix(c, ncol = 1)
-  out$name <- name
-  out$fieldType <- fieldType
-  if (!iX0) {
-    out$iX0 <- "c"
-    if (length(c) == 0) {
-      tmp <- .self$C2Tsp(x, c(), plus = TRUE)
-    } else {
-      tmp <- .self$C2Tsp(x, c, plus = TRUE)
-    }
-    out$X1$uKX1 <- tmp[[1]]
-    out$X0$uKX0 <- tmp[[2]]
-  } else {
-    iX0 <- c
-    iX0 <- .self$getiX0check(iX0, sL)
-    out$iX0 <- iX0
-    out$X0$uKX0 <- tcrossprod(.self$getOX(x), .self$getXi(x, iX0))
-    if (length(iX0) == 0) {
-      out$c <- .self$getXtX(x)
-      out$X10$uKX1 <- .self$getCUKX(x)
-    } else {
-      out$c <- .self$geti02C(x, iX0)
-      out$X1$uKX1 <- .self$getC2Tsp(x, out$c, plus = TRUE)
-    }
-  }
-  
-  C <<- lappend(C, out)
 }
 
 'traces for effective df calculation. If oneout = TRUE then returns trRV.'
@@ -621,7 +585,7 @@ util_X0_2_c <- function(X0, x) {
 
 ## from sp_FcUtil
 ## fcortho
-util_X1 = function(Fc, x) {
+util_X1 <- function(Fc, x) {
   if (!is.null(Fc$X0))
     util_ox(x) %*% Fc$X1o$ukX1o
   else
@@ -635,11 +599,11 @@ util_X0 <- function(Fc, x) {
     Fc$X0
 }
 
-util_isnull = function(Fc, x) {
+util_isnull <- function(Fc, x) {
   any(colSums(abs(util_opp(x, Fc$c))) > 0)
 }
 
-util_is_T = function(x, c) {
+util_is_T <- function(x, c) {
   boul <- 1
   if (!util_isinspp, x, c)
     c <- util_opp(x, c, check)
@@ -648,11 +612,21 @@ util_is_T = function(x, c) {
   return(boul)
 }
 
-util_FconFields = function() {
-  c("name", "fieldType", "c", "X0", "iX0", "X1", "idf", "Vcon", "Vspm")
+util_fconFields <- function() {
+  out <- list()
+  out$name <- c()
+  out$fieldType <- c()
+  out$c <- c()
+  out$X0 <- c()
+  out$X1 <- c()
+  out$iX0 <- c()
+  out$idf <- c()
+  out$Vcon <- c()
+  out$Vspm <- c()
+  return(out)
 }
 
-util_minFc = function() {
+util_minFc <- function() {
   minFc <- list()
   minFC$name <- c()
   minFC$fieldType <- c()
@@ -661,7 +635,7 @@ util_minFc = function() {
   minFC$X1o <- c()
 }
 
-util_IsFcon = function(Fc) {
+util_isfcon <- function(Fc) {
   b <- 1
   minnames <- fieldnames(sf_MinFcFields);
   FCnames <- fieldnames(Fc);
@@ -672,11 +646,37 @@ util_IsFcon = function(Fc) {
   }
 }
 
-util_IsSet = function(Fc) {
+util_fconedf <- function(Fc, x, V) {
+  if (!util_isspc(x))
+    x <- util_set(x)
+  if (util_isemptyX1(Fc)) {
+    trmv <- util_trMV(util_X1(Fc, x), V)
+  } else {
+    trmv <- c(0, 0)
+  }
+  
+  if (!out[2]) {
+    edf_tsp <- 0
+    warning('edf_tsp = 0')
+  } else {
+    edf_tsp <- (trmv[1]^2)/trmv[2]
+  }
+  
+  trrv <- util_trRV(x, V)
+  if (!trrv[2]) {
+    edf_Xsp <- 0
+    warnings('edf_Xsp = 0')
+  } else {
+    edf_Xsp <- (trrv[1]^2) / trrv[2]
+  }
+  return(c(edf_tsp, edf_Xsp))
+}
+
+util_IsSet <- function(Fc) {
   !util_isempty_X0(Fc) | !util_isempty_X1o(Fc)
 }
 
-util_isemptyX1 = function(Fc) {
+util_isemptyX1 <- function(Fc) {
   if (!is.null(Fc$X0)) {
     b <- is.null(Fc$X1o$ukX1o);
     if b != is.null(Fc$c), 
@@ -688,52 +688,92 @@ util_isemptyX1 = function(Fc) {
   }
 }
 
-util_X1 = function(Fc, sX) {
+util_X1 <- function(Fc, sX) {
   if (!is.null(Fc$X0))
     util_ox(sX) %*% Fc$X1o$uKX1
   else
     Fc$X1o;
 }
 
-util_X0 = function(Fc, sX) {
+util_X0 <- function(Fc, sX) {
   if (!is.null(Fc$X0))
     util_ox(sX) %*% Fc$X0$uKX0; 
   else
     Fc$X0;
 }
 
-util_isempty_X0 = function(Fc) {
+util_isemptyX0 <- function(Fc) {
   if (!is.null(Fc$X0))    
     is.null(Fc$X0$ukX0); 
   else
     is.null(Fc$X0)
 }
 
-util_hsqr = function(Fc, sX) {
+'extra sum of squares matrix for betas from contrast'
+util_hsqr <- function(Fc, sX) {
   if (!is.null(Fc$X0))
     crossprod(util_ox(util_set(Fc$X1$ukX1)), util_cukx(sX))
   else
     crossprod(util_ox(util_set(Fc$X1)), x$X)
 }
 
-util_H = function(Fc, sX) {
+'extra sum of squares matrix for betas from contrast'
+util_H <- function(Fc, sX) {
   if (!is.null(Fc$X0))
     crossprod(util_hsqr(Fc, sX))
   else
     Fc$c %*% tcrossprod(MASS::ginv(crossprod(Fc$X1)), Fc$c)
 }
 
-util_Y0 = function(Fc, x, b) {
-  x$X %*% (diag(ncol(x$X)) - util_xpx(sX)) %*% util_H(Fc, x)) %*% b;
+'fitted data corrected for confounds defined by Fc'
+util_yc <- function(Fc, x, b) {
+  if (util_isemptyX1(Fc)) {
+    if (!util_isemptyX0) {
+      return(matrix(0, nrow(x$X), ncol(b)))
+    } else {
+      stop("Fc must be set")
+    }
+  } else {
+    return(x$X %*% util_pinvxpx(x) %*% util_H(Fc, x) %*% b)
+  }
 }
 
-util_fcortho = function(Fc1, sX, Fc2) {
-  c1_2  = Fc1$c - util_H(Fc2,sX) %*% util_xpx(sX,Fc1$c)
+'fitted data corrected for confounds defined by Fc'
+util_y0 <- function(Fc, x, b) {
+  if (util_isemptyX1(Fc)) {
+    if (!util_isemptyX0(Fc)) {
+      return(x$X %*% b)
+    } else {
+      stop("Fc must be set")
+    }
+  } else {
+    return(x$X %*% (diag(ncol(x$X)) - util_xpx(sX)) %*% util_H(Fc, x)) %*% b)
+  }
+}
+
+'Fc orthogonalisation'
+util_fcortho <- function(Fc1, sX, Fc2) {
+  c1_2  = Fc1$c - util_H(Fc2, sX) %*% util_xpx(sX, Fc1$c)
   
   Fc1o  = spm_FcUtil('Set', ['(' Fc1$name ' |_ (' Fc2.name '))'], Fc1$fieldType, 'c+', c1_2, sX);
 }
 
-util_Rortho = function (Fc1, sX, Fc2) {
+'are contrasts orthogonals'
+util_Rortho <- function (Fc1, sX, Fc2) {
+  if (!util_isspc(sX))
+    sX <- util_set(sX)
+  for (i in 1:length(Fc1)) {
+    if (!util_isfcon(Fc1[[i]])) {
+      tmp <- paste("Fc1[[", i, "]]", sep = "")
+      cat(tmp, "\n")
+    }
+  }
+  for (i in 1:length(Fc2)) {
+    if (!util_isfcon(Fc2[[i]])) {
+      tmp <- paste("Fc2[[", i, "]]", sep = "")
+      cat(tmp, "\n")
+    }
+  }
   if (length(Fc2) == 0) {
     if (length(Fc1) <= 1)
       b <- 0
@@ -755,7 +795,8 @@ util_Rortho = function (Fc1, sX, Fc2) {
   return(b)
 }
 
-util_in = function(Fc1, x, Fc2) {
+'Fc1 is in list of contrasts Fc2'
+util_in <- function(Fc1, x, Fc2) {
   l1 <- length(Fc1)
   l2 <- length(Fc2)
   for (j in seq_len(l1)) {
@@ -788,7 +829,8 @@ util_in = function(Fc1, x, Fc2) {
   return(list(idxFc1, idxFc2))
 }
 
-util_notunique = function(Fc, x) {
+'Fc list unique'
+util_notunique <- function(Fc, x) {
   l <- length(Fc)
   if (l == 1)
     out <- c()
@@ -800,6 +842,37 @@ util_notunique = function(Fc, x) {
   return(out)
 }
 
-setContrast = function(object, c, fieldType = "T", action = "c", plus = FALSE) {
-
+'set contrast fields'
+util_setCon <- function(x, name, fieldType, c, iX0 = FALSE) {
+  out <- list()
+  out$c <- matrix(c, ncol = 1)
+  out$name <- name
+  out$fieldType <- fieldType
+  
+  sC <- nrow(x$X)
+  sL <- ncol(x$X)
+  
+  if (!iX0) {
+    out$iX0 <- "c"
+    if (length(c) == 0) {
+      tmp <- util_c2tsp(x, c(), plus = TRUE)
+    } else {
+      tmp <- util_c2tsp(x, c, plus = TRUE)
+    }
+    out$X1$uKX1 <- tmp[[1]]
+    out$X0$uKX0 <- tmp[[2]]
+  } else {
+    iX0 <- c
+    iX0 <- util_iX0check(iX0, sL)
+    out$iX0 <- iX0
+    out$X0$uKX0 <- tcrossprod(.self$getOX(x), .self$getXi(x, iX0))
+    if (length(iX0) == 0) {
+      out$c <- .self$getXtX(x)
+      out$X10$uKX1 <- .self$getCUKX(x)
+    } else {
+      out$c <- .self$geti02C(x, iX0)
+      out$X1$uKX1 <- .self$getC2Tsp(x, out$c, plus = TRUE)
+    }
+  }
+  return(out)
 }
