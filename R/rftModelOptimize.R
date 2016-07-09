@@ -6,7 +6,7 @@
 ## @param t regularisation (default 4)
 ## @param hE hyperprior (default 0)
 ## @param hP hyperprecision (default 1e-16)
-## 
+##
 ## @return
 ## \item{V} {m x m estimated errors = h[1]*Q[[1]] + h[2]*Q[[2]] + ...}
 ## \item{h} {q x 1 ReML hyperparameters}
@@ -14,11 +14,11 @@
 ## \item{F} {free energy F = log evidence = p(Y|X,Q) = ReML objective}
 ## \item{Fa} {accuracy}
 ## \item{Fc} {complexity (F = Fa - Fc)}
-## 
-## 
 ##
-## need to figure out what spm_svd does exactly
-rftREML <- function(YY, X, Q, N, D, t, hE, hP, maxIter) {
+##
+##
+## adapted from spm_ReML
+rftModelOptimize <- function(YY, X, Q, N, D, t, hE, hP, maxIter) {
   if (missing(N))
     N <- 1
   if (missing(D))
@@ -29,7 +29,7 @@ rftREML <- function(YY, X, Q, N, D, t, hE, hP, maxIter) {
     hE <- 0
   if (missing(hP))
     hP <- 1e-16
-  
+
   # ortho-normalise X----------------------------------------------------------
   if (missing(X))
     stop("Please specify X")
@@ -37,18 +37,18 @@ rftREML <- function(YY, X, Q, N, D, t, hE, hP, maxIter) {
     X <- svd(X)$u
   if (!is.list(Q))
     Q <- list(Q)
-  
+
   # dimensions-----------------------------------------------------------------
   n <- nrow(Q[[1]])
   m <- length(Q)
-  
+
   # catch NaNs-----------------------------------------------------------------
   W <- Q
   #q <- is.finite(YY)
   #YY <- YY[q, q]
   #for (i in 1:m)
   #  Q[[i]] <- Q[[i]][q, q]
-  
+
   # initialise h and specify hyperpriors---------------------------------------
   h <- matrix(0, m, 1)
   for (i in 1:m)
@@ -60,7 +60,7 @@ rftREML <- function(YY, X, Q, N, D, t, hE, hP, maxIter) {
   dFdh <- matrix(0, m, 1)
   dFdhh <- matrix(0, m, m)
   PQ <- list()
-  
+
   # ReML (EM/VB)---------------------------------------------------------------
   for (it in 1:maxIter) {
     # compute current estimate of covariance-------------------------------------
@@ -68,7 +68,7 @@ rftREML <- function(YY, X, Q, N, D, t, hE, hP, maxIter) {
     C <- 0
     for (i in 1:m)
       C <- C + Q[[i]] * h[i]
-    
+
     # positive [semi]-definite check---------------------------------------------
     # might be able to use nlme::pdMat()
     for (i in 1:D) {
@@ -82,7 +82,7 @@ rftREML <- function(YY, X, Q, N, D, t, hE, hP, maxIter) {
           C <- C + Q[[i]] * h[i]
       }
     }
-    
+
     # E-step: conditional covariance cov(B|y) {Cq}-------------------------------
     iC <- solve(C)
     iCX <- iC %*% X
@@ -91,17 +91,17 @@ rftREML <- function(YY, X, Q, N, D, t, hE, hP, maxIter) {
     #   Cq <- solve(crossprod(X, iCX))
     # else
     #   Cq <- 0
-    
+
     # M-step: ReML estimate of hyperparameters-----------------------------------
     P <- iC - iCX %*% Cq %*% t(iCX) # P = iV - iV %*% X %*% solve(crossprod(X, iV) %*% X) %*% crossprod(X, iV)
     U <- diag(n) - P %*% YY / N
-    
+
     # dF/dh
     for (i in 1:m) {
       PQ[[i]] <- P %*% Q[[i]]
       dFdh[i] <- -sum(diag(PQ[[i]] %*% U)) * N / 2
     }
-    
+
     # expected curvature E{dF / dhhh}
     for (i in 1:m) {
       for (j in 1:m) {
@@ -110,59 +110,59 @@ rftREML <- function(YY, X, Q, N, D, t, hE, hP, maxIter) {
         dFdhh[j, i] <- dFdhh[i, j]
       }
     }
-    
+
     # add hyperpriors
     e <- h - hE
     dFdh <- dFdh - hP %*% e
     dFdhh <- dFdhh - hP
-    
+
     # fisher scoring: update dh = -inv(ddF/dhh) * dF / dh
     dh <- dx(dFdhh, dFdh, {t})
     h <- h + dh
-    
+
     # predicted change in F - increase regularisation if increasing
     pF <- crossprod(dFdh, dh)
     if (pF > dF)
       t <- t - 1
     else
       t <- t + 1/4
-    
+
     # final estimate of covarience (with missing data points)
     if (dF < 1e-1)
       break
   }
-  
+
   # rebuild predicted covariance-----------------------------------------------
   V <- 0
   for (i in 1:m) {
     V <- V + W[[i]] * h[i]
   }
-  
+
   # check V is positive semi-definite
   if (!D) {
     if (min(eigen(V)$values) < 0)
-      rftREML(YY, X, Q, N, 1, 2, hE[1], hP[1])
+      rftModelOptimize(YY, X, Q, N, 1, 2, hE[1], hP[1])
   }
-  
+
   # log evidence = ln p(y|X, Q) = ReML objective = F = trace(R' *iC * R * YY) / 2 ...
   Ph <- - dFdhh
-  
-  
+
+
   if (nargs() > 4) {
     # tr(hP * inv(Ph)) - nh + tr...
     Ft <- sum(diag(hP %*% MASS::ginv(Ph))) - length(Ph) - length(Cq)
-    
-    # complexity 
+
+    # complexity
     Fc <- Ft / 2 +
       crossprod(e, hP) %*% e/2 +
       determinant(Ph %*% MASS::ginv(hP), logarithm = TRUE)$modulus / 2
-    
+
     # accuracy - lnp(Y|h)
     Fa = Ft / 2 -
       sum(diag(C * P * YY * P)) / 2 -
       N * n * log(2 * pi) / 2 -
       N * determinant(C, logarithm = TRUE)$modulus / 2
-    
+
     # free-energy
     FE <- Fa - Fc
     return(list(V = V, h = h, Ph = Ph, FE = FE, Fa = Fa, Fc = Fc))

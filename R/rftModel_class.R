@@ -1,5 +1,5 @@
 ## This file contains the following functions pertinant to objects of class rftModel (in order):
-## 
+##
 ## coef              (done; check)
 ## fitted            (done; check)
 ## model.matrix      (done; check)
@@ -7,7 +7,6 @@
 ## rftControl        (IN PROGRESS; check)
 ## rftModel          (IN PROGRESS; check)
 ## update            (done; check)
-## summary.rftModel  (done, check)
 ## weights           (done; check)
 
 # TO DO:
@@ -19,17 +18,17 @@
 
 ##' Class "rftModel" of Random Field Theory Fitted Models
 ##'
-##' A fitted random field theory model is represented as a rftModel object. 
+##' A fitted random field theory model is represented as a rftModel object.
 ##'
 ##' @name rftModel-class
-##' 
+##'
 ##' @docType class
-##' 
+##'
 ##' @section Objects from the Class: Objects are created by calls to
 ##' \code{\link{rftLm}}
-##' 
+##'
 ##' @seealso
-##' 
+##'
 ##' @keywords classes
 ##' @examples
 ##'
@@ -52,16 +51,16 @@ coef.rftModel <- function(object) {
 #     parm <- pnames
 #   else if (is.numeric(parm))
 #     parm <- pnames[parm]
-#   
+#
 #   a <- (1 - level)/2
 #   a <- c(a, 1 - a)
-#   
+#
 #   pct <- format.perc(a, 3)
-#   
+#
 #   fac <- qnorm(a)
-#   
+#
 #   ci <- array(NA, dim = c(length(parm), 2L), dimnames = list(parm, pct))
-#   
+#
 #   ses <- sqrt(diag(vcov(object)))[parm]
 #   ci[] <- cf[parm] + ses %o% fac
 #   ci
@@ -71,7 +70,7 @@ coef.rftModel <- function(object) {
 ## @method deviance rftModel
 ## @describeIn rftModel-class
 ## setMethod("deviance", "rftModel", function(object) {
-#  
+#
 # })
 
 #' @importFrom stats fitted
@@ -93,7 +92,7 @@ residuals.rftModel <- function(object) {
 }
 
 #' Control parameters for RFT based analyses
-#' 
+#'
 #' @param maxIter
 #' @param scaleResid
 #' @param sampleResid
@@ -103,7 +102,7 @@ residuals.rftModel <- function(object) {
 #' @param fdrThreshPval
 #' @param conjuncImages
 #' @param isotropic
-#' 
+#'
 #' @export rftModelControl
 rftControl <- function() {
   list(criticalF = 0.05,
@@ -116,13 +115,13 @@ rftControl <- function() {
 
 #' Create an object of class rftModel
 #'
-#' 
-#' 
-#' 
+#'
+#'
+#'
 #'
 #' @field imgData
 #' @field y name of image group from imgData used in fitting rftModel
-#' @field beta 
+#' @field beta
 #' @field resid
 #' @field mrss
 #' @field X
@@ -130,7 +129,8 @@ rftControl <- function() {
 #' @field XX
 #' @field W
 #' @field KWX
-#' @field V
+#' @field Vi
+#'
 #' @field K
 #' @field rpvImage
 #' @field dims dimensions describing the model:
@@ -143,7 +143,7 @@ rftControl <- function() {
 #' }
 #' @field control
 #' @field call
-#' 
+#'
 #' @export rftModel-class
 rftModel <-
   setRefClass("rftModel",
@@ -153,33 +153,34 @@ rftModel <-
                 X = "matrix",
                 W = "matrix",
                 formula = "formula",
-                beta = "matrix",
-                betCov = "matrix",
-                res = "matrix",
-                mrss = "matrix",
+                B = "matrix",
+                CB = "matrix",
+                R = "matrix",
+                MRSS = "matrix",
                 XV = "matrix",
                 XX = "matrix",
                 KWX = "list",
-                V = "matrix",
+                xvi = "list",
                 K = "ANY",
+                CY = "matrix",
                 dims = "list",
+                d = "list",  # design information
                 rpvImage = "antsImage",
                 control = "list",
                 call = "call"),
               methods = list(
-                listAll = function() {
-                  'create list of all fields'
-                  list(imgData = imgData, beta = beta, resid = resid,
-                       resid = resid, mrss = mrss, X = X, XV = XV, XX = XX, W = W, KWX = KWX,
-                       WY = WY, V = V, rpvImage = rpvImage, dims = dims, control = control,
-                       call = call, K = K)
-                },
-                setBeta = function() {
+                setB = function() {
                   'set the model coefficients/beta'
-                  beta <<- XX %*% rftFilter(K, diag(W) * imgData$imgList[y]$imageMatrix)
+                  B <<- XX %*% rftFilter(K, diag(W) * imgData$imgList[y]$imageMatrix)
                 },
-                setBetaCov = function() {
-                  betaCov <<- XX %*% tcrossprod(XV, XX)
+                setCB = function() {
+                  CB <<- XX %*% tcrossprod(XV, XX)
+                },
+                setCY = function(cf) {
+                  'spatially whitened tcrossprod(y) (used by ReML to estimate hyperparameters)'
+                  if (missing(cf))
+                    cf <- 0.05
+                  CY < util_cy(.self, cf)
                 },
                 setCall = function(call) {
                   'set call field'
@@ -189,7 +190,7 @@ rftModel <-
                   'traces for effective df calculation. If oneout = TRUE then returns trRV.'
                   rk <- KWX$rk
                   sL <- nrow(KWX$X)
-                  
+
                   u <- KWX$u[, seq_len(rk)]
                   if (oneout) {
                     if (rk == 0)
@@ -207,35 +208,35 @@ rftModel <-
                       trv <- sum(diag(XV))
                       tmp <- norm(XV, "F")^2
                       tmp <- tmp - 2 * norm(Vu, "f")^2
-                      dims$trRVRV <<- tmp + norm(crossprod(u, Vu,), "f")^2
+                      dims$trRVRV <<- tmp + norm(crossprod(u, Vu), "f")^2
                       trmv <- sum(u %*% Vu)
                     }
                     dims$trRV <<- trV - trmv
                   }
                   dims$rdf <<- (trRV^2) / trRVRV
                   dims$npred <<- ncol(X)
+                  dims$idf <<- ncol(X) - 1
                 },
                 getResid = function() {
                   'return residual forming matrix or set residuals'
                   KWY <- rftFilter(K, diag(W) * imgData$imgList[y]$imageMatrix)
-                  
+
                   if (KWX$rk < nrow(KWX$X) - KWX$rk) {
                     out <- KWY - KWX$u[, seq_len(KWX$rk)] %*%
                       crossprod(KWX$u[, seq_len(KWX$rk)], KWY)
                   } else {
                     if (ncol(KW) < 5 * ncol(KWX$X)) {
-                      R <- diag(ncol(KWX$X)) - crossprod(KWX$v[, seq_len(KWX$rk)],
-                                                         KWX$v[, seq_len(KWX$rk)])
+                      R <- diag(ncol(KWX$X)) - crossprod(KWX$v[, seq_len(KWX$rk)], KWX$v[, seq_len(KWX$rk)])
                       out <- R %*% KWY
                     } else {
                       out  <- list()
                       out$X <- t(KWX$X)
                       out$v <- KWX$u
                       out$u <- KWX$v
-                      
+
                       out$oP <- KWX$opp
                       out$oPp <- KWX$op
-                      
+
                       dimX <- dim(out$X)
                       if (x$rk > 0) {
                         if (dimX[1] >= dimX[2]) {
@@ -250,7 +251,7 @@ rftModel <-
                       out <- n %*% crossprod(n, KWY)
                     }
                   }
-                  return(out)
+                  resid <<- out
                 },
                 setResels = function (verbose = NULL) {
                   'estimate FWHM and set resels'
@@ -265,7 +266,7 @@ rftModel <-
                 setW = function(weights) {
                   'set the weight matrix'
                   if (missing(weights)) {
-                    iV <- sqrt(MASS::ginv(V))
+                    iV <- sqrt(MASS::ginv(Vi$V))
                     weights <- iV * (abs(iV) > 1e-6)
                   } else {
                     if (class(weights) == "numeric" && length(weights) == nimg)
@@ -292,7 +293,7 @@ rftModel <-
                 },
                 setXV = function() {
                   'set correlations after weighting and filtering are applied'
-                  XV <<- rftFilter(K, t(rftFilter(K, W %*% V %*% t(W))))
+                  XV <<- rftFilter(K, t(rftFilter(K, W %*% Vi$V %*% t(W))))
                 },
                 setKWX = function() {
                   'set the filtered and whitened design matrix'
@@ -308,120 +309,18 @@ rftModel <-
                   cat("Random Field Theory model fitted by ", call[[1]])
                   cat("Call: \n")
                   print(call)
-                  
+
                   cat("\nCoefficients: \n")
                   for (i in 1:dims$npred) {
                     cat(colnames(X)[i], "\n")
                   }
-                  
+
                   cat("\nResidual degrees of freedom = ", dims$rdf, "\n")
                   cat("Voxels = ", modData$nvox, "\n")
                   cat("FWHM = ", dims$fwhm, "\n")
                   cat("Resels = ", dims$resels, "\n\n")
                 })
               )
-
-#' @param imgData
-#' @param X
-#' @param K
-#' @param V
-#' @param V
-#' @param W
-#' @param control
-#' @param optim
-#' @param verbose
-#' @details Called by various functions to create and fit rftModels (\code{\link{rftLm}}) 
-#' @describeIn  rftModel-class
-rftModelMake <- function(imgData, y, formula, X, K, V, W, control, optim = TRUE, verbose = NULL) {
-  
-  if (missing(K))
-    K <- list(1)
-  if (missing(V)) {
-    V <- diag(dataMod$nimg)
-  }
-  mod <- rftModel(imgData = imgData, y = y, X = X, formula = formula, V = V, K = K, dims = dims, control = control, call = call)
-  
-
-  rpvImage = "antsImage",
-  C = "list",
-  control = "list",
-  call = "call"))
-  
-  # evoke ReML for hyperparameter estimation------------------------------------
-  if (optim)
-    fit <- rftModelOptimize(mod)
-  
-  # get weight/whitening matrix: tcrossprod(W) = inv(V)
-  if (missing(W))
-    fit = fit$setW()
-  else
-    fit = fit$setW(W)
-  
-  # design space and projector matrix (pseudoinverse) for weighted least squares
-  fit = fit$setKWX()
-  fit = fit$setXX()
-  
-  # use non-sphericity xVi$V to compute effective degrees of freedom
-  fit = fit$setXV()
-  fit = fit$setDims()
-  fit = fit$setBetaCov()
-  
-  fit = fit$setBeta()
-  fit = fit$setResid()
-  fit = fit$setResels(verbose = verbose)
-}
-
-#' @describeIn rftModel-class
-rftModelOptimize <- function(object) {
-  
-}
-
-
-
-#' 
-#' @describeIn anova.rftModel/summary.rftModel
-summary.rftModel <- function(object, contrastMatrix,
-                             cthresh = rep(100, nrow(contrastMatrix)), control, verbose = NULL) {
-  if (missing(contrastMatrix) && all(dim(object$contrastMatrix) == 0)) {
-    contrastMatrix <- matrix(0, 1, object$dims$npred)
-    colnames(contrastMatrix) <- colnames(object$X)
-    contrastMatrix[!"Intercept"] <- 1
-  } else if (!missing(contrastMatrix)) {
-    colnames(contrastMatrix) <- colnames(object$X)
-    if (all(dim(object$contrastMatrix) == 0)) {
-      start <- 1
-      end <- nrow(contrastMatrix)
-      connames <- rownames(contrastMatrix)
-      if (is.null(connames))
-        connames <- paste("Contrast_", start:end, sep = "")
-      rownames(contrastMatrix) <- connames
-      object$contrastMatrix <- contrastMatrix
-    } else {
-      start <- nrow(object$contrastMatrix) + 1
-      end <- nrow(object$contrastMatrix) + nrow(contrastMatrix)
-      connames <- rownames(contrastMatrix)
-      if (is.null(connames))
-         connames <- paste("Contrast_", start:end, sep = "")
-      rownames(contrastMatrix) <- connames
-      object$contrastMatrix <- cbind(object$contrastMatrix, contrastMatrix)
-    }
-  } else {
-    stop("Must specify contrastMatrix.")
-  }
-  
-  for (i in start:end) {
-    c <- matrix(contrastMatrix[i,], ncol = 1)
-    Vc <- as.numeric(crossprod(c, object$betaCov) %*% c)
-    se <- sqrt(object$mrss * Vc)
-    tvec <- crossprod(c, object$beta) / se
-    object$conlist[[i]]$contrastImage <- makeImage(object$mask, tvec)
-  }
-  if (missing(control))
-    object$solveContrast(start, cthresh, verbose = verbose)
-  else
-    object$solveContrast(start:end, cthresh, control = control, verbose = verbose)
-  return(object)
-}
 
 #' @importFrom stats weights
 #' @S3method weights rftModel

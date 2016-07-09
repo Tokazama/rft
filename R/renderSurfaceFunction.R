@@ -24,13 +24,13 @@
 #' @seealso \code{\link{plotBasicNetwork}}
 #' @examples
 #' \dontrun{
-#'        mnit<-getANTsRData("mni")
-#'        mnit<-antsImageRead(mnit)
-#'        mnia<-getANTsRData("mnia")
-#'        mnia<-antsImageRead(mnia)
-#'        mnit<-thresholdImage( mnit, 1, max(mnit) )
-#'        mnia<-thresholdImage( mnia, 1, 2 )
-#'        brain<-renderSurfaceFunction( surfimg =list( mnit ) ,
+#'        mnit <- getANTsRData("mni")
+#'        mnit <- antsImageRead(mnit)
+#'        mnia <- getANTsRData("mnia")
+#'        mnia <- antsImageRead(mnia)
+#'        mnit <- thresholdImage( mnit, 1, max(mnit) )
+#'        mnia <- thresholdImage( mnia, 1, 2 )
+#'        brain <- renderSurfaceFunction( surfimg =list( mnit ) ,
 #'           list(mnia), alphasurf=0.1 ,smoothsval = 1.5 )
 #'        }
 #' @export renderSurfaceFunction
@@ -112,7 +112,7 @@ renderSurfaceFunction <- function(
   }
   for (i in 1:length(funcimg)) {
     if (class(mycol[[i]]) == "function") {
-      # isolate surface voxels 
+      # isolate surface voxels
       # This restricts surface rendering to shape surface instead of levels
       # Otherwise the shape is filled with surfaces for each level (doesn't eat up RAM)
       mask_shell <- antsImageClone(funcimg[[i]])
@@ -192,7 +192,7 @@ renderSurfaceFunction <- function(
   startline1 <- "+"
   startline2 <- " solid LAURA"
   endline <- " endsolid LAURA"
-  
+
   facetvector <- c()
   progress <- txtProgressBar(min = 0, max = nrow(data[[1]]), style = 3)
   for (i in 1:nrow(data[[1]])) {
