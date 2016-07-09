@@ -18,7 +18,7 @@ fm2 <- update(fm1, V = remlparams$V)
 
 
 # rftGlm
-fm3 <- rftGlm(imat, ~AgeAtScan, mask, data = ptbp, intercept = TRUE, conmat,
+fm3 <- rftLm(imat, ~AgeAtScan, mask, data = ptbp, intercept = TRUE, conmat,
               statdir = '/Users/zach8769/Desktop/', verbose = TRUE)
 
 # summary

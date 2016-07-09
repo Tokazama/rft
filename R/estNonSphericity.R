@@ -1,105 +1,82 @@
-# @param imat image matrix
-# @param X structure containing design matrix information
-# @param W optional whitening/weighting matrix
-# @param S structure describing intrinsic non-sphericity
-# @param mask structure containing masking information
-# @param alpha level for initial threshold
-# 
-# @return 
-# V estimated non-sphericity, trace(V) = rankd(V)
-# h hyperparameters xVi.V = xVi.h(1)*xVi.Vi{1} + ...
-# xVi.Cy spatially whitened <Y*Y'> (used by ReML to estimate h)
-#
+## @param imat image matrix
+## @param X structure containing design matrix information
+## @param W optional whitening/weighting matrix
+## @param S structure describing intrinsic non-sphericity
+## @param mask structure containing masking information
+## @param alpha level for initial threshold
+##
+## @return
+## V estimated non-sphericity, trace(V) = rankd(V)
+## h hyperparameters xVi.V = xVi.h(1)*xVi.Vi{1} + ...
+## xVi$Cy spatially whitened <Y*Y'> (used by ReML to estimate h)
+##
 estNonSphericity <- function(x, Y, X, W = NULL, S, mask, df, alpha) {
-  
+
   # add variance component for each level of factor i
-  
-  n <- dim(x$dm)[1]
-  rank <- dim(X)[2]
-  nvox <- dim(Y)[2]
+  xVi <- x$xVi
+
   # compute Hsqr and F-threshold under i.i.d.
-  
-  # threshold for voxels--------------------------------------------------------
-  UF <- qf(1 - alpha, x$df[1], x$df[2])
-  
-  # remove filter confounds-----------------------------------------------------
-  # KWY <- frequencyFilterfMRI(boldmat, tr, freqLo = 0.01, freqHi = 0.1, opt = "butt")
-  KWY <- Y * x$W
-  
-  # OLS estimation--------------------------------------------------------------
-  z <- .lm.fit(x$dm, KWY)
-  rss <- rowSums(z$residuals^2)
-  
-  # F-threshold and acccumulate spatially whitened Y*Y'
-  se <- t(as.matrix(sqrt((rss / x$dof[2]) * (contrast %*% object$XX %*% contrast))))
-  se[se == 0] <- 1 # control for NULLS that result from dividing by 0
-  j <- ((contrast %*% z$coefficients) / se)^2 > (UF * rss / trRV) # logical vector of voxels above threshold
-  rm(z, se)
-  
-  
-  sum((Hsqr * beta).^2, 1)/trMV > UF * ReSS / trRV
-  
-  # Pooled Variance Estimation--------------------------------------------------
-  voxseq <- seq(1:rftmod$volumes$voxels, by = controlvals$chunkSize)
-  voxseq_iter <- length(voxseq)
-  s <- 0 # number of groups with voxels above threshold
-  for (i in 1:nchunks) {
-    if (i == nchunks)
-      subvox <- voxseq[i]:rftmod$volumes$voxels
-    else
-      subvox <- voxseq[i]:(voxseq[i + 1] - 1)
-    
-    tmpy <- object$y[, subvox]
-    
-    # voxels above f-threshold
-    olsfit <- .lm.fit(rftmod$parameters$X, tmpy)
-    rss <- colSums(olsfit$residuals^2)
-    fstat <- (((olsfit$fitted.values - colMeans(tmpy))^2) / object$dof[1]) / (rss / object$dof[2])
-    good <- fstat > fthresh
-    
-    if (any(good != FALSE)) {
-      q <- diag(sqrt(trRV / rss[, good]))
-      tmpy  <- tmpy %*% q
-      Cy <- Cy + tcrossprod(tmpy)
-      s <- s + 1
-    }
+  if (!is.null(xVi$Fcontrast))
+    con <- util_setCon(x, "usc", "F", "c", xVi$Fcontrast, x$KWX)
+  else {
+    iX0 <- c(x$iB, x$iG)
+    con <- util_setCon(x, "eoi", "F", "iX0", iX0, x$KWX)
   }
-  if (s < 1)
-    stop("There are no significant voxels")
-  Cy <- Cy / s
-  
-  # ReML Estimation-------------------------------------------------------------
+
+  if (!is.null(con$c)) {
+    X1 <- util_X1(con, x$KWX)
+    hsqr <- util_hsqr(con, x$KWX)
+    trMV <- util_trMV(X1, oneout = TRUE)
+  } else {
+    trMv <- 1
+    hsqr <- Inf
+  }
+
+  # threshold for voxels entering non-sphericity estimates
+  ctrl <- x$control
+  xVi$UFp <- ctrl$cF
+  UF <- qf(1 - ctrl$cF, x$dims$idf, x$dims$rdf)
+
+  good <- (colSums((hsqr %*% beta)^2) / trMV ) > (UF * mrss)
+  q <- sqrt(1 / mrss)[good]
+  q <- t(t(imgData[y]$imageMatrix[, good]) * q)
+  Cy <- tcrossprod(q)
+
+  # ReML Estimation
   if (is.list(K)) {
-    m <- length(Vi)
+    m <- length(xVi$Vi)
     h <- rep(0, m)
     V <- matrix(0, n, n)
     for (i in 1:length(K)) {
       # extract blocks from bases
-      q <- nrow(K[[i]]$row)
-      p <- 0
+      q <- K[[i]]$row
+      p <- c()
       QP <- list()
       for (j in 1:m) {
-        if (nnz(xVi.Vi[[j]][q, q]) {
-          Qp <- lappend(Qp, Vi[[j]][q, q]);
-          p <- c(p, j);
+        if (any(xVi$Vi[[j]][q, q] != 0)) {
+          Qp <- lappend(Qp, xVi$Vi[[j]][q, q])
+          p <- c(p, j)
         }
       }
-      
+
       # design space for ReML (with confounds in filter)
       Xp <- X[q, ]
-      Xp = c(Xp, xX.K[[i]].X0)
-      
+      Xp <- lappend(Xp, x$K[[i]]$X0)
+
       # ReML
-      reml <- rftRML(Cy(q, q), Xp, Qp)[c("Vp", "hp")]
-      V(q, q) <- V(q, q) + reml$Vp
-      h(p) <- reml$hp
-      
+      reml <- rftModelOptimize(Cy[q, q], Xp, Qp)
+      V[q, q] <- V[q, q] + reml$Vp
+      h[p] <- reml$hp
     }
-  } else
-    reml = rftRML(Cy, X, Vi)[c("V", "h")]
-  
-  V = reml$V * n /sum(diag(reml$V))
-  xVi.h = reml$h
-  xVi.v = v
-  xVi.Cy = Cy
+  } else {
+    reml <- rftModelOptimize(Cy, x$X, xVi$Vi)
+    V <- reml$V
+    h <- reml$h
+  }
+
+  V <- V * n / sum(diag(V))
+  xVi$h <- h
+  xVi$V <- V
+  xVi$Cy <- Cy
+  return(xVi)
 }

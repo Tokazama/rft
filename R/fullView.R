@@ -1,6 +1,6 @@
 #'
 #' @param axis the axis to slice (1 , 2 or 3)
-#' @param slice 
+#' @param slice
 #' bm <-getMask( antsImageRead( getANTsRData("ch2") ) )
 #' brain <-renderSurfaceFunction( surfimg =list( bm ) , alphasurf=0.1, smoothsval = 1.5 )
 #' fullView(tempfile( fileext='.png'))
@@ -12,17 +12,17 @@ fullView <- function(SurfaceImage, FunctionalImage, views, statdir =  tempfile( 
   x90n <- rgl::rotationMatrix(-pi/2, 1, 0, 0)
   x180p <- rgl::rotationMatrix(pi, 1, 0, 0)
   x180n <- rgl::rotationMatrix(pi, 1, 0, 0)
-  
+
   y90p <- rgl::rotationMatrix(pi/2, 0, 1, 0)
   y90n <- rgl::rotationMatrix(-pi/2, 0, 1, 0)
   y180p <- rgl::rotationMatrix(pi, 0, 1, 0)
   y180n <- rgl::rotationMatrix(-pi, 0, 1, 0)
-  
+
   z90p <- rgl::rotationMatrix(pi/2, 0, 0, 1)
   z90n <- rgl::rotationMatrix(-pi/2, 0, 0, 1)
   z180p <- rgl::rotationMatrix(pi, 0, 0, 1)
   z180n <- rgl::rotationMatrix(-pi, 0, 0, 1)
-  
+
   # extract each viewpoint
   if (any(views == "anterior")) {
     rgl::par3d(userMatrix = x90n) # anterior view
@@ -31,7 +31,7 @@ fullView <- function(SurfaceImage, FunctionalImage, views, statdir =  tempfile( 
     png(paste(statdir, "anterior.png", sep = ""), width = dim(aa)[2], height = dim(aa)[1])
     grid::grid.raster(aa)
     grid::grid.text("Anterior", .5, .95)
-    grid::grid.text("L", .9, .5) 
+    grid::grid.text("L", .9, .5)
     grid::grid.text("R", .1, .5)
     grid::grid.text("S", .5, .9)
     grid::grid.text("I", .5, .1)
@@ -44,7 +44,7 @@ fullView <- function(SurfaceImage, FunctionalImage, views, statdir =  tempfile( 
     png(paste(statdir, "left.png", sep = ""), width = dim(aa)[2], height = dim(aa)[1])
     grid::grid.raster(aa)
     grid::grid.text("Left", .5, .95)
-    grid::grid.text("A", .9, .5) 
+    grid::grid.text("A", .9, .5)
     grid::grid.text("P", .1, .5)
     grid::grid.text("S", .5, .9)
     grid::grid.text("I", .5, .1)
@@ -70,7 +70,7 @@ fullView <- function(SurfaceImage, FunctionalImage, views, statdir =  tempfile( 
     png(paste(statdir, "inferior.png", sep = ""), width = dim(aa)[2], height = dim(aa)[1])
     grid::grid.raster(aa)
     grid::grid.text("Inferior", .5, .95)
-    grid::grid.text("L", .9, .5) 
+    grid::grid.text("L", .9, .5)
     grid::grid.text("R", .1, .5)
     grid::grid.text("A", .5, .9)
     grid::grid.text("P", .5, .1)
@@ -83,7 +83,7 @@ fullView <- function(SurfaceImage, FunctionalImage, views, statdir =  tempfile( 
     png(paste(statdir, "posterior.png", sep = ""), width = dim(aa)[2], height = dim(aa)[1])
     grid::grid.raster(aa)
     grid::grid.text("Posterior", .5, .95)
-    grid::grid.text("R", .9, .5) 
+    grid::grid.text("R", .9, .5)
     grid::grid.text("L", .1, .5)
     grid::grid.text("S", .5, .9)
     grid::grid.text("I", .5, .1)
@@ -96,7 +96,7 @@ fullView <- function(SurfaceImage, FunctionalImage, views, statdir =  tempfile( 
     png(paste(statdir, "superior.png", sep = ""), width = dim(aa)[2], height = dim(aa)[1])
     grid::grid.raster(aa)
     grid::grid.text("Superior", .5, .95)
-    grid::grid.text("R", .9, .5) 
+    grid::grid.text("R", .9, .5)
     grid::grid.text("L", .1, .5)
     grid::grid.text("A", .5, .9)
     grid::grid.text("P", .5, .1)
@@ -105,7 +105,7 @@ fullView <- function(SurfaceImage, FunctionalImage, views, statdir =  tempfile( 
   abcdef <- abind::abind(abind::abind(abind::abind(ff, dd, along = 1),
                          abind::abind(aa, ee, along = 1), along = 2),
                          abind::abind(bb, cc, along = 1), along = 2)
-  
+
   png(paste(statdir, "FullView.png", sep = ""), width = dim(abcdef)[2], height = dim(abcdef)[1])
   grid::grid.raster(abcdef)
   dev.off()

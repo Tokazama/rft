@@ -1,6 +1,6 @@
 #include <Rcpp.h>
 using namespace Rcpp;
-  
+
 // [[Rcpp::export]]
 NumericVector resels(IntegerVector m, NumericVector fwhm, IntegerVector DIM) {
   int D = DIM.size();
@@ -18,7 +18,7 @@ NumericVector resels(IntegerVector m, NumericVector fwhm, IntegerVector DIM) {
   if (D == 3)
     rz = 1.0 / fwhm(2);
   double vtotal = 0.0;
-  
+
   if (D == 2) {
     rz = 0.0;
     for (int i = 0.0; i < v; i++ ) {
@@ -26,12 +26,12 @@ NumericVector resels(IntegerVector m, NumericVector fwhm, IntegerVector DIM) {
         int xc = (i % dimx);
         int yc = floor(i / dimx);
         yc = yc % dimy;
-        
+
         IntegerVector point(7);
         point(0) = (xc + 1) + ((yc + 0) * DIM(0));
         point(1) = (xc + 0) + ((yc + 1) * DIM(0));
         point(2) = (xc + 1) + ((yc + 1) * DIM(0));
-        
+
         vtotal++;
         if ( (point(0) > 0) && (point(0) < v) && (m(point(0)) == 1) )
           Ex++;
@@ -47,15 +47,15 @@ NumericVector resels(IntegerVector m, NumericVector fwhm, IntegerVector DIM) {
     for (int i = 0; i < v; i++ ) {
       if (m(i) == 1) {
 
-        
+
         int xc = (i % dimx);
-        
+
         int yc = floor(i / dimx);
         yc = yc % dimy;
-        
+
         int zc = floor(i / (dimy * dimx));
         zc = zc % dimz;
-        
+
         IntegerVector point(7);
         point(0) = (xc + 1) + ((yc + 0) * DIM(0)) + ((zc + 0) * DIM(0) * DIM(1));  // 322
         point(1) = (xc + 0) + ((yc + 1) * DIM(0)) + ((zc + 0) * DIM(0) * DIM(1));  // 232
