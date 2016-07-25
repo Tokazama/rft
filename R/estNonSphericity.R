@@ -11,7 +11,7 @@
 ## xVi$Cy spatially whitened <Y*Y'> (used by ReML to estimate h)
 ##
 estNonSphericity <- function(x, Y, X, W = NULL, S, mask, df, alpha) {
-
+  
   # add variance component for each level of factor i
   xVi <- x$xVi
 

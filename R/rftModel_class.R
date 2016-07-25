@@ -14,6 +14,109 @@
 #   or
 #   use @S3method print rftModel
 
+#' SPM 12 Fields:
+#' @field xY image info (found in rftModel$imgData$imgList[y]$imageMatrix)
+#' nscan 
+#' xX
+#'  X
+#'  iH - vector of H partition (condition effects) indices, identifying columns of X corresponding to H
+#'  iC - vector of C partition (covariates of interest) indices
+#'  iB - vector of B partition (block effects) indices
+#'  iG - vector of G partition (nuisance variables) indices
+#'  name - p x 1 cellstr of effect names corresponding to columns of the design matrix
+#'  I - nimg x 4 matrix of factor level indicators I[n, i] is the level of factor i corresponding to image n
+#'  sF - 1 x 4 cellstr containg the names of the four factors
+#'  K
+#'  W
+#'  xKXs
+#'  pKX
+#'  V
+#'  trRV
+#'  trRVRV
+#'  erdf
+#'  Bcov
+#'  nKX
+#' @field xC structure array of covariate details
+#'  rc - raw ( as entered) ith covariate
+#'  rcname - name of this covariate (sring)
+#'  c - covariate as appears in design matrix (after any scaling, centerin go eneractions)
+#'  cname - cellstr containing names for effects corresponding to columns of XC[[i]]$c
+#'  iCC - covariate centering option
+#'  iCFI - covariate by factor interaction option
+#'  type - covariate type: 1 = interest, 2 = nuisance, 3 = global
+#'  cols - columns of design matrix corresponding to xC[[i]]$c
+#'  descrip - cellstr containing a description of the covariate
+#' @field xGX
+#'  iGXcalc - global calculation option used
+#'  sGXcalc - string describing global calculation used
+#'  rg - raw globals (before scaling and such like)
+#'  iGMsca - grand mean scaling option
+#'  sGMsca - string describing grand mean scaling
+#'  GM - value for grand mean proportional scaling
+#'  gSF - global scaling factor (applied to xGX$rg)
+#'  iGC - global covariate centering option
+#'  sGC - string describing global covariate centering option
+#'  gc - center for global covariate
+#'  iGloNorm - global normalisation option
+#'  sGloNorm - string describing global normalisation option
+#' @field xM structure describing mask (found in rftModel$imgData$imgList[y]$mask)
+#' @field xsDes structure of strings describing the design (found in rftModel$control)
+#'  Design
+#'  Global_calculation
+#'  Grand_mean_scaling
+#'  Global_normalisation
+#'  Parameters
+#' xVi
+#'  I
+#'  V
+#' swd
+#' xVol
+#'  XYZ
+#'  M
+#'  iM
+#'  DIM
+#'  FWHM
+#'  R
+#'  S
+#'  VRpv
+#' Vbeta
+#'  fname
+#'  dim
+#'  dt
+#'  mat
+#'  pinfo
+#'  descrip
+#'  n
+#'  private
+#' VResMS
+#'  fname
+#'  dim
+#'  dt
+#'  mat
+#'  pinfo
+#'  descrip
+#'  n
+#'  private
+#' VM
+#'  fname
+#'  dim
+#'  dt
+#'  mat
+#'  pinfo
+#'  descrip
+#'  n
+#'  private
+#' @field xCon contrast definitions structure array (found in rftContrast object)
+#'  name
+#'  STAT
+#'  c
+#'  X0
+#'  iX0
+#'  X1o
+#'  eidf
+#'  Vcon
+#'  Vspm
+#' SPMid
 
 
 ##' Class "rftModel" of Random Field Theory Fitted Models
@@ -160,8 +263,7 @@ rftModel <-
                 XV = "matrix",
                 XX = "matrix",
                 KWX = "list",
-                xvi = "list",
-                K = "ANY",
+                xVi = "list",
                 CY = "matrix",
                 dims = "list",
                 d = "list",  # design information
@@ -171,7 +273,7 @@ rftModel <-
               methods = list(
                 setB = function() {
                   'set the model coefficients/beta'
-                  B <<- XX %*% rftFilter(K, diag(W) * imgData$imgList[y]$imageMatrix)
+                  B <<- XX %*% rftFilter(imgData$imgList[y]$K, diag(W) * imgData$imgList[y]$imageMatrix)
                 },
                 setCB = function() {
                   CB <<- XX %*% tcrossprod(XV, XX)
@@ -188,38 +290,11 @@ rftModel <-
                 },
                 setTrRV = function(oneout = FALSE) {
                   'traces for effective df calculation. If oneout = TRUE then returns trRV.'
-                  rk <- KWX$rk
-                  sL <- nrow(KWX$X)
-
-                  u <- KWX$u[, seq_len(rk)]
-                  if (oneout) {
-                    if (rk == 0)
-                      return(0)
-                    else
-                      trmv <- sum(u %*% (XV %*% u))
-                    return(sum(diag(XV)) - trmv)
-                  } else {
-                    if (rk == 0) {
-                      trmv <- 0
-                      tmp <- norm(XV, "f")^2
-                      trv <- sum(diag(XV))
-                    } else {
-                      Vu <- XV %*% u
-                      trv <- sum(diag(XV))
-                      tmp <- norm(XV, "F")^2
-                      tmp <- tmp - 2 * norm(Vu, "f")^2
-                      dims$trRVRV <<- tmp + norm(crossprod(u, Vu), "f")^2
-                      trmv <- sum(u %*% Vu)
-                    }
-                    dims$trRV <<- trV - trmv
-                  }
-                  dims$rdf <<- (trRV^2) / trRVRV
-                  dims$npred <<- ncol(X)
-                  dims$idf <<- ncol(X) - 1
+                  dims <<- util_trRV(.self, oneout)
                 },
                 getResid = function() {
                   'return residual forming matrix or set residuals'
-                  KWY <- rftFilter(K, diag(W) * imgData$imgList[y]$imageMatrix)
+                  KWY <- rftFilter(imgData$imgList[y]$K, diag(W) * imgData$imgList[y]$imageMatrix)
 
                   if (KWX$rk < nrow(KWX$X) - KWX$rk) {
                     out <- KWY - KWX$u[, seq_len(KWX$rk)] %*%
@@ -293,11 +368,11 @@ rftModel <-
                 },
                 setXV = function() {
                   'set correlations after weighting and filtering are applied'
-                  XV <<- rftFilter(K, t(rftFilter(K, W %*% Vi$V %*% t(W))))
+                  XV <<- rftFilter(imgData$imgList[y]$K, t(rftFilter(imgData$imgList[y]$K, W %*% Vi$V %*% t(W))))
                 },
                 setKWX = function() {
                   'set the filtered and whitened design matrix'
-                  tmp <- rftFilter(K, diag(W) * X)
+                  tmp <- rftFilter(imgData$imgList[y]$K, diag(W) * X)
                   out <- svd(tmp)
                   out$X <- tmp
                   out$tol <- max(dim(X)) * max(absx$d) * .Machine$double.eps
@@ -311,7 +386,7 @@ rftModel <-
                   print(call)
 
                   cat("\nCoefficients: \n")
-                  for (i in 1:dims$npred) {
+                  for (i in seq_len(dims$npred)) {
                     cat(colnames(X)[i], "\n")
                   }
 
