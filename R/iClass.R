@@ -565,10 +565,8 @@ iModel <-
                 iData = "iData",
                 y = "character",
                 frame = "data.frame",
-                X = "matrix",
+                X = "list",
                 XV = "matrix",
-                W = "matrix",
-                KWX = "list",
                 beta = "matrix",
                 betaCov = "matrix",
                 res = "matrix",
@@ -588,9 +586,9 @@ iModel <-
               methods = list(
                 setBeta_Res = function(x) {
                   'set the model coefficients'
-                  KWY <- rftFilter(K, W %*% Y)
-                  beta <<- XX %*% KWY
-                  res <<- .res(KWX, KWY)
+                  KWY <- rftFilter(K, X$W %*% Y)
+                  beta <<- X$XX %*% KWY
+                  res <<- .res(X$KWX, KWY)
                   mrss <<- colSums(res^2) / trRV
                   # if (missing(x))
                   #   beta <<- XX %*% crossprod(X, iData$imgList[[y]]$imageMatrix)
@@ -610,7 +608,7 @@ iModel <-
                 },
                 setTrRV = function() {
                   'set trace of RV, RVRV, and estimate residual degrees of freedom.'
-                  out <- .trRV(KWX, XV)
+                  out <- .trRV(KWX, X$V)
                   trRV <<- out$trRV
                   trRVRV <<- out$trRVRV
                   rdf <<- out$rdf
@@ -622,19 +620,18 @@ iModel <-
                     weights <- iV * (abs(iV) > 1e-6)
                   } else {
                     if (class(weights) == "numeric" && length(weights) == nimg)
-                      W <<- diag(weights)
+                      X$W <<- diag(weights)
                     else if (all(dim(weights) == nimg))
-                      W <<- weights
+                      X$W <<- weights
                     else
                       stop("weights must be a matrix of nimg x nimg or a vector of length nimg")
                   }
                 },
                 setX = function(x) {
                   'set design matrix'
-                  X <<- x
+                  X$X <<- x
                   dims$nimg <<- nrow(X)
                   dims$npred <<- ncol(X)
-                  dims$rdf <<- dims$nimg - dims$npred - 1
                   dims$nvox <<- ncol(iData$imgList[[y]]$imageMatrix)
                 },
                 setXVi = function(method = NULL) {
@@ -646,11 +643,11 @@ iModel <-
                 },
                 setKWX = function() {
                   'set the pseudoinverse of X'
-                  KWX <<- .setX(rftFilter(K, W %*% X$X))
-                  XX <<- .pinvx(KWX)
+                  X$KWX <<- .setX(rftFilter(K, W %*% X$X))
+                  X$XX <<- .pinvx(KWX)
                 },
-                setXV = function() {
-                  XV <<- rftFilter(K, rftFilter(K, W %*% tcrossprod(xVi$V, W)))
+                setX_V = function() {
+                  X$V <<- rftFilter(K, rftFilter(K, W %*% tcrossprod(xVi$V, W)))
                 },
                 setBetaCov = function() {
                   betaCov <<- XX %*% tcrossprod(XV, XX)
@@ -672,7 +669,7 @@ iModel <-
                   cat("FWHM = ", fwhm, "\n")
                   cat("Resels = ", resels, "\n\n")
                 })
-              )
+             )
 
 # setRes = function(x, scale = TRUE) {
 #   'return residual forming matrix or set residuals'
