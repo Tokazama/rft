@@ -25,5 +25,5 @@
 #' 
 #' @export resels
 resels <- function(mask, fwhm) {
-  .Call("resels", as.array(mask), fwhm, dim(mask))
+  .Call("resels", as.vector(mask), fwhm, dim(mask))
 }
