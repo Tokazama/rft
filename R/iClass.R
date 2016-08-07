@@ -1,25 +1,18 @@
 # to do:
-# fix iData$split() function
 
 #' iData/iGroup reference class
 #' 
 #' @details 
-#' iData/iGroup refers to a set of reference classes used for representing 
-#' image data. The base compositional unit of is the \code{\link{iGroup}} class
-#' that allows a set of images to be represented by an image matrix, name, 
-#' binary mask (of class \code{\link{antsImage}}), and information describing 
-#' the images' modality (i.e. fMRI, PET, VBM, etc.). 
+#' iData/iGroup refers to a set of S4 classes used for representing image data.
+#' The base compositional unit is the \code{\link{iGroup}} class that allows a 
+#' set of images to be represented by an image matrix, name, binary mask (of 
+#' class \code{\link{antsImage}}), information describing the images' modality
+#' (i.e. fMRI, PET, VBM, etc.), and optionally the image filter information. 
 #' 
 #' @usage
-#' iGroup(name, iMatrix, mask, modality, ...)
+#' iGroup(iMatrix, name, mask, modality, ...)
 #' 
 #' iData(iList, demog, index, ...)
-#' 
-#' @note
-#' Although the use of reference classes and pointers allows more efficient
-#' memory usage, it may have unfamiliar side effects to those used to typical
-#' R syntax and unfamiliar with other languages such as Java and C++ (see
-#' examples below and \link{refClass-class} for more details).
 #' 
 #' @example 
 #' 
@@ -27,19 +20,21 @@
 #' ilist <- getANTsRData("population")
 #' mask <- getMask(ilist[[1]])
 #' imat <- imageListToMatrix(ilist, mask)
-#' iGroup1 <- iGroup(name = "pop1", iMatrix = imat, mask = mask, modality = "T1")
+#' iGroup1 <- iGroup(imat, "pop1", mask, modality = "T1")
+#' 
+#' # ensure only active voxels are included in mask
+#' 
 #' 
 #' ilist <- lappend(ilist, ilist[[1]])
 #' imat <- imageListToMatrix(ilist, mask)
-#' iGroup2 <- iGroup(name = "pop2", iMatrix = imat, mask = mask, modality = "T1")
+#' iGroup2 <- iGroup(imat, "pop2", mask, modality = "T1")
 #' 
 #' # save iGroup object
 #' tmpfile <- tempfile(fileext = ".h5")
 #' iGroupWrite(iGroup1, tmpfile)
 #' 
 #' # load saved iGroup object
-#' print(iGroupRead(tmpfile, "pop1"))
-#' 
+#' (iGroup1_reload <- iGroupRead(tmpfile))
 #' 
 #' demog <- data.frame(id = c("A", "B", "C", NA),
 #'   age = c(11, 7, 18, 22), sex = c("M", "M", "F", "F"))
@@ -48,635 +43,591 @@
 #' bool2 <- c(TRUE, TRUE, TRUE, TRUE)
 #' 
 #' # create iData object that holds demographics info
-#' mydata <- iData(demog = demog)
+#' mydata <- iData(iGroup1, bool1, demog)
 #' 
 #' # add iGroup object to iData
-#' mydata$addGroup(iGroup1, bool1)
-#' mydata$addGroup(iGroup2, bool2)
-#' 
-#' # ensure only active voxels are included in mask
-#' mydata$checkMask("pop1", "pop2")
+#' mydata <- add(mydata, iGroup2, bool1)
 #' 
 #' # save iData object
-#' iDataSave(mydata, tmpfile)
-#' # which wraps the following alternative reference class approach
-#' # mydata$save(tmpfile)
+#' tmpdir <- "iData_test"
+#' iDataWrite(mydata, tmpdir)
 #' 
 #' # load saved iData object
-#' print(iDataLoad(tmpfile))
-#' # which wraps the following alternative reference class approach
-#' # object <- iData()
-#' # object$load(tmpfile)
+#' (mydata_reload <- iDataRead(tmpdir))
 #' 
-#' # split iData object into k-folds or train/test groups
-#' split_list <- mydata$split(0.3)
+#' # split iData object into k-folds or train and test groups
+#' mydatasplit <- iDataSplit(mydata, 0.3)
 #' 
 #' # retreive demographic information specific to an iGroup
-#' mydata$getDemog("pop1", "age", "sex")
+#' getDemog(mydata, "pop1", c("age", "sex"))
 #'
 #' @export iGroup/iData-class
 
 
-#' iGroup reference class
+# iGroup----
+#' iGroup-class
 #' 
-#' @param name
-#' @param iMatrix
-#' @param mask
-#' @param modality
+#' @param .Object
+#' @param iMatrix image by voxel matrix
+#' @param name name for the iGroup object (used for reference in \code{\link{iData}} and formulas)
+#' @param mask mask with number of non-zero entries defining the matrix columns.
+#' @param modality image modality that iGroup will represent
+#' @param rowslist row of iMatrix constituting block/partitions
+#' @param HParam cut-off period in seconds
+#' @param RT observation interval in seconds
+#' @param checkMask logical. ensure mask only represents active voxels
+#' @param filename optional filename to save iGroup object (default = \code{tempfile(fileext = ".h5")})
 #' 
-#' @slot name
-#' @slot iMatrix
-#' @slot mask
-#' @slot modality
-#' @slot K
+#' @slot name iGroup name
+#' @slot file h5file connection
+#' @slot iMatrix h5file pointer to matrix
+#' @slot location h5file location
+#' @slot modality image modality represented
+#' @slot mask mask with number of non-zero entries defining the matrix columns.
+#' @slot K filter information
 #' 
-#' @methods
-#' initialize
-#' checkMask
-#' iGroupRead
-#' iGroupWrite
-#' print
-#'
-#'
+#' @details 
+#' See \linke{iGroup/iData-class} for examples
+#' 
+#' 
 #' @export iGroup
 iGroup <- setClass("iGroup",
                    slots = list(
                      name = "character",
-                     iMatrix = "matrix",
-                     mask = "antsImage",
+                     file = "H5File",
+                     iMatrix = "DataSet",
+                     location = "character",
                      modality = "character",
-                     K = "list")
+                     mask = "antsImage",
+                     K = "ANY",
+                     dim = "numeric")
                    )
 
-iGroupMake <- function(name = "iGroup1", iMatrix, mask, modality = "fMRI", rowslist, HParam, RT) {
+setMethod("initialize", "iGroup", function(.Object, iMatrix = matrix(1, 1, 1), name, mask,
+                                           modality, rowslist, HParam, RT, checkMask = TRUE, filename) {
+  if (!usePkg("h5"))
+    stop("Please install package h5 in order to use this function.")
+  
+  if (!missing(iMatrix) && !missing(mask) && checkMask) {
+    nimg <- nrow(iMatrix)
+    mask_vec <- iMatrix
+    mask_vec[mask_vec != 0] <- 1
+    mask_vec <- colSums(mask_vec)
+    mask_vec[mask_vec != nimg] <- 0
+    mask_vec[mask_vec == nimg] <- 1
+    iMatrix <- iMatrix[, as.logical(mask_vec)]
+    mask <- makeImage(mask, mask_vec)
+  }
+  
+  # filename
+  if (missing(filename)) {
+    tmpfile <- tempfile(fileext = ".h5")
+    file <- h5file(tmpfile)
+    .Object@location <- tmpfile
+  } else {
+    if (file.exists(filename))
+      stop("filename already exists.")
+    file <- h5file(filename)
+    .Object@location <- filename
+  }
+  .Object@file <- file
+  
+  # modality
+  if (missing(modality)) {
+    file["modality"] <- "fMRI"
+    .Object@modality <- "fMRI"
+  } else {
+    file["modality"] <- modality
+    .Object@modality <- modality
+  }
+  
+  # name
+  if (missing(name)) {
+    file["name"] <- "unnamed"
+     .Object@name <- "unnamed"
+  } else {
+    file["name"] <- name
+    .Object@name <- name
+  }
+  
+  # mask
+  ## configure
+  if (missing(mask))
+    .Object@mask <- makeImage(c(1, 1, 1), 1)
+  else
+    .Object@mask <- antsImageClone(mask)
+  ## write
+  file["mask"] <- as.array(.Object@mask)
+  h5attr(file["mask"] , "spacing") <- antsGetSpacing(.Object@mask)
+  h5attr(file["mask"] , "direction") <- antsGetDirection(.Object@mask)
+  h5attr(file["mask"] , "origin") <- antsGetOrigin(.Object@mask)
+  
+  # K
+  ## configure
   if (!missing(rowslist) | !missing(HParam) | !missing(RT)) {
     if (missing(rowslist) | missing(HParam) | missing(RT))
       stop("rowslist, HParam, and RT must all be provided if any one is.")
     if ((length(rowslist) != length(HParam)) | (length(rowslist) != length(RT)))
       stop("Length of rowslist, HParam, and RT must be the same.")
     K <- list()
-    for (i in seq_len(length(rowslist)))
-      K[[i]] <- list(row = rowslist[[i]], HParam = HParam[i], RT = RT[i])
-    K <- rftFilter(K)
+    nk <- length(rowslist)
+    K <- data.frame(Filters = rep("F1", nk), HParam = rep(1, nk), RT = rep(1, nk))
+    for (i in seq_len(nk)) {
+      K$Filters[rowslist[[i]]] <- paste("F", i, sep = "")
+      K$HParam[rowslist[[i]]] <- HParam[i]
+      K$RT[rowslist[[i]]] <- RT[i]
+    }
   } else 
     K <- 1
-  return(iGroup(name = name, iMatrix = iMatrix, mask = antsImageClone(mask),
-                modality = modality, K = K))
-}
+  .Object@K <- K
+  ## write
+  if (class(.Object@K) == "list") {
+    nk <- length(.Object@K)
+    file[file.path("K", "Filters")] <- .Object@K$Filters
+    file[file.path("K", "HParam")] <- .Object@K$HParam
+    file[file.path("K", "RT")] <- .Object@K$RT
+  } else {
+    file["K"] <- .Object@K
+  }
+  
+  # iMatrix
+  .Object@dim <- dim(iMatrix)
+  if (missing(iMatrix)) {
+    file["iMatrix"] <- matrix(1, 1, 1)
+  } else {
+    chunk <- iControl()$chunksize(.Object@dim[1])
+    if (chunk < .Object@dim[2]) {
+      file["iMatrix"] <- iMatrix[, seq_len(chunk)]
+      file["iMatrix"] <- cbind(file["iMatrix"], (chunk + 1):.Object@dim[2])
+    } else
+      file["iMatrix"] <- iMatrix
+  }
+  .Object@iMatrix <- file["iMatrix"]
+  return(.Object)
+})
 
+setMethod("show", "iGroup", function(object) {
+  cat("iGroup object:\n")
+  cat("     name =", object@name, "\n")
+  cat("   images =", nrow(object), "\n")
+  cat("   voxels =", ncol(object), "\n")
+  cat(" location =", object@location, "\n")
+  cat(" modality =", object@modality, "\n")
+  cat("___\n")
+})
 
-#' @param filename 
-#' @param name
+#' @details retrieve dimensions of iGroup's iMatrix slot
 #' @describeIn iGroup
-iGroupRead <- function(filename, name) {
+setMethod("dim", "iGroup", function(x) {
+  return(x@dim)
+})
+
+#' @details retrieve name of iGroup object
+#' @describeIn iGroup
+setMethod("names", "iGroup", function(x) {
+  return(x@name)
+})
+
+#' @details set name of iGroup
+#' @describeIn iGroup
+setMethod("names<-", "iGroup", function(x, value) {
+    x@name <- value
+    x@file["name"][] <- value
+    return(x)
+})
+
+#' @details subset iGroup objects
+#' @describeIn iGroup
+setMethod("[", "iGroup", function(x, i) {
+  out <- iGroup(x@iMatrix[i, ], x@name, mask, modality = x@modality, checkMask = FALSE)
+  if (class(x@K) == "numeric")
+    out@K <- 1
+  else
+    out@K <- x@K[i, ]
+  return(out)
+})
+
+#' @details read/load iGroup from h5 file
+#' @describeIn iGroup
+iGroupRead <- function(filename) {
   if (!usePkg("h5"))
     stop( "Please install package h5 in order to use this function." )
   if (!file.exists(filename))
     stop("file does not exist")
   file <- h5file(filename)
-  dnames <- list.datasets(file["iData/iList"])
-  if (!any(basename(dirname(dnames)) == name))
-    stop("name is note a saved iGroup within specified filename.")
-  tmp <- file.path("iData/iList", name)
-  name <- name
-  iMatrix <- file[file.path(tmp, "iMatrix")][]
-  modality <- file[file.path(tmp, "modality")][]
-  tmpmask <- file.path(tmp, "mask")
-  mymask <- as.antsImage(file[tmpmask][])
-  k = antsSetSpacing(mymask, h5attr(file[tmpmask], "spacing"))
-  k = antsSetOrigin(mymask, h5attr(file[tmpmask], "origin"))
-  k = antsSetDirection(mymask, h5attr(file[tmpmask], "direction"))
-  mask <- mymask
-  h5close(file)
-  return(iGroup(name, iMatrix, mask, modality))
+  out <- iGroup()
+  
+  out@location <- filename
+  out@iMatrix <- file["iMatrix"]
+  out@modality <- file["modality"][]
+  out@name <- file["name"][]
+  
+  # mask
+  mymask <- as.antsImage(file["mask"][])
+  k = antsSetSpacing(mymask, h5attr(file["mask"], "spacing"))
+  k = antsSetOrigin(mymask, h5attr(file["mask"], "origin"))
+  k = antsSetDirection(mymask, h5attr(file["mask"], "direction"))
+  out@mask <- mymask
+  
+  # K
+  ## configure
+  if (file["K"][] == 1)
+    out@K <- 1
+  else {
+    knames <- unique(basename(dirname(list.datasets(file[tmpk]))))
+    Filters <- file[file.path("K", "rows")][]
+    HParam <- file[file.path("K", "Hparam")][]
+    RT <- file[file.path("K", "RT")][]
+    out@K <- data.frame(Filters, HParam, RT)
+  }
+  out@dim <- dim(out@iMatrix[])
+    
+  return(out)
 }
 
+#' @details write/save iGroup to h5 file
 #' @describeIn iGroup
-setMethod("print", "iGroup", function(x) {
-  cat("iGroup object:\n")
-  cat(" ", x@name, "\n")
-  cat(" images =", nrow(x@iMatrix), "\n")
-  cat(" voxels =", ncol(x@iMatrix), "\n")
-  cat(" modality =", x@modality, "\n")
-  cat("___\n")
+iGroupWrite <- function(x, filename) {
+  oldfile <- x@location
+  if (file.exists(filename))
+    stop("filename already exists.")
+  out <- iGroup(x@iMatrix[], x@name, x@mask, modality = x@modality, checkMask = FALSE, filename = filename)
+  out@K <- x@K
+  if (class(x@K) == "data.frame") {
+    out@file[file.path("K", "Filters")] <- x@K$Filters
+    out@file[file.path("K", "HParam")] <- x@K$HParam
+    out@file[file.path("K", "RT")] <- x@K$RT
+  }
+  
+  return(TRUE)
+}
+
+# iData----
+#' 
+#' @param .Object
+#' @param x
+#' @param bool
+#' @param demog
+#' 
+#' @slot iList list of iGroup objects
+#' @slot demog demographic information
+#' @slot index index that coordinates iGroup rows with demographic rows
+#' 
+#' @details 
+#' See \link{iGroup/iData-class} for examples
+#' 
+#' @export iData
+iData <- setClass("iData",
+                  slots = list(
+                    iList = "list",
+                    demog = "data.frame",
+                    index = "data.frame")
+                  )
+
+setMethod("initialize", "iData", function(.Object, x, bool, demog) {
+  if (missing(x)) {
+    iList <- list(iGroup())
+    names(iList) <- iList[[1]]@name
+    .Object@iList <- iList
+    .Object@index <- data.frame()
+    .Object@demog <- data.frame()
+  } else {
+    # check x
+    if (class(x) == "iGroup")
+      x <- list(x)
+    if (class(x) != "list")
+      stop("x must be an iGroup object or list of iGroup objects.")
+    lname <- c()
+    for (i in seq_len(length(x))) {
+      lname <- c(lname, x[[i]]@name)
+      if (class(x[[i]]) != "iGroup")
+        stop("All members of x must be of class iGroup.")
+    }
+    names(x) <- lname
+    .Object@iList <- x
+    
+    # check bool
+    if (missing(bool))
+      .Object@index <- data.frame()
+    else {
+      if (class(bool) == "logical")
+        bool <- list(bool)
+      if (length(x) != length(bool))
+        stop("Each iGroup object must have a corresponding bool vector listed.")
+      
+      if (missing(demog))
+        .Object@index <- data.frame()
+      else {
+        for (i in seq_len(length(x))) {
+          if (!missing(demog)) {
+            if (length(bool[[i]]) != nrow(demog))
+              stop(paste("The number of elements in bool[[", i, "]] does not equal the number of rows in demog.", sep = ""))
+          .Object@demog <- demog
+          }
+          tmpsum <- sum(bool[[i]])
+          if (nrow(x[[i]]) != tmpsum)
+            stop(paste("The number of true elements in bool does not equal number of rows in iGroup object ", x[[i]]@name, ".", sep = ""))
+          tmpbool <- as.numeric(bool[[i]])
+          tmpbool[tmpbool == 1] <- seq_len(tmpsum)
+          if (i == 1)
+            index <- data.frame(tmpbool)
+          else 
+            index <- cbind(index, tmpbool)
+        }
+        colnames(index) <- lname
+        .Object@index <- index
+      }
+    }
+  }
+  return(.Object)
 })
 
-#' @describeIn iGroup
-iGroupWrite <- function(object, filename) {
-  if (class(object) != "iGroup")
-    stop("object must be of class iGroup")
+setMethod("show", "iData", function(object) {
+  cat("iData object \n")
+  cat("iList contains: \n")
+  for (i in seq_len(length(object@iList)))
+    print(object@iList[[i]])
+  cat("demog contains: \n")
+  cat(" ", ncol(object@demog), "variables \n")
+  cat(" ", nrow(object@demog), "rows \n")
+})
+
+#' @details retrieve names of iGroups in iList slot
+#' @describeIn iData
+setMethod("names", "iData", function(x) {
+    out <- c()
+    for (i in seq_len(length(x@iList)))
+      out <- c(out, x@iList[[i]]@name)
+    return(out)
+})
+
+#' @details replace names of iGroups within iList slot
+#' @describeIn iData
+setMethod("names<-", "iData", function(x, value) {
+  if (length(value) != length(x@iList))
+    stop("names must be the same length as the length of iList")
+  for (i in seq_len(length(x@iList)))
+    names(x@iList[[i]]) <- value
+  names(x@iList) <- value
+  return(x)
+})
+
+#' @details add iGroup to iList field
+#' @describeIn iData
+add <- function(x, iGroup, bool) {
+  if (class(iGroup) != "iGroup")
+    stop("iGroup must be of class iGroup.")
+  if (length(bool) != nrow(x@demog))
+    stop("The number of rows in demog must be equal to the length of bool.")
+  if (sum(bool) != nrow(iGroup@iMatrix))
+    stop("Number of TRUE elements in bool is not equal to number of images in iGroup")
+  if (any(names(x@iList) == iGroup@name))
+    stop(paste("iGroup of name ", iGroup@name, " already exists in iList", sep = ""))
+  
+  bool[bool == TRUE] <- seq_len(sum(bool))
+  if (any(dim(x@index) == 0)) {
+    index <- data.frame(bool)
+    colnames(index) <- iGroup@name
+  } else {
+    index <- cbind(x@index, bool)
+    colnames(index)[ncol(index)] <- iGroup@name
+  }
+  x@index <- index
+  
+  if (length(x@iList) != 0) {
+    x@iList <- lappend(x@iList, iGroup)
+    names(x@iList)[length(x@iList)] <- iGroup@name
+  } else {
+    x@iList <- list(iGroup)
+    names(x) <- iGroup@name
+  }
+  return(x)
+}
+
+#' @details drop iGroup objects with provided names from iList
+#' @describeIn iData
+substract <- function(x, ...) {
+  groups <- c(...)
+  for (i in seq_len(length(groups))) {
+    x@iList <- x@iList[[-which(names(x@iList) == groups[i])]]
+    x@index <- x@index[, -which(names(x@index) == groups[i])]
+  }
+  return(x)
+}
+
+#' @details get variables indexed according to iGroup indicated by groups
+#' @describeIn iData
+getDemog <- function(x, groups, vars) {
+  if (!any(groups == names(x)))
+    stop("groups does not match any iGroups in iList slot.")
+  if (length(groups) == 1) {
+    rindex <- as.logical(x@index[groups])
+  } else {
+    for (i in seq_len(length(groups))) {
+      if (i == 1)
+        rindex <- x@index[groups[i]]
+      else
+        rindex <- rindex * x@index[groups[i]]
+    }
+    rindex <- as.logical(rindex[, 1])
+  }
+  if (missing(vars))
+    return(x@demog[rindex, ])
+  else
+    return(x@demog[rindex, vars])
+}
+
+#' @details retrieve list of iGroups
+#' @describeIn iData
+getGroups <- function(x, ...) {
+  if (class(x) != "iData")
+    stop("x must be of class iData.")
+  ll <- c(...)
+  return(x@iList[ll])
+}
+
+#' @details create index for retreiving complimentary iGroup subjects
+#' @describeIn iData
+getGroupIndex <- function(x, ...) {
+  out <- x@index[c(...)]
+  for (i in seq_len(nrow(x@index))) {
+    if (any(is.na(out[i, ])))
+      out[i, ] <- out[i, ] * -1
+  }
+  return(out)
+}
+
+#' @details subset iData objects
+#' @describeIn iData
+setMethod("[", "iData", function(x, i) {
+  out <- iData(x@iList[[1]][x@index[i, 1]], as.logical(x@index[i, 1]), x@demog[i, ])
+  lg <- length(x@iList)
+  if (lg > 1) {
+    for (j in 2:lg)
+      out <- add(out, x@iList[[j]][x@index[i, j]], as.logical(x@index[i, j]))
+  }
+  return(out)
+})
+
+#' @details loads previously saved iData from its set directory
+#' @describeIn iData
+iDataRead <- function(dirname, verbose = TRUE) {
   if (!usePkg("h5"))
-    stop("Please install package h5 in order to use this function.")
-  if (file.exists(filename))
-    stop("Stopping because filename exists.")
-  file <- h5file(filename)
-  tmp <- file.path("iData/iList", object@name)
-  file[file.path(tmp, "iMatrix")] <- object@iMatrix
-  file[file.path(tmp, "modality")] <- object@modality
-  file[file.path(tmp, "mask")] <- as.array(object@mask)
-  h5attr(file[file.path(tmp, "mask")] , "spacing") <- antsGetSpacing(object@mask)
-  h5attr(file[file.path(tmp, "mask")] , "direction") <- antsGetDirection(object@mask)
-  h5attr(file[file.path(tmp, "mask")] , "origin") <- antsGetOrigin(object@mask)
+    stop( "Please install package h5 in order to use this function." )
+  if (!dir.exists(dirname))
+    stop("dirname does not exist.")
+  if (!dir.exists(file.path(dirname, "iList")))
+    stop("dirname does not appear to be the directory of an iData object.")
+  if (!file.exists(paste(dirname, "/demog.h5", sep = "")))
+    stop("dirname does not appear to be the directory of an iData object.")
+
+  # read each iGroup
+  if (verbose)
+    cat("Reading iList...")
+  x <- list()
+  
+  inames <- c()
+  ifiles <- list.files(file.path(dirname, "iList"))
+  ifiles <- file.path(dirname, "iList", ifiles)
+  for (i in seq_len(length(ifiles))) {
+    x[[i]] <- iGroupRead(ifiles[i])
+    inames <- c(inames, x[[i]]@name)
+    if (verbose)
+      cat( "\n ", inames[i])
+  }
+  names(x) <- inames
+  if (verbose)
+    cat(". \n")
+  
+  # read index
+  if (verbose)
+    cat("Reading index. \n")
+  file <- h5file(file.path(dirname, "demog.h5"))
+  index <- data.frame(file["index"][])
+  colnames(index) <- h5attr(file["index"], "colnames")
+  
+  # read demog
+  if (verbose)
+    cat("Reading demog. \n")
+  demog <- as.data.frame(file["demog/matrix"][])
+  dnam <- h5attr(file["demog/matrix"], "colnames")
+  colnames(demog) <- dnam
+  for (i in seq_len(length(dnam))) {
+    dattrfile <- file[paste("demog/col", i, sep = "")]
+    dattr <- list.attributes(dattrfile)
+    if (!is.null(dattr)) {
+      for (j in seq_len(length(dattr)))
+        attr(demog[dnam[i]], dattr[j]) <- h5attr(dattrfile, dattr[j])
+    }
+  }
+  
+  object <- iData()
+  object@iList <- x
+  object@demog <- demog
+  object@index <- index
+  
+  return(object)
+}
+
+#' @details write/save iData object to its own directory
+#' @describeIn iData
+iDataWrite <- function(x, dirname, verbose = TRUE) {
+  if (dir.exists(dirname))
+    stop("dirname already exists")
+  dir.create(dirname)
+  
+  # write iList
+  if (verbose)
+    cat("Writing iGroup... \n")
+  dir.create(file.path(dirname, "iList"))
+  for (i in seq_len(length(x@iList))) {
+    cat(" ", x@iList[[i]]@name, "\n")
+    tmpname <- file.path(dirname, "iList", paste("iGroup", i, ".h5", sep = ""))
+    iGroupWrite(x@iList[[i]], tmpname)
+  }
+  
+  file <- h5file(file.path(dirname, "demog.h5"))
+  # write index
+  if (verbose)
+    cat("Writing index. \n")
+  file["index"] <- data.matrix(x@index)
+  h5attr(file["index"], "colnames") <- colnames(x@index)
+  
+  # write demog
+  if (verbose)
+    cat("Writing demog. \n")
+  file["demog/matrix"] <- data.matrix(demog)
+  dnam <- colnames(demog)
+  h5attr(file["demog/matrix"], "colnames") <- dnam
+  for (i in seq_len(length(dnam))) {
+    dattrfile <- file[paste("demog/col", i, sep = "")]
+    dattr <- names(attributes(demog[dnam[i]]))
+    if (!is.null(dattr)) {
+      for (j in seq_len(length(dattr)))
+        h5attr(dattrfile, dattr[j]) <- attr(demog[dnam[i]], dattr[j])
+    }
+  }
+  
   h5close(file)
   return(TRUE)
 }
 
-## iData functions----
-
-#' iData reference class
-#' 
-#' @param iList
-#' @param demog
-#' @param index
-#' @param ...
-#' 
-#' @field iList
-#' @field demog
-#' @field index
-#' 
-#' @method 
-#' initialize
-#' addGroup
-#' checkMask
-#' getDemog
-#' load
-#' save
-#' show
-#' split
-#' 
-#' 
-#' 
-#' @export iData
-iData <- 
-  setRefClass("iData",
-              fields = list(
-                iList = "list",
-                demog = "data.frame",
-                index = "data.frame"),
-              methods = list(
-                initialize = function(iList, demog, index, ...) {
-                  ll <- list(...)
-                  if (missing(iList)) {
-                    iList <<- list("iGroup1" = iGroup())
-                  } else {
-                    lnames <- rep("tmp", length(iList))
-                    for (i in 1:length(iList))
-                      lnames[i] <- iList[[i]]$name
-                    iList <<- iList
-                    names(iList) <<- lnames
-                  }
-                  
-                  demog <<- if (missing(demog)) data.frame() else as.data.frame(demog)
-                  
-                  if (missing(index)) {
-                    if (!missing(iList) && !missing(demog)) {
-                      tmpbool <- rep.int(NA, nrow(demog))
-                      tmpindex <- data.frame(tmpbool)
-                      tmpindex[seq_len(nrow(iList[[1]]$iMatrix)), 1] <- seq_len(nrow(iList[[i]]$iMatrix))
-                      if (length(iList) > 1) {
-                        for (i in 2:length(iList)) {
-                          tmpindex <- cbind(tmpindex, data.frame(tmpbool))
-                          tmpindex[seq_len(nrow(iList[[i]]$iMatrix)), i] <- seq_len(nrow(iList[[i]]$iMatrix))
-                        }
-                      }
-                      colnames(tmpindex) <- names(iList)
-                    } else
-                      tmpindex <- data.frame()
-                  } else {
-                    if (class(index) == "logical") {
-                      tmpbool <- index
-                      tmpbool[tmpbool == TRUE] <- seq_len(sum(tmpbool))
-                      tmpindex <- data.frame(tmpbool)
-                    } else 
-                      tmpindex <- index
-                    if (!missing(iList) && !missing(demog)) {
-                      if (ncol(tmpindex) != length(iList))
-                        stop("Not all iGroups are represented in the index.")
-                      if (nrow(tmpindex) != nrow(demog))
-                        stop("All rows of demog must be represented by rows in index.")
-                      for (i in seq_len(ncol(tmpindex))) {
-                        if (sum(tmpindex[, i]) != sum(seq_len(nrow(iList[[i]]$iMatrix))))
-                          stop(paste("Number of non NA rows in index does not equal number of rows in iGroup ", names(iList)[i], ".", sep = ""))
-                      }
-                      colnames(tmpindex) <- names(iList)
-                    } else
-                      tmpindex <- index
-                  }
-                  index <<- tmpindex
-                },
-                addGroup = function(iGroup, bool) {
-                  'add iGroup to iList field'
-                  if (class(iGroup) != "iGroup")
-                    stop("iGroup must be of class iGroup.")
-                  if (length(bool) != nrow(demog))
-                    stop("The number of rows in demog must be equal to the length of bool.")
-                  if (sum(bool) != nrow(iGroup@iMatrix))
-                    stop("Number of TRUE elements in bool is not equal to number of images in iGroup")
-                  if (any(names(iList) == iGroup@name))
-                    stop(paste("iGroup of name ", iGroup@name, " already exists in iList", sep = ""))
-                  bool[TRUE] <- seq_len(sum(bool))
-                  if (any(dim(index) == 0)) {
-                    index <<- data.frame(bool)
-                    colnames(index) <<- iGroup@name
-                  } else {
-                    index <<- cbind(index, bool)
-                    colnames(index)[ncol(index)] <<- iGroup@name
-                  }
-                  if (length(iList) != 0)
-                    iList <<- list(iGroup)
-                  else
-                    iList <<- lappend(iList, iGroup)
-                  names(iList)[length(iList)] <<- iGroup@name
-                  colnames(index) <<- names(iList)
-                },
-                checkMask = function(...) {
-                  'ensures only active voxels are present in mask of iGroup of the given name'
-                  lname <- c(...)
-                  if (class(lname) != "character")
-                    stop("Argument must be a character specifying an existing iGroup within iList.")
-                  for (i in seq_len(length(lname))) {
-                    if (!any(names(iList) == lname[i]))
-                      stop("Argument must be a character specifying an existing iGroup within iList.")
-                    nimg <- nrow(iList[[lname[i]]]@iMatrix)
-                    mask_vec <- iList[[lname[i]]]@iMatrix
-                    mask_vec[mask_vec != 0] <- 1
-                    mask_vec <- colSums(mask_vec)
-                    mask_vec[mask_vec != nimg] <- 0
-                    mask_vec[mask_vec == nimg] <- 1
-                    iMatrix <- iList[[lname[i]]]@iMatrix[, as.logical(mask_vec)]
-                    mask <- makeImage(iList[[lname[i]]]@mask, mask_vec)
-                    iList[[lname[i]]] <<- iGroup(name = iList[[lname[i]]]@lname[i], iMatrix = iMatrix, mask = mask, modality = iList[[lname[i]]]@modality)
-                  }
-                  return(TRUE)
-                },
-                dropGroup = function(...) {
-                  'drop iGroup objects with provided names from iList'
-                  tmp <- c(...)
-                  iList <<- iList[[-tmp]]
-                },
-                load = function(filename, verbose = TRUE) {
-                  'loads previously saved iData from h5 file'
-                  if (!usePkg("h5"))
-                    stop( "Please install package h5 in order to use this function." )
-                  if (!file.exists(filename))
-                    stop("file does not exist")
-                  file <- h5file(filename)
-                  
-                  # load each iGroup
-                  if (verbose)
-                    cat("Loading iList...")
-                  inames <- unique(basename(dirname(list.datasets(file["iData/iList"]))))
-                  tmplist <- list()
-                  for (i in 1:length(inames)) {
-                    if (verbose)
-                      cat( "\n ", inames[i])
-                    tmplist[[i]] <- iGroupRead(filename, inames[i])
-                  }
-                  names(tmplist) <- inames
-                  iList <<- tmplist
-                  if (verbose)
-                    cat(". \n")
-                  
-                  # load index
-                  if (verbose)
-                    cat("Loading index. \n")
-                  index <<- data.frame(file["iData/index"][])
-                  colnames(index) <<- h5attr(file["iData/index"], "colnames")
-                  
-                  # load demog
-                  if (verbose)
-                    cat("Loading demog. \n")
-                  tmp <- file["iData/demog/matrix"][]
-                  dnam <- h5attr(tmp, "colnames")
-                  colnames(tmp) <- dnam
-                  for (i in 1:length(dnam)) {
-                    colnum <- paste("iData/demog/col", i, sep = "")
-                    tmpattr <- list.attributes(file[colnum])
-                    for (j in 1:length(tmpattr))
-                      attr(tmp[dnam[i]], tmpattr[j]) <- h5attr(file[colnum], tmpattr[j])
-                  }
-                  demog <<- tmp
-                  h5close(file)
-                },
-                getDemog = function(groups, vars) {
-                  'get variables indexed according to iGroup indicated by groups'
-                  if (!any(groups == groupss(iList)))
-                    stop("groups does not match and iGroups in iList.")
-                  if (length(groups) == 1)
-                    rindex <- rowgroupss(index[groups])[!is.na(index[groups])]
-                  else
-                    rindex <- as.logical(rowSums(index[groups]))
-                  if (missing(vars))
-                    return(demog[rindex, ])
-                  else
-                    return(demog[rindex, vars])
-                },
-                getGroup = function(...) {
-                  'get iGroups '
-                  groups <- c(...)
-                  return(iList[[groups]])
-                },
-                getGroupIndex = function(groups) {
-                  'create index for retreiving complimentary iGroup subjects'
-                  out <- index[groups]
-                  for (i in seq_len(nrow(index))) {
-                    if (any(is.na(out[i, ])))
-                      out[i, ] <- out[i, ] * -1
-                  }
-                  return(out)
-                },
-                save = function(filename, verbose = TRUE) {
-                  'saves iData object to h5 file'
-                  if (!usePkg("h5"))
-                    stop("Please install package h5 in order to use this function.")
-                  if (file.exists(filename))
-                    stop("Stopping because filename exists.")
-                  file <- h5file(filename)
-                  
-                  # save each iGroup
-                  if (verbose)
-                    cat("Saving iGroup... \n")
-                  for (i in 1:length(iList)) {
-                    if (verbose)
-                      cat(" ", names(iList)[i], "\n")
-                    iGroupWrite(iList[[i]], filename)
-                  }
-                  
-                  # save index
-                  if (verbose)
-                    cat("Saving index. \n")
-                  file["iData/index"] <- data.matrix(index)
-                  h5attr(file["iData/index"], "colnames") <- colnames(index)
-                  
-                  # save demog
-                  if (verbose)
-                    cat("Saving demog. \n")
-                  file["iData/demog/matrix"] <- data.matrix(demog)
-                  dnam <- colnames(demog)
-                  h5attr(file["iData/demog/matrix"], "colnames") <- dnam
-                  if (verbose)
-                    cat("Saving demographic information. \n")
-                  for (i in 1:length(dnam)) {
-                    dattrfile <- file[paste("iData/demog/col", i, sep = "")]
-                    dattr <- names(attributes(demog[dnam[i]]))
-                    if (!is.null(dattr)) {
-                      for (j in 1:length(dattr))
-                        h5attr(dattrfile, dattr[j]) <- attr(demog[dnam[i]], dattr[j])
-                    }
-                  }
-                  h5close(file)
-                  return(TRUE)
-                },
-                show = function() {
-                  cat("iData object \n")
-                  cat("iList contains: \n")
-                  for (i in seq_len(length(iList)))
-                    print(iList[[i]])
-                  cat("demog contains: \n")
-                  cat(" ", ncol(demog), "variables \n")
-                  cat(" ", nrow(demog), "rows \n")
-                },
-                split = function(nsplit) {
-                  'splits iData into two groups with specified ratios if nsplit < 1 or into n folds if nsplit > 1'
-                  ndemog <- nrow(demog)
-                  if (nsplit > 1) {
-                    mylist <- list()
-                    split_ids <- sample(ndemog) %% round(nsplit) + 1
-                    for (j in sort(unique(split_ids))) {
-                      splitrow <- seq_len(ndemog)[split_ids == j]
-                      ilist <- list()
-                      for (i in seq_len(iList)) {
-                        ilist[[i]] <- iGroup(name = iList[[i]]$name,
-                                             iMatrix = iList[[i]]$iMatrix[splitrow, ],
-                                             mask = antsImageClone(iList[[i]]$mask),
-                                             modality = iList[[i]]$modality)
-                      }
-                      names(ilist) <- names(iList)
-                      mylist[[j]] <- iData(iList = ilist, demog = demog[splitrow, ], index = index[splitrow, ])
-                      names(mylist)[length(mylist)] <- paste("split", j, sep = "")
-                    }
-                    return(mylist)
-                  } else if (nsplit < 1) {
-                    splitrow <- sample(1:ndemog, nsplit * ndemog)
-                    
-                    ilist1 <- list()
-                    for (i in 1:length(iList)) {
-                      ilist1[[i]] <- iGroup(name = iList[[i]]$name,
-                                            iMatrix = iList[[i]]$iMatrix[splitrow, ],
-                                            mask = antsImageClone(iList[[i]]$mask),
-                                            modality = iList[[i]]$modality)
-                      names(ilist1)[length(ilist1)] <- names(iList)[i]
-                    }
-                    
-                    ilist2 <- list()
-                    for (i in 1:length(iList)) {
-                      ilist2[[i]] <- iGroup(name = iList[[i]]$name,
-                                            iMatrix = iList[[i]]$iMatrix[-splitrow, ],
-                                            mask = antsImageClone(iList[[i]]$mask),
-                                            modality = iList[[i]]$modality)
-                      
-                      names(ilist2)[length(ilist2)] <- names(iList)[i]
-                    }
-                    mylist[[1]] <- iData(iList = ilist1, demog = demog[splitrow, ], index = index[splitrow, ])
-                    mylist[[2]] <- iData(iList = ilist2, demog = demog[-splitrow, ], index = index[-splitrow, ])
-                    names(mylist) <- c("split1", "split2")
-                    return(mylist)
-                  } else
-                    cat("no split occured. \n")
-                })
-              )
-
-#' @details loads previously saved iData from h5 file
+#' @details splits iData into two groups with specified ratios if nsplit < 1 or into n folds if nsplit > 1
 #' @describeIn iData
-iDataRead <- function(filename, verbose = TRUE) {
-  object <- iData()
-  object = object$load(filename = filename, verbose = verbose)
-  return(object)
-}
-
-#' @details saves iData object to h5 file
-#' @describeIn iData
-iDataWrite <- function(object, filename, verbose = TRUE) {
-  if (class(object) != "iData")
-    stop("object must be of class iData.")
-  object$save(filename = filename, verbose = verbose)
-}
-
-
-#' iData Model Formulae 
-#' 
-#' @param formula an object of class \code{\link{formula}} (or one that can be coerced to that class): a symbolic description of the model to be fitted. The details of model specification are given under ‘Details’.
-#' @param iData an object of class \code{\link{iData}} containing data represented in the provided formula
-#' @param ...
-#' 
-#' 
-#' 
-#' @export iFormula
-iFormula <- 
-  function(formula, iData, control = ...) {
-    lhs <- form1[[2]]
-    groups <- all.vars(lhs)
-    for (i in seq_len(length(groups))) {
-      if (!any(names(iData$iList) == groups[i]))
-        stop(paste(y, " is not an iGroup found within iData", sep = ""))
+iDataSplit <- function(x, nsplit) {
+  ndemog <- nrow(x@demog)
+  if (nsplit > 1) {
+    out <- list()
+    split_ids <- sample(ndemog) %% round(nsplit) + 1
+    for (j in sort(unique(split_ids))) {
+      splitrow <- seq_len(ndemog)[split_ids == j]
+      out[[j]] <- x[splitrow]
+      names(out)[length(out)] <- paste("split", j, sep = "")
     }
-    groupIndex <- iData$getGroupIndex(groups)
-    
-    rhs <- delete.response(formula)
-    vars <- all.vars(rhs)
-
-    out <- list(formula = formula, y = groups, groupIndex = groupIndex, RHS = RHS)
-    class(out) <- "iFormula"
-    return(out)
-  }
-
-model.frame.iFormula <- function(object, iData) {
-  model.frame(object$RHS, data = iData$getDemog(object$y))
+  } else if (nsplit < 1) {
+    splitrow <- sample(1:ndemog, nsplit * ndemog)
+    out <- list(split1 = x[splitrow], split2 = x[-splitrow])
+  } else
+    cat("no split occured. \n")
+  return(out)
 }
-
-## iModel----
-#' @importFrom stats coef
-#' @S3method coef iModel
-coef.iModel <- function(object) {
-  object$beta
-}
-
-#' @importFrom stats fitted
-#' @S3method fitted iModel
-fitted.iModel <- function(object) {
-  object$X %*% object$beta
-}
-
-#' @importFrom stats model.matrix
-#' @S3method model.matrix iModel
-model.matrix.iModel <- function(object) {
-  object$X
-}
-
-#' @importFrom stats residuals
-#' @S3method residuals iModel
-residuals.iModel <- function(object) {
-  object$res
-}
-
-iModel <-
-  setRefClass("iModel",
-              fields = list(
-                iData = "iData",
-                y = "character",
-                frame = "data.frame",
-                X = "list",
-                XV = "matrix",
-                beta = "matrix",
-                betaCov = "matrix",
-                res = "matrix",
-                mrss = "matrix",
-                K = "ANY",
-                xVi = "list",
-                XX = "matrix",
-                dims = "list",
-                trRV = "numeric",
-                trRVRV = "numeric",
-                rdf = "numeric",
-                fwhm = "numeric",
-                resels = "numeric",
-                rpvImage = "antsImage",
-                nvox = "numeric",
-                call = "call"),
-              methods = list(
-                setBeta_Res = function(x) {
-                  'set the model coefficients'
-                  KWY <- rftFilter(K, X$W %*% Y)
-                  beta <<- X$XX %*% KWY
-                  res <<- .res(X$KWX, KWY)
-                  mrss <<- colSums(res^2) / trRV
-                  # if (missing(x))
-                  #   beta <<- XX %*% crossprod(X, iData$imgList[[y]]$imageMatrix)
-                  # else
-                  #   beta <<- x
-                },
-                setCall = function(call) {
-                  'set call field'
-                  call <<- call
-                },
-                setV2R = function (sample, verbose = NULL) {
-                  'estimate voxels in resels space.'
-                  smooth <- estSmooth(resid, modData$mask, dims$rdf, scaleResid = FALSE, sample, verbose)
-                  fwhm <<- smooth$fwhm
-                  rpvImage <<- smooth$rpvImage
-                  resels <<- resels(modData$mask, smooth$fwhm)
-                },
-                setTrRV = function() {
-                  'set trace of RV, RVRV, and estimate residual degrees of freedom.'
-                  out <- .trRV(KWX, X$V)
-                  trRV <<- out$trRV
-                  trRVRV <<- out$trRVRV
-                  rdf <<- out$rdf
-                },
-                setW = function(x) {
-                  'set the weight matrix'
-                  if (missing(weights)) {
-                    iV <- sqrt(MASS::ginv(xVi$V))
-                    weights <- iV * (abs(iV) > 1e-6)
-                  } else {
-                    if (class(weights) == "numeric" && length(weights) == nimg)
-                      X$W <<- diag(weights)
-                    else if (all(dim(weights) == nimg))
-                      X$W <<- weights
-                    else
-                      stop("weights must be a matrix of nimg x nimg or a vector of length nimg")
-                  }
-                },
-                setX = function(x) {
-                  'set design matrix'
-                  X$X <<- x
-                  dims$nimg <<- nrow(X)
-                  dims$npred <<- ncol(X)
-                  dims$nvox <<- ncol(iData$imgList[[y]]$imageMatrix)
-                },
-                setXVi = function(method = NULL) {
-                  if (is.null(xVi$V))
-                    xVi$V <<- diag(ncol(X))
-                  if (!is.null(method)) {
-                    xVi <<- estNonSphericity()
-                  }
-                },
-                setKWX = function() {
-                  'set the pseudoinverse of X'
-                  X$KWX <<- .setX(rftFilter(K, W %*% X$X))
-                  X$XX <<- .pinvx(KWX)
-                },
-                setX_V = function() {
-                  X$V <<- rftFilter(K, rftFilter(K, W %*% tcrossprod(xVi$V, W)))
-                },
-                setBetaCov = function() {
-                  betaCov <<- XX %*% tcrossprod(XV, XX)
-                },
-                show = function() {
-                  'method for printing rftModel'
-                  cat("Random Field Theory model fitted by ", call[[1]])
-                  cat("Call: \n")
-                  print(call)
-                  cat("\nCoefficients: \n")
-                  
-                  for (i in seq_len(ncol(X))) {
-                    cat(colnames(X)[i], "\n")
-                  }
-                  
-                  cat("\nDegrees of interest = ", dims$idf, "\n")
-                  cat("Residual degrees of freedom = ", dims$rdf, "\n")
-                  cat("Voxels = ", nvox, "\n")
-                  cat("FWHM = ", fwhm, "\n")
-                  cat("Resels = ", resels, "\n\n")
-                })
-             )
-
-# setRes = function(x, scale = TRUE) {
-#   'return residual forming matrix or set residuals'
-#   if (missing(x))
-#     x <- iData$imgList[[y]]$imageMatrix - X %*% B
-#   mrss <<- colSums(x^2) / dims$rdf
-#   if (scale)
-#     x <- t(t(x) * (1 / mrss))
-#   res <<- x
-# },

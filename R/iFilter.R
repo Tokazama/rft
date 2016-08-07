@@ -2,29 +2,38 @@
 #'
 #'
 #' @param K filter matrix
-#' @param K[[s]] struct array containing partition specific specifications
+#' @param K struct array containing partition specific specifications
 #' @param K[[s]]$RT observation interval in seconds
 #' @param K[[s]]$row row of Y constituting block/partitions
 #' @param K[[s]]$HParams cut-off period in seconds
 #' @param K[[s]]$X0 low frequencies to be removed (DCT)
-## 
 #' @return filtered data
 #'
-rftFilter <- function(K, Y) {
+#' @ export iFilter
+iFilter <- function(K, Y) {
   if (missing(Y) && is.list(K)) {
     # set K$X0
+    out <- list()
     for (s in seq_len(length(K))) {
-      nk <- length(K[[s]]$row)
-      n <- floor(2 * (nk * K[[s]]$RT) / K[[s]]$HParam + 1)
+      # create filter index from filter data.frame
+      subout <- list()
+      subout$row <- seq_len(nrow(K))[K$Filter == paste("F", s, sep = "")]
+      subout$RT <- K$RT[subout$row[1]]
+      subout$HParam <- K$HParam[subout$row[1]]
+      
+      # determine low frequencies to be removed
+      nk <- length(subout$row)
+      n <- floor(2 * (nk * subout$RT) / subout$HParam + 1)
       X0 <- .dctmtx(nk, n)
-      K[[s]]$X0 <- X0[, 2:ncol(X0)]
+      subout$X0 <- X0[, 2:ncol(X0)]
+      out[[i]] <- subout
     }
-    return(K)
+    return(out)
   } else {
     if (is.list(K)) {
       # ensure requisite fields are present
       if (is.null(K[[1]]$X0))
-        K <- rftFilter(K)
+        K <- iFilter(K)
       
       # apply high pass filter
       if (length(K) == 1 && length(K[[1]]$row == ncol(Y)))
