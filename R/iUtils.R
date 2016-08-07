@@ -1,5 +1,5 @@
 # To Do:
-# 
+# I can probably use 'identical()' instead of these other ones
 # .C1inC2
 # .notunique (~unique)
 
@@ -8,23 +8,15 @@
 .setx <- function(x) {
   out <- list()
   if (missing(x)) {
-    out$X <- c()
-    out$v <- c()
-    out$u <- c()
-    out$d <- c()
-    out$tol <- c()
-    out$rk <- c()
-    out$op <- c()
-    out$opp <- c()
-    out$ups <- c()
-    out$sus <- c()
+    out <- list(X = c(), v = c(), u = c(), d = c(), tol = c(), rk = c(),
+                op = c(), opp = c(), ups = c(), sus = c())
   } else {
     out$X <- x
     svdx <- svd(t(x))
     out$v <- svdx$v
     out$u <- svdx$u
     out$d <- svdx$d
-    out$tol <- max(dim(X)) * max(absx$d) * .Machine$double.eps
+    out$tol <- max(dim(out$X)) * max(abs(out$d)) * .Machine$double.eps
     out$rk <- sum(out$d > out$tol)
   }
   return(out)
@@ -388,13 +380,13 @@
 # space structure check
 .isspc <- function(x, oneout = TRUE) {
   if (!is.list(x))
-    return(0)
+    out <- 0
   else {
     b <- 1
     fnames <- names(x)
-    tmp <- setx()
+    tmp <- .setx()
     for (i in seq_len(length(fnames))) {
-      b <- b & any(tmp[i] == tmp)
+      b <- b & any(names(tmp) == names(x)[i])
       if (!b)
         break
     }
@@ -614,7 +606,7 @@
       trRVRV <- tmp + norm(crossprod(u, Vu), "f")^2
       trmv <- sum(u %*% Vu)
     }
-    trRV <- trV - trmv
+    trRV <- trv - trmv
   }
   rdf <- (trRV^2) / trRVRV
   

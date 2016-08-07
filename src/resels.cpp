@@ -1,10 +1,12 @@
 #include <Rcpp.h>
-using namespace Rcpp;
 
 // [[Rcpp::export]]
-NumericVector resels(IntegerVector m, NumericVector fwhm, IntegerVector DIM) {
+
+RcppExport SEXP resels(Rcpp::IntegerVector m, Rcpp::NumericVector fwhm, Rcpp::IntegerVector DIM)
+try
+  {
   int D = DIM.size();
-  NumericVector resels(4);
+  Rcpp::NumericVector resels(4);
   int dimx = DIM(0);
   int dimy = DIM(1);
   int dimz;
@@ -27,7 +29,7 @@ NumericVector resels(IntegerVector m, NumericVector fwhm, IntegerVector DIM) {
         int yc = floor(i / dimx);
         yc = yc % dimy;
 
-        IntegerVector point(7);
+        Rcpp::IntegerVector point(7);
         point(0) = (xc + 1) + ((yc + 0) * DIM(0));
         point(1) = (xc + 0) + ((yc + 1) * DIM(0));
         point(2) = (xc + 1) + ((yc + 1) * DIM(0));
@@ -56,7 +58,7 @@ NumericVector resels(IntegerVector m, NumericVector fwhm, IntegerVector DIM) {
         int zc = floor(i / (dimy * dimx));
         zc = zc % dimz;
 
-        IntegerVector point(7);
+        Rcpp::IntegerVector point(7);
         point(0) = (xc + 1) + ((yc + 0) * DIM(0)) + ((zc + 0) * DIM(0) * DIM(1));  // 322
         point(1) = (xc + 0) + ((yc + 1) * DIM(0)) + ((zc + 0) * DIM(0) * DIM(1));  // 232
         point(2) = (xc + 0) + ((yc + 0) * DIM(0)) + ((zc + 1) * DIM(0) * DIM(1));  // 223
@@ -99,4 +101,9 @@ NumericVector resels(IntegerVector m, NumericVector fwhm, IntegerVector DIM) {
   resels(2) = (Fxy - Fxyz) * rx * ry + (Fxz - Fxyz) * rx * rz + (Fyz - Fxyz) * ry * rz;
   resels(3) = Fxyz * rx * ry * rz;
   return resels;
+  }
+  catch( const std::exception& exc )
+  {
+    Rcpp::Rcout<< exc.what() << std::endl ;
+    return Rcpp::wrap(1);
   }
