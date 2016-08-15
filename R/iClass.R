@@ -1,93 +1,26 @@
-# to do:
-
-#' iData/iGroup reference class
+#' iGroup
 #' 
-#' @details 
-#' iData/iGroup refers to a set of S4 classes used for representing image data.
-#' The base compositional unit is the \code{\link{iGroup}} class that allows a 
-#' set of images to be represented by an image matrix, name, binary mask (of 
-#' class \code{\link{antsImage}}), information describing the images' modality
-#' (i.e. fMRI, PET, VBM, etc.), and optionally the image filter information. 
+#' Object for representing single image modality
 #' 
-#' @usage
-#' iGroup(iMatrix, name, mask, modality, ...)
-#' 
-#' iData(iList, demog, index, ...)
-#' 
-#' @example 
-#' 
-#' # create iGroup object
-#' ilist <- getANTsRData("population")
-#' mask <- getMask(ilist[[1]])
-#' imat <- imageListToMatrix(ilist, mask)
-#' iGroup1 <- iGroup(imat, "pop1", mask, modality = "T1")
-#' 
-#' # ensure only active voxels are included in mask
-#' 
-#' 
-#' ilist <- lappend(ilist, ilist[[1]])
-#' imat <- imageListToMatrix(ilist, mask)
-#' iGroup2 <- iGroup(imat, "pop2", mask, modality = "T1")
-#' 
-#' # save iGroup object
-#' tmpfile <- tempfile(fileext = ".h5")
-#' iGroupWrite(iGroup1, tmpfile)
-#' 
-#' # load saved iGroup object
-#' (iGroup1_reload <- iGroupRead(tmpfile))
-#' 
-#' demog <- data.frame(id = c("A", "B", "C", NA),
-#'   age = c(11, 7, 18, 22), sex = c("M", "M", "F", "F"))
-#'   
-#' bool1 <- c(TRUE, TRUE, TRUE, FALSE)
-#' bool2 <- c(TRUE, TRUE, TRUE, TRUE)
-#' 
-#' # create iData object that holds demographics info
-#' mydata <- iData(iGroup1, bool1, demog)
-#' 
-#' # add iGroup object to iData
-#' mydata <- add(mydata, iGroup2, bool1)
-#' 
-#' # save iData object
-#' tmpdir <- "iData_test"
-#' iDataWrite(mydata, tmpdir)
-#' 
-#' # load saved iData object
-#' (mydata_reload <- iDataRead(tmpdir))
-#' 
-#' # split iData object into k-folds or train and test groups
-#' mydatasplit <- iDataSplit(mydata, 0.3)
-#' 
-#' # retreive demographic information specific to an iGroup
-#' getDemog(mydata, "pop1", c("age", "sex"))
-#'
-#' @export iGroup/iData-class
-
-
-# iGroup----
-#' iGroup-class
-#' 
-#' @param .Object
+#' @param .Object inpute object to convert
 #' @param iMatrix image by voxel matrix
-#' @param name name for the iGroup object (used for reference in \code{\link{iData}} and formulas)
+#' @param name name for the iGroup object (used for reference in \code{iData and formulas})
 #' @param mask mask with number of non-zero entries defining the matrix columns.
 #' @param modality image modality that iGroup will represent
 #' @param rowslist row of iMatrix constituting block/partitions
 #' @param HParam cut-off period in seconds
 #' @param RT observation interval in seconds
-#' @param checkMask logical. ensure mask only represents active voxels
+#' @param checkMask logical ensure mask only represents active voxels (default = \code{TRUE})
 #' @param filename optional filename to save iGroup object (default = \code{tempfile(fileext = ".h5")})
 #' 
-#' @slot name iGroup name
+#' @slot name name of the iGroup
 #' @slot file h5file connection
 #' @slot iMatrix h5file pointer to matrix
 #' @slot location h5file location
 #' @slot modality image modality represented
 #' @slot mask mask with number of non-zero entries defining the matrix columns.
 #' @slot K filter information
-#' 
-#' @details 
-#' See \linke{iGroup/iData-class} for examples
+#' @slot dim dimensions of iMatrix
 #' 
 #' 
 #' @export iGroup
@@ -103,6 +36,7 @@ iGroup <- setClass("iGroup",
                      dim = "numeric")
                    )
 
+#' @export
 setMethod("initialize", "iGroup", function(.Object, iMatrix = matrix(1, 1, 1), name, mask,
                                            modality, rowslist, HParam, RT, checkMask = TRUE, filename) {
   if (!usePkg("h5"))
@@ -195,17 +129,26 @@ setMethod("initialize", "iGroup", function(.Object, iMatrix = matrix(1, 1, 1), n
   if (missing(iMatrix)) {
     file["iMatrix"] <- matrix(1, 1, 1)
   } else {
-    chunk <- iControl()$chunksize(.Object@dim[1])
-    if (chunk < .Object@dim[2]) {
-      file["iMatrix"] <- iMatrix[, seq_len(chunk)]
-      file["iMatrix"] <- cbind(file["iMatrix"], (chunk + 1):.Object@dim[2])
+    # set chunk size
+    chunk <- ((2^23) / .Object@dim[1])
+    if (.Object@dim[2] > chunk) {
+      chunkseq <- seq_len(chunk)
+      nchunk <- floor(.Object@dim[2] / chunk)
+      file["iMatrix"] <- iMatrix[, chunkseq]
+      for (i in 2:nchunk) {
+        chunkseq <- chunkseq + chunk
+        if (nchunk == chunk) 
+          file["iMatrix"] <- cbind(file["iMatrix"], iMatrix[, chunkseq[1]:.Object@dim[2]])
+        else
+          file["iMatrix"] <- cbind(file["iMatrix"], iMatrix[, chunkseq])
+      }
     } else
       file["iMatrix"] <- iMatrix
   }
   .Object@iMatrix <- file["iMatrix"]
   return(.Object)
 })
-
+#' @export
 setMethod("show", "iGroup", function(object) {
   cat("iGroup object:\n")
   cat("     name =", object@name, "\n")
@@ -216,30 +159,45 @@ setMethod("show", "iGroup", function(object) {
   cat("___\n")
 })
 
-#' @details retrieve dimensions of iGroup's iMatrix slot
-#' @describeIn iGroup
+#' iGroup Methods
+#' 
+#' @param x,object Object of class iGroup.
+#' @param filename h5 file to save iGroup object to
+#' @name iGroup-methods
+NULL
+
+#' @export
+#' @docType methods
+#' @details \strong{dim} retrieve dimensions of iGroup's iMatrix slot
+#' @rdname iGroup-methods
 setMethod("dim", "iGroup", function(x) {
   return(x@dim)
 })
 
-#' @details retrieve name of iGroup object
-#' @describeIn iGroup
+#' @export
+#' @docType methods
+#' @details \strong{names} retrieve name of iGroup object
+#' @rdname iGroup-methods
 setMethod("names", "iGroup", function(x) {
   return(x@name)
 })
 
-#' @details set name of iGroup
-#' @describeIn iGroup
+#' @export
+#' @docType methods
+#' @details \strong{names<-} set name of iGroup
+#' @rdname iGroup-methods
 setMethod("names<-", "iGroup", function(x, value) {
     x@name <- value
     x@file["name"][] <- value
     return(x)
 })
 
-#' @details subset iGroup objects
-#' @describeIn iGroup
+#' @export
+#' @docType methods
+#' @details \strong{[} set name of iGroup
+#' @rdname iGroup-methods
 setMethod("[", "iGroup", function(x, i) {
-  out <- iGroup(x@iMatrix[i, ], x@name, mask, modality = x@modality, checkMask = FALSE)
+  out <- iGroup(x@iMatrix[i, ], x@name, x@mask, modality = x@modality, checkMask = FALSE)
   if (class(x@K) == "numeric")
     out@K <- 1
   else
@@ -247,8 +205,10 @@ setMethod("[", "iGroup", function(x, i) {
   return(out)
 })
 
-#' @details read/load iGroup from h5 file
-#' @describeIn iGroup
+#' @export
+#' @docType methods
+#' @details \strong{iGroupRead} read/load iGroup from h5 file
+#' @rdname iGroup-methods
 iGroupRead <- function(filename) {
   if (!usePkg("h5"))
     stop( "Please install package h5 in order to use this function." )
@@ -285,35 +245,73 @@ iGroupRead <- function(filename) {
   return(out)
 }
 
-#' @details write/save iGroup to h5 file
-#' @describeIn iGroup
+#' @export
+#' @docType methods
+#' @details \strong{iGroupWrite} write/save iGroup to h5 file
+#' @rdname iGroup-methods
 iGroupWrite <- function(x, filename) {
-  oldfile <- x@location
   if (file.exists(filename))
     stop("filename already exists.")
-  out <- iGroup(x@iMatrix[], x@name, x@mask, modality = x@modality, checkMask = FALSE, filename = filename)
-  out@K <- x@K
-  if (class(x@K) == "data.frame") {
-    out@file[file.path("K", "Filters")] <- x@K$Filters
-    out@file[file.path("K", "HParam")] <- x@K$HParam
-    out@file[file.path("K", "RT")] <- x@K$RT
-  }
+  file <- h5file(filename)
   
+  # write name
+  file["name"] <- x@name
+  
+  # write modality
+  file["modality"] <- x@modality
+  
+  # write dim
+  file["dim"] <- x@dim
+  
+  # write K
+  if (class(x@K) == "data.frame") {
+    file["K/Filters"] <- x@K$Filters
+    file["K/HParam"] <- x@K$HParam
+    file["K/RT"] <- x@K$RT
+  } else
+    file["K"] <- x@K
+  
+  # write mask
+  file["mask"] <- as.array(x@mask)
+  h5attr(file["mask"] , "spacing") <- antsGetSpacing(x@mask)
+  h5attr(file["mask"] , "direction") <- antsGetDirection(x@mask)
+  h5attr(file["mask"] , "origin") <- antsGetOrigin(x@mask)
+  
+  # write iMatrix
+  chunk <- x@iMatrix@chunksize[2]
+  nchunk <- floor(x@dim[2] / chunk)
+  if (nchunk > 1) {
+    chunkseq <- seq_len(chunk)
+    file["iMatrix"] <- x@iMatrix[, chunkseq]
+    for (i in 2:nchunk) {
+      chunkseq <- chunkseq + chunk
+      if (i != nchunk)
+        file["iMatrix"] <- cbind(file["iMatrix"], x@iMatrix[, chunkseq])
+      else if ((nchunk * chunk) != x@dim[2])
+        file["iMatrix"] <- cbind(file["iMatrix"], x@iMatrix[, chunkseq[1]:x@dim[2]])
+    }
+  } else
+    file["iMatrix"] <- x@iMatrix
+  h5close(file)
   return(TRUE)
 }
 
-# iData----
+#' iData
 #' 
-#' @param .Object
-#' @param x
-#' @param bool
-#' @param demog
+#' Object for representing multiple image modalities and demographic data
+#' 
+#' @param .Object input object to convert
+#' @param x either a list of iGroups or a single iGroup object
+#' @param bool a vector of TRUE/FALSE values with length equal to the number of
+#'  rows in the demographics data frame and number of TRUE values equal to the 
+#'  number of rows in the image matrix.
+#' @param demog demographic data.frame corresponding to iGroups
 #' 
 #' @slot iList list of iGroup objects
 #' @slot demog demographic information
 #' @slot index index that coordinates iGroup rows with demographic rows
 #' 
-#' @details 
+#' @description 
 #' See \link{iGroup/iData-class} for examples
 #' 
 #' @export iData
@@ -324,6 +322,7 @@ iData <- setClass("iData",
                     index = "data.frame")
                   )
 
+#' @export
 setMethod("initialize", "iData", function(.Object, x, bool, demog) {
   if (missing(x)) {
     iList <- list(iGroup())
@@ -382,6 +381,7 @@ setMethod("initialize", "iData", function(.Object, x, bool, demog) {
   return(.Object)
 })
 
+#' @export
 setMethod("show", "iData", function(object) {
   cat("iData object \n")
   cat("iList contains: \n")
@@ -392,8 +392,27 @@ setMethod("show", "iData", function(object) {
   cat(" ", nrow(object@demog), "rows \n")
 })
 
-#' @details retrieve names of iGroups in iList slot
-#' @describeIn iData
+#' iData Methods
+#' 
+#' @param x,object Object of class iData.
+#' @param dirname Directory to write iData object to.
+#' @param value Character vector to replace current iGroup names.
+#' @param groups Name of iGroup object.
+#' @param vars Variables from demographics slot.
+#' @param bool A vector of TRUE/FALSE values with length equal to the number of
+#'  rows in the demographics data frame and number of TRUE values equal to the 
+#'  number of rows in the image matrix.
+#' @param i Vector of numeric values representing images to subset in iData.
+#' @param nsplit If greater than one, number of folds to split data into.
+#' Otherwise, proportion of rows in training data.
+#' @param verbose enables verbose output. (default = \code{TRUE})
+#' @name iData-methods
+NULL
+
+#' @export
+#' @docType methods
+#' @details \strong{names} retrieve names of iGroups in iList slot
+#' @rdname iData-methods
 setMethod("names", "iData", function(x) {
     out <- c()
     for (i in seq_len(length(x@iList)))
@@ -401,8 +420,11 @@ setMethod("names", "iData", function(x) {
     return(out)
 })
 
-#' @details replace names of iGroups within iList slot
-#' @describeIn iData
+
+#' @export
+#' @docType methods
+#' @details \strong{names<-} replace names of iGroups within iList slot
+#' @rdname iData-methods
 setMethod("names<-", "iData", function(x, value) {
   if (length(value) != length(x@iList))
     stop("names must be the same length as the length of iList")
@@ -412,8 +434,10 @@ setMethod("names<-", "iData", function(x, value) {
   return(x)
 })
 
-#' @details add iGroup to iList field
-#' @describeIn iData
+#' @export
+#' @docType methods
+#' @details \strong{add} add iGroup to iList slot
+#' @rdname iData-methods
 add <- function(x, iGroup, bool) {
   if (class(iGroup) != "iGroup")
     stop("iGroup must be of class iGroup.")
@@ -444,10 +468,11 @@ add <- function(x, iGroup, bool) {
   return(x)
 }
 
-#' @details drop iGroup objects with provided names from iList
-#' @describeIn iData
-substract <- function(x, ...) {
-  groups <- c(...)
+#' @export
+#' @docType methods
+#' @details \strong{subtract} subtract iGroup objects with provided names from iList
+#' @rdname iData-methods
+substract <- function(x, groups) {
   for (i in seq_len(length(groups))) {
     x@iList <- x@iList[[-which(names(x@iList) == groups[i])]]
     x@index <- x@index[, -which(names(x@index) == groups[i])]
@@ -455,8 +480,10 @@ substract <- function(x, ...) {
   return(x)
 }
 
-#' @details get variables indexed according to iGroup indicated by groups
-#' @describeIn iData
+#' @export
+#' @docType methods
+#' @details \strong{getDemog} get variables indexed according to iGroup indicated by groups
+#' @rdname iData-methods
 getDemog <- function(x, groups, vars) {
   if (!any(groups == names(x)))
     stop("groups does not match any iGroups in iList slot.")
@@ -477,28 +504,20 @@ getDemog <- function(x, groups, vars) {
     return(x@demog[rindex, vars])
 }
 
-#' @details retrieve list of iGroups
-#' @describeIn iData
-getGroups <- function(x, ...) {
+#' @export
+#' @docType methods
+#' @details \strong{getGroups} retrieve list of iGroups
+#' @rdname iData-methods
+getGroups <- function(x, groups) {
   if (class(x) != "iData")
     stop("x must be of class iData.")
-  ll <- c(...)
-  return(x@iList[ll])
+  return(x@iList[[groups]])
 }
 
-#' @details create index for retreiving complimentary iGroup subjects
-#' @describeIn iData
-getGroupIndex <- function(x, ...) {
-  out <- x@index[c(...)]
-  for (i in seq_len(nrow(x@index))) {
-    if (any(is.na(out[i, ])))
-      out[i, ] <- out[i, ] * -1
-  }
-  return(out)
-}
-
-#' @details subset iData objects
-#' @describeIn iData
+#' @export
+#' @docType methods
+#' @details \strong{iData[i]} subset iData objects
+#' @rdname iData-methods
 setMethod("[", "iData", function(x, i) {
   out <- iData(x@iList[[1]][x@index[i, 1]], as.logical(x@index[i, 1]), x@demog[i, ])
   lg <- length(x@iList)
@@ -509,44 +528,46 @@ setMethod("[", "iData", function(x, i) {
   return(out)
 })
 
-#' @details loads previously saved iData from its set directory
-#' @describeIn iData
+#' @export
+#' @docType methods
+#' @details \strong{iDataRead} loads previously saved iData from its set directory
+#' @rdname iData-methods
 iDataRead <- function(dirname, verbose = TRUE) {
   if (!usePkg("h5"))
     stop( "Please install package h5 in order to use this function." )
   if (!dir.exists(dirname))
     stop("dirname does not exist.")
-  if (!dir.exists(file.path(dirname, "iList")))
-    stop("dirname does not appear to be the directory of an iData object.")
-  if (!file.exists(paste(dirname, "/demog.h5", sep = "")))
-    stop("dirname does not appear to be the directory of an iData object.")
-
-  # read each iGroup
-  if (verbose)
-    cat("Reading iList...")
-  x <- list()
-  
-  inames <- c()
-  ifiles <- list.files(file.path(dirname, "iList"))
-  ifiles <- file.path(dirname, "iList", ifiles)
-  for (i in seq_len(length(ifiles))) {
-    x[[i]] <- iGroupRead(ifiles[i])
-    inames <- c(inames, x[[i]]@name)
-    if (verbose)
-      cat( "\n ", inames[i])
-  }
-  names(x) <- inames
-  if (verbose)
-    cat(". \n")
+  if (!file.exists(file.path(dirname, "iData.h5")))
+    stop("dirname does not appear to be an iData directory.")
   
   # read index
   if (verbose)
     cat("Reading index. \n")
-  file <- h5file(file.path(dirname, "demog.h5"))
+  file <- h5file(file.path(dirname, "iData.h5"))
   index <- data.frame(file["index"][])
   colnames(index) <- h5attr(file["index"], "colnames")
   
-  # read demog
+  if (verbose)
+    cat("Reading demog. \n")
+  dnames <- file["demog/colnames"][]
+  nd <- length(dnames)
+  
+  dfile <- paste("demog/col", seq_len(nd), sep = "")
+  file["demog/colnames"] <- colnames(x@demog)
+  for (i in seq_len(nd)) {
+    tmpfile <- paste("demog/col", i, sep = "")
+    if (h5attr(file[tmpfile], "class") == "factor") {
+      tmp <- as.factor(file[tmpfile][])
+      levels(tmp) <- h5attr(file[tmpfile], "levels")
+    }
+    if (i == 1)
+      demog <- data.frame(tmp)
+    else
+      demog <- cbind(demog, tmp)
+  }
+  colnames(demog) <- dnames
+  
+  
   if (verbose)
     cat("Reading demog. \n")
   demog <- as.data.frame(file["demog/matrix"][])
@@ -561,6 +582,24 @@ iDataRead <- function(dirname, verbose = TRUE) {
     }
   }
   
+  # read each iGroup
+  if (verbose)
+    cat("Reading iList...")
+  
+  x <- list()
+  inames <- c()
+  ng <- length(list.files(dirname)) - 1
+  ifiles <- file.path(dirname, paste("iGroup", seq_len(ng), ".h5", sep = ""))
+  for (i in seq_len(length(ifiles))) {
+    x[[i]] <- iGroupRead(ifiles[i])
+    inames <- c(inames, x[[i]]@name)
+    if (verbose)
+      cat( "\n ", inames[i])
+  }
+  names(x) <- inames
+  if (verbose)
+    cat(". \n")
+  
   object <- iData()
   object@iList <- x
   object@demog <- demog
@@ -569,24 +608,26 @@ iDataRead <- function(dirname, verbose = TRUE) {
   return(object)
 }
 
-#' @details write/save iData object to its own directory
-#' @describeIn iData
+#' @export
+#' @docType methods
+#' @details \strong{iDataWrite} write/save iData object to its own directory
+#' @rdname iData-methods
 iDataWrite <- function(x, dirname, verbose = TRUE) {
   if (dir.exists(dirname))
     stop("dirname already exists")
   dir.create(dirname)
-  
   # write iList
   if (verbose)
     cat("Writing iGroup... \n")
-  dir.create(file.path(dirname, "iList"))
-  for (i in seq_len(length(x@iList))) {
+  ng <- length(x@iList)
+  for (i in seq_len(ng)) {
     cat(" ", x@iList[[i]]@name, "\n")
-    tmpname <- file.path(dirname, "iList", paste("iGroup", i, ".h5", sep = ""))
-    iGroupWrite(x@iList[[i]], tmpname)
+    tmppath <- file.path(dirname, paste("iGroup", i, ".h5", sep = ""))
+    iGroupWrite(x@iList[[i]], tmppath)
   }
   
-  file <- h5file(file.path(dirname, "demog.h5"))
+  file <- h5file(file.path(dirname, "iData.h5"))
+  file["ngroup"] <- ng
   # write index
   if (verbose)
     cat("Writing index. \n")
@@ -594,26 +635,31 @@ iDataWrite <- function(x, dirname, verbose = TRUE) {
   h5attr(file["index"], "colnames") <- colnames(x@index)
   
   # write demog
+  
+  # possible factor management
+  # tmp <- unclass(demog[, i])
+  # file[]
   if (verbose)
     cat("Writing demog. \n")
-  file["demog/matrix"] <- data.matrix(demog)
-  dnam <- colnames(demog)
-  h5attr(file["demog/matrix"], "colnames") <- dnam
-  for (i in seq_len(length(dnam))) {
-    dattrfile <- file[paste("demog/col", i, sep = "")]
-    dattr <- names(attributes(demog[dnam[i]]))
-    if (!is.null(dattr)) {
-      for (j in seq_len(length(dattr)))
-        h5attr(dattrfile, dattr[j]) <- attr(demog[dnam[i]], dattr[j])
-    }
+  nd <- ncol(x@demog)
+  dfile <- paste("demog/col", seq_len(nd), sep = "")
+  file["demog/colnames"] <- colnames(x@demog)
+  for (i in seq_len(nd)) {
+    dattr <- attributes(x@demog[, i])
+    tmp <- unclass(x@demog[, i])
+    file[dfile[i]] <- as.vector(tmp)
+    h5attr(file[dfile[i]], "class") <- attr(x@demog[, i], dattr$class)
+    if (dattr$class == "factor")
+      h5attr(file[dfile[i]], "levels") <- attr(x@demog[, i], dattr$levels)
   }
-  
   h5close(file)
   return(TRUE)
 }
 
-#' @details splits iData into two groups with specified ratios if nsplit < 1 or into n folds if nsplit > 1
-#' @describeIn iData
+#' @export
+#' @docType methods
+#' @details \strong{iDataSplit} splits iData into two groups with specified ratios if nsplit < 1 or into n folds if nsplit > 1
+#' @rdname iData-methods
 iDataSplit <- function(x, nsplit) {
   ndemog <- nrow(x@demog)
   if (nsplit > 1) {
@@ -629,5 +675,45 @@ iDataSplit <- function(x, nsplit) {
     out <- list(split1 = x[splitrow], split2 = x[-splitrow])
   } else
     cat("no split occured. \n")
+  return(out)
+}
+
+#' @export
+#' @docType methods
+#' @details \strong{select} select only data that applies to the iGroups and variables included in the arguments
+#' @rdname iData-methods
+select <- function(x, groups, vars) {
+  if (missing(x))
+    stop("must specify iData object")
+  if (missing(groups))
+    groups <- names(x)
+  if (missing(vars))
+    vars <- colnames(x@demog)
+  
+  # keep track of subject images that don't exist for all specified groups
+  index <- x@index[groups]
+  for (i in seq_len(nrow(x@index))) {
+    if (any(index[i, ] == 0))
+      index[i, ] <- index[i, ] * -1
+  }
+  index[index < 0] <- NA
+  
+  # get rid of NA in demog and keep track of images that match
+  demog <- cbind(x@demog[, vars], seq_len(nrow(x@demog)))
+  demog[, ncol(demog)] <- demog[, ncol(demog)] * as.logical(index[, 1])
+  demog <- na.omit(demog)
+  tmp <- demog[, ncol(demog)]
+  index <- index[tmp, ]
+  
+  out <- iData()
+  out@demog <- as.data.frame(demog[, seq_len(ncol(demog) - 1)])
+  colnames(out@demog) <- vars
+  out@index <- as.data.frame(index) 
+  colnames(out@index) <- groups
+  for (i in seq_len(length(groups))) {
+    tmp <- out@index[, groups[i]]
+    out@iList[[i]] <- x@iList[[groups]][tmp]
+    names(out@iList[[i]]) <- x@iList[[i]]@name
+  }
   return(out)
 }
