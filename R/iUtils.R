@@ -5,6 +5,7 @@
 
 ## from spm_sp----
 # set the filtered and whitened design matrix'
+# the `nu` and `nv` arguments seem to make the difference between the matlab svd and R svd
 .setx <- function(x) {
   out <- list()
   if (missing(x)) {
@@ -12,7 +13,11 @@
                 op = c(), opp = c(), ups = c(), sus = c())
   } else {
     out$X <- x
-    svdx <- svd(t(x))
+    if (nrow(x) < ncol(x))
+      svdx <- svd(t(x), nu = nrow(x))
+    else
+      svdx <- svd(x, nu = nrow(x))
+    
     out$v <- svdx$v
     out$u <- svdx$u
     out$d <- svdx$d
@@ -591,7 +596,7 @@
     if (rk == 0)
       return(0)
     else
-      trmv <- sum(u %*% (XV %*% u))
+      trmv <- sum(u * (XV %*% u))
     return(sum(diag(XV)) - trmv)
   } else {
     if (rk == 0) {
@@ -604,7 +609,7 @@
       tmp <- norm(XV, "F")^2
       tmp <- tmp - 2 * norm(Vu, "f")^2
       trRVRV <- tmp + norm(crossprod(u, Vu), "f")^2
-      trmv <- sum(u %*% Vu)
+      trmv <- sum(u * Vu)
     }
     trRV <- trv - trmv
   }
@@ -632,10 +637,10 @@
         return(list(trMV = rk, trMVMV = rk, idf = rk - 1))
     } else {
       if (oneout)
-        return(sum(crossprod(x$u, crossprod(x$u, v))))
+        return(sum(t(x$u) * crossprod(x$u, v)))
       else {
         vu <- v %*% x$u
-        trmv <- sum(x$u %*% vu)
+        trmv <- sum(x$u * vu)
         trmvmv <- norm(crossprod(u, vu), "f")^2
         idf <- (trmv^2) / trmvmv
         return(list(trMV = trmv, trMVMV = trmvmv, idf = idf))

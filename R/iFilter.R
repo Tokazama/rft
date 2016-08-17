@@ -8,10 +8,12 @@
 #' @param K[[s]]$HParams cut-off period in seconds
 #' @param K[[s]]$X0 low frequencies to be removed (DCT)
 #' @return filtered data
+#' 
+#' out <- iModelMake(X = z$X, y = z$y[i], data = z$iData)
 #'
 #' @ export iFilter
 iFilter <- function(K, Y) {
-  if (missing(Y) && is.list(K)) {
+  if (missing(Y) && is.data.frame(K)) {
     # set K$X0
     out <- list()
     for (s in seq_len(length(K))) {
@@ -30,7 +32,7 @@ iFilter <- function(K, Y) {
     }
     return(out)
   } else {
-    if (is.list(K)) {
+    if (is.data.frame(K)) {
       # ensure requisite fields are present
       if (is.null(K[[1]]$X0))
         K <- iFilter(K)
