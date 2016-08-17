@@ -9,7 +9,7 @@
 #' @param iData Object of class \code{\link{iData}} containing data represented in the provided formula.
 #' @param impute Impute NA values (not yet implemented)
 #' 
-#' out <- iModelMake(X = z$X, y = z$y[i], iData = z$iData)
+#' out <- iModelMake(X = z$X, y = z$y, iData = z$iData)
 #' 
 #' @export iFormula
 iFormula <- function(formula, iData, impute) {

@@ -1,7 +1,10 @@
 # TO DO:
 # replace initialize with iModelMake
 # plot.iModel
-# 
+#
+# Error in iModelMake(X = z$X, y = z$y[i], iData = z$iData) : 
+# trying to get slot "K" from an object of a basic class ("NULL") with no slots
+#
 
 #' iModel class representing fitted models of image information
 #' 
@@ -91,7 +94,7 @@ iModel <- setClass("iModel",
                      location = "character")
                    )
 
-iModelMake <- function(X, y, iData, weights, xVi, control, filename, ...) {
+iModelMake <- function(X, y, iData, weights = NULL, xVi, control, filename, ...) {
   if (!usePkg("h5"))
     stop("Please install package h5 in order to use this function.")
   out <- iModel()
@@ -109,7 +112,7 @@ iModelMake <- function(X, y, iData, weights, xVi, control, filename, ...) {
     out@y <- out@iData@iList[[1]]@name
   else
     out@y <- y
-  
+
   control <- iControl()
   if (!missing(control))
     control[names(control)] <- control
@@ -149,7 +152,7 @@ iModelMake <- function(X, y, iData, weights, xVi, control, filename, ...) {
     out@X$K <- iFilter(K)
   
   # set X
-  if (is.null(weights) | missing(weights)) {
+  if (is.null(weights)) {
     iV <- sqrt(MASS::ginv(out@xVi$V))
     out@X$W <- iV * (abs(iV) > 1e-6)
   } else {
@@ -186,7 +189,7 @@ iModelMake <- function(X, y, iData, weights, xVi, control, filename, ...) {
   if (nchunks > 1) {
     # setting chunksize for h5 data matrices
     if (is.null(ll$res)) {
-      file["beta"] <- data.matrix(matrix(0, out@dims$nimg, end))
+      file["beta"] <- data.matrix(matrix(0, out@dims$npred, end))
       file["beta"] <- cbind(file["beta"], data.matrix(matrix(0, out@dims$npred, out@dims$nvox - end)))
     } else
       file["beta"] <- ll$beta
