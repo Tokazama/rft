@@ -405,6 +405,7 @@ setMethod("show", "iData", function(object) {
 #' @param i Vector of numeric values representing images to subset in iData.
 #' @param nsplit If greater than one, number of folds to split data into.
 #' Otherwise, proportion of rows in training data.
+#' @param na.omit Omit NA/missing values.
 #' @param verbose enables verbose output. (default = \code{TRUE})
 #' @name iData-methods
 NULL
@@ -559,7 +560,8 @@ iDataRead <- function(dirname, verbose = TRUE) {
     if (h5attr(file[tmpfile], "class") == "factor") {
       tmp <- as.factor(file[tmpfile][])
       levels(tmp) <- h5attr(file[tmpfile], "levels")
-    }
+    } else
+      tmp <- file[tmpfile][]
     if (i == 1)
       demog <- data.frame(tmp)
     else
@@ -648,9 +650,11 @@ iDataWrite <- function(x, dirname, verbose = TRUE) {
     dattr <- attributes(x@demog[, i])
     tmp <- unclass(x@demog[, i])
     file[dfile[i]] <- as.vector(tmp)
-    h5attr(file[dfile[i]], "class") <- attr(x@demog[, i], dattr$class)
-    if (dattr$class == "factor")
+    if (dattr$class == "factor") {
+      h5attr(file[dfile[i]], "class") <- "factor"
       h5attr(file[dfile[i]], "levels") <- attr(x@demog[, i], dattr$levels)
+    } else
+      h5attr(file[dfile[i]], "class") <- "NULL"
   }
   h5close(file)
   return(TRUE)
@@ -682,7 +686,7 @@ iDataSplit <- function(x, nsplit) {
 #' @docType methods
 #' @details \strong{select} select only data that applies to the iGroups and variables included in the arguments
 #' @rdname iData-methods
-select <- function(x, groups, vars) {
+select <- function(x, groups, vars, na.omit = TRUE) {
   if (missing(x))
     stop("must specify iData object")
   if (missing(groups))
@@ -690,30 +694,37 @@ select <- function(x, groups, vars) {
   if (missing(vars))
     vars <- colnames(x@demog)
   
-  # keep track of subject images that don't exist for all specified groups
-  index <- x@index[groups]
-  for (i in seq_len(nrow(x@index))) {
-    if (any(index[i, ] == 0))
-      index[i, ] <- index[i, ] * -1
-  }
-  index[index < 0] <- NA
-  
-  # get rid of NA in demog and keep track of images that match
-  demog <- cbind(x@demog[, vars], seq_len(nrow(x@demog)))
-  demog[, ncol(demog)] <- demog[, ncol(demog)] * as.logical(index[, 1])
-  demog <- na.omit(demog)
-  tmp <- demog[, ncol(demog)]
-  index <- index[tmp, ]
-  
-  out <- iData()
-  out@demog <- as.data.frame(demog[, seq_len(ncol(demog) - 1)])
-  colnames(out@demog) <- vars
-  out@index <- as.data.frame(index) 
-  colnames(out@index) <- groups
-  for (i in seq_len(length(groups))) {
-    tmp <- out@index[, groups[i]]
-    out@iList[[i]] <- x@iList[[groups]][tmp]
-    names(out@iList[[i]]) <- x@iList[[i]]@name
+  if (na.omit) {
+    # keep track of subject images that don't exist for all specified groups
+    index <- x@index[groups]
+    for (i in seq_len(nrow(x@index))) {
+      if (any(index[i, ] == 0))
+        index[i, ] <- index[i, ] * -1
+    }
+    index[index < 1] <- NA
+    
+    # get rid of NA in demog and keep track of images that match
+    demog <- cbind(x@demog[, vars], seq_len(nrow(x@demog)))
+    demog[, ncol(demog)] <- demog[, ncol(demog)] * as.logical(index[, 1])
+    demog <- na.omit(demog)
+    tmp <- demog[, ncol(demog)]
+    index <- index[tmp, ]
+    
+    out <- iData()
+    out@demog <- as.data.frame(demog[, seq_len(ncol(demog) - 1)])
+    colnames(out@demog) <- vars
+    out@index <- as.data.frame(index) 
+    colnames(out@index) <- groups
+    for (i in seq_len(length(groups))) {
+      tmp <- out@index[, groups[i]]
+      out@iList[[i]] <- x@iList[[groups]][tmp]
+      names(out@iList[[i]]) <- x@iList[[i]]@name
+    }
+  } else {
+    out <- x
+    out@demog <- x@demog[vars]
+    out@index <- x@index[groups]
+    out@iList <- x@iList[groups]
   }
   return(out)
 }

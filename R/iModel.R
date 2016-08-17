@@ -1,5 +1,6 @@
 # TO DO:
-# add contrasts to iModelWrite/Read
+# replace initialize with iModelMake
+# plot.iModel
 # 
 
 #' iModel class representing fitted models of image information
@@ -24,7 +25,7 @@
 #'  \item{K} {filter information specific to each image}
 #'  \item{W} {weights}
 #'  \item{KWX} {weighted design matrix information}
-#'  \item{XX} {pseudoinverse of X}
+#'  \item{pKX} {pseudoinverse of X}
 #'  \item{V} {non-sphericity matrix}
 #'  \item{betaCov}
 #'  \item{trRV} {trace of RV}
@@ -90,133 +91,129 @@ iModel <- setClass("iModel",
                      location = "character")
                    )
 
-#' @export
-setMethod("initialize", "iModel", function(.Object, X, y = "unnamed", data, weights = NULL, xVi, control, filename, ...) {
+iModelMake <- function(X, y, iData, weights, xVi, control, filename, ...) {
+  if (!usePkg("h5"))
+    stop("Please install package h5 in order to use this function.")
+  out <- iModel()
+  
   ll <- list(...)
   
-  data <- if (missing(data)) iData()
-  #if (class(data) != "iData")
-  #  stop("data must be an iData object")
-  .Object@iData <- data
+  if(missing(iData))
+    out@iData <- iData()
+  else 
+    out@iData <- iData
+  
   if (length(y) > 1)
     stop("iModel currently only supports one response.")
-  .Object@y <- y
+  if (missing(y))
+    out@y <- out@iData@iList[[1]]@name
+  else
+    out@y <- y
   
   control <- iControl()
   if (!missing(control))
     control[names(control)] <- control
-  .Object@control <- control
+  out@control <- control
   
-  # creae X list
+  # create X list
   if(missing(X)) {
-    .Object@X <- list()
-    .Object@X$X <- matrix(1, 1, 1)
+    out@X <- list()
+    out@X$X <- matrix(1, 1, 1)
   }  else {
-    .Object@X <- list()
-    .Object@X$X <- X
+    out@X <- list()
+    out@X$X <- X
   }
   
   # set dims
   dims <- list()
-  dims$nimg <- nrow(.Object@X$X)
-  dims$npred <- ncol(.Object@X$X)
-  dims$nvox <- ncol(data@iList[[y]]@iMatrix[])
+  dims$nimg <- nrow(out@X$X)
+  dims$npred <- ncol(out@X$X)
+  dims$nvox <- ncol(out@iData@iList[[out@y]])
   if (control$rft) {
     dims$fwhm <- c()
     dims$resels <- c()
   }
-  .Object@dims <- dims
+  out@dims <- dims
   
   # set xVi
-  if (missing(xVi)) {
-    .Object@xVi <- list()
-    .Object@xVi$V <- diag(dims$nimg)
-  } else
-    .Object@xVi <- xVi
+  if (missing(xVi))
+    out@xVi$V <- diag(dims$nimg)
+  else
+    out@xVi <- xVi
   
   # set K
-  K <- data@iList[[y]]@K
+  K <- out@iData@iList[[out@y]]@K
   if (class(K) == "numeric")
-    .Object@K <- K
+    out@X$K <- K
   else if (class(K) == "data.frame")
-    .Object@K <- iFilter(K)
+    out@X$K <- iFilter(K)
   
   # set X
-  if (is.null(weights)) {
-    iV <- sqrt(MASS::ginv(.Object@xVi$V))
-    .Object@X$W <- iV * (abs(iV) > 1e-6)
+  if (is.null(weights) | missing(weights)) {
+    iV <- sqrt(MASS::ginv(out@xVi$V))
+    out@X$W <- iV * (abs(iV) > 1e-6)
   } else {
     if (class(weights) == "numeric" && length(weights) == dims$nimg)
-      .Object@X$W <- diag(weights)
+      out@X$W <- diag(weights)
     else if (all(dim(weights) == dims$nimg))
-      .Object@X$W <- weights
+      out@X$W <- weights
     else
       stop("weights must be a matrix of nimg x nimg or a vector of length nimg")
   }
   
   # set weighted design matrix
-  .Object@X$KWX <- .setx(iFilter(.Object@X$K, .Object@X$W %*% .Object@X$X))
+  out@X$KWX <- .setx(iFilter(out@X$K, out@X$W %*% out@X$X))
   # pseudoinverse of X
-  .Object@X$XX <- .pinvx(.Object@X$KWX)
-  .Object@X$V <- iFilter(.Object@X$K, iFilter(.Object@X$K, .Object@X$W %*% tcrossprod(.Object@xVi$V, .Object@X$W)))
-  .Object@X$betaCov <- .Object@X$XX %*% tcrossprod(.Object@X$V, .Object@X$XX)
-  out <- .trRV(.Object@X$KWX, .Object@X$V)
-  .Object@X$trRV <- out$trRV
-  .Object@X$trRVRV <- out$trRVRV
-  .Object@X$rdf <- out$rdf
+  out@X$pKX <- .pinvx(out@X$KWX)
+  out@X$V <- iFilter(out@X$K, iFilter(out@X$K, out@X$W %*% tcrossprod(out@xVi$V, out@X$W)))
+  out@X$betaCov <- out@X$pKX %*% tcrossprod(out@X$V, out@X$pKX)
+  out@X[c("trRV", "trRVRV", "rdf")] <- .trRV(out@X$KWX, out@X$V)
   
   if (!usePkg("h5"))
     stop("Please install package h5 in order to use this function.")
   if (missing(filename)) {
-    .Object@location <- tempfile(fileext = ".h5")
-    file <- h5file(.Object@location)
+    out@location <- tempfile(fileext = ".h5")
+    file <- h5file(out@location)
   } else {
     if (file.exists(filename))
       stop("filename already exists.")
-    .Object@location <- filename
+    out@location <- filename
     file <- h5file(filename)
   }
   
-  
-  if (is.function(.Object@control$chunksize))
-    .Object@control$chunksize <- .Object@control$chunksize(.Object@dims$nimg)
-  
-  if (.Object@control$chunksize < 1)
-    .Object@control$chunksize <- 1
-  end <- .Object@control$chunksize
-  nchunks <- floor(.Object@dims$nvox / end)
-  start <- 1 + end
-  if (.Object@dims$nvox > 1) {
+  end <- out@iData@iList[[out@y]]@iMatrix@chunksize[2]
+  nchunks <- floor(out@dims$nvox / end)
+  if (nchunks > 1) {
     # setting chunksize for h5 data matrices
     if (is.null(ll$res)) {
-      file["beta"] <- data.matrix(matrix(0, .Object@dims$nimg, end))
-      file["beta"] <- cbind(file["beta"], data.matrix(matrix(0, .Object@dims$npred, .Object@dims$nvox - end)))
+      file["beta"] <- data.matrix(matrix(0, out@dims$nimg, end))
+      file["beta"] <- cbind(file["beta"], data.matrix(matrix(0, out@dims$npred, out@dims$nvox - end)))
     } else
       file["beta"] <- ll$beta
     
     if (is.null(ll$res)) {
-      file["res"] <- data.matrix(matrix(0, .Object@dims$nimg, end))
-      file["res"] <- cbind(file["res"], data.matrix(matrix(0, .Object@dims$nimg, .Object@dims$nvox - end)))
-      .Object@res <- file["res"]
+      file["res"] <- data.matrix(matrix(0, out@dims$nimg, end))
+      file["res"] <- cbind(file["res"], data.matrix(matrix(0, out@dims$nimg, out@dims$nvox - end)))
+      out@res <- file["res"]
     } else
       file["res"] <- ll$beta
     
     if (is.null(ll$mrss)) {
       file["mrss"] <- data.matrix(matrix(0, 1, end))
-      file["mrss"] <- cbind(file["mrss"], data.matrix(matrix(0, 1, .Object@dims$nvox - end)))
+      file["mrss"] <- cbind(file["mrss"], data.matrix(matrix(0, 1, out@dims$nvox - end)))
     } else
       file["mrss"] <- ll$betax
   } else {
-    file["beta"] <- matrix(0, .Object@dims$npred, .Object@dims$nvox)
-    file["res"] <- matrix(0, .Object@dims$nimg, .Object@dims$nvox)
-    file["mrss"] <- matrix(0, 1, .Object@dims$nvox)
+    file["beta"] <- matrix(0, out@dims$npred, out@dims$nvox)
+    file["res"] <- matrix(0, out@dims$nimg, out@dims$nvox)
+    file["mrss"] <- matrix(0, 1, out@dims$nvox)
   }
-  .Object@mrss <- file["mrss"]
-  .Object@beta <- file["beta"]
-  .Object@res <- file["res"]
+  out@mrss <- file["mrss"]
+  out@beta <- file["beta"]
+  out@res <- file["res"]
   
-  return(.Object)
-})
+  return(out)
+}
 
 #' @export
 setMethod("show", "iModel", function(object) {
@@ -348,7 +345,7 @@ iModelRead <- function(filename, iData_dirname) {
   x@X$X <- file["X/X"][]
   colnames(x@X$X) <- h5attr(file["X/X"], "colnames")[]
   x@X$W <- file["X/W"][]
-  x@X$XX <- file["X/XX"][]
+  x@X$pKX <- file["X/pKX"][]
   x@X$V <- file["X/V"][]
   x@X$betaCov <- file["X/betaCov"][]
   x@X$trRV <- file["X/trRV"][]
@@ -465,7 +462,7 @@ iModelWrite <- function(x, filename, iData_dirname) {
   file["X/X"] <- data.matrix(x@X$X)
   h5attr(file["X/X"], "colnames") <- colnames(x@X$X)
   file["X/W"] <- data.matrix(x@X$W)
-  file["X/XX"] <- data.matrix(x@X$XX)
+  file["X/pKX"] <- data.matrix(x@X$pKX)
   file["X/V"] <- data.matrix(x@X$V)
   file["X/betaCov"] <- data.matrix(x@X$betaCov)
   file["X/trRV"] <- x@X$trRV
@@ -530,7 +527,7 @@ iModelSolve <-  function(x, verbose = TRUE) {
       vrange <- start:end
     
     KWY <- iFilter(x@X$K, x@X$W %*% x@iData[[x@y]]@iMatrix[, vrange])
-    x@beta[, vrange] <- x@X$XX %*% x@KWY
+    x@beta[, vrange] <- x@X$pKX %*% x@KWY
     x@res[, vrange] <- .res(X$KWX, KWY)
     x@mrss[, vrange] <- colSums(x@res[, vrange]^2) / x@X$trRV
     if (x@control$scr)
@@ -560,9 +557,9 @@ iModelUpdate <- function(x, ...) {
   # set weighted design matrix
   x@X$KWX <- .setx(iFilter(x@X$K, x@X$W %*% x@X$X))
   # pseudoinverse of X
-  x@X$XX <- .pinvx(x@X$KWX)
+  x@X$pKX <- .pinvx(x@X$KWX)
   x@X$V <- iFilter(x@X$K, iFilter(x@X$K, x@X$W %*% tcrossprod(x@xVi$V, x@X$W)))
-  x@X$betaCov <- x@X$XX %*% tcrossprod(x@X$V, x@X$XX)
+  x@X$betaCov <- x@X$pKX %*% tcrossprod(x@X$V, x@X$pKX)
   out <- .trRV(x@X$KWX, x@X$V)
   x@X$trRV <- out$trRV
   x@X$trRVRV <- out$trRVRV
@@ -652,7 +649,7 @@ setMethod("summary", "iModel", function(object, contrastMatrix, cthresh = 150, f
 
 #' Control parameters for RFT based analyses
 #' 
-#' @param cf critical F-threshold for selecting voxels over which the non-sphericity is estimated (default = 0.001)
+#' @param cf critical F-threshold for selecting voxels over which the non-sphericity is estimated (default = \code{0.001})
 #' @param mi maximum iterations for optimizing fitted models
 #' @param scr logical. scale residuals? (default = \code{TRUE})
 #' @param sar number of residual images to sample for estimating the FWHM (default = \code{64})
@@ -667,7 +664,7 @@ setMethod("summary", "iModel", function(object, contrastMatrix, cthresh = 150, f
 #' 
 #' @export iControl
 iControl <- function(cf = 0.05, mi = 200, scr = TRUE, sar = 64, tt = "pRFT",
-                     pval = 0.05, pp = 0.01, n = 1, iso = TRUE, os = 3, rft = rft) {
+                     pval = 0.05, pp = 0.01, n = 1, iso = TRUE, os = 3, rft = TRUE) {
   list(cf = cf,
        mi =  mi,
        scr = scr,
