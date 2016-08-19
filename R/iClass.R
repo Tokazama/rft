@@ -42,17 +42,6 @@ setMethod("initialize", "iGroup", function(.Object, iMatrix = matrix(1, 1, 1), n
   if (!usePkg("h5"))
     stop("Please install package h5 in order to use this function.")
   
-  if (!missing(iMatrix) && !missing(mask) && checkMask) {
-    nimg <- nrow(iMatrix)
-    mask_vec <- iMatrix
-    mask_vec[mask_vec != 0] <- 1
-    mask_vec <- colSums(mask_vec)
-    mask_vec[mask_vec != nimg] <- 0
-    mask_vec[mask_vec == nimg] <- 1
-    iMatrix <- iMatrix[, as.logical(mask_vec)]
-    mask <- makeImage(mask, mask_vec)
-  }
-  
   # filename
   if (missing(filename)) {
     tmpfile <- tempfile(fileext = ".h5")
@@ -85,6 +74,16 @@ setMethod("initialize", "iGroup", function(.Object, iMatrix = matrix(1, 1, 1), n
   }
   
   # mask
+  if (!missing(iMatrix) && !missing(mask) && checkMask) {
+    nimg <- nrow(iMatrix)
+    mask_vec <- iMatrix
+    mask_vec[mask_vec != 0] <- 1
+    mask_vec <- colSums(mask_vec)
+    mask_vec[mask_vec != nimg] <- 0
+    mask_vec[mask_vec == nimg] <- 1
+    iMatrix <- iMatrix[, as.logical(mask_vec)]
+    mask <- makeImage(mask, mask_vec)
+  }
   ## configure
   if (missing(mask))
     .Object@mask <- makeImage(c(1, 1, 1), 1)
@@ -131,18 +130,9 @@ setMethod("initialize", "iGroup", function(.Object, iMatrix = matrix(1, 1, 1), n
   } else {
     # set chunk size
     chunk <- ((2^23) / .Object@dim[1])
-    if (.Object@dim[2] > chunk) {
-      chunkseq <- seq_len(chunk)
-      nchunk <- floor(.Object@dim[2] / chunk)
-      file["iMatrix"] <- iMatrix[, chunkseq]
-      for (i in 2:nchunk) {
-        chunkseq <- chunkseq + chunk
-        if (nchunk == chunk) 
-          file["iMatrix"] <- cbind(file["iMatrix"], iMatrix[, chunkseq[1]:.Object@dim[2]])
-        else
-          file["iMatrix"] <- cbind(file["iMatrix"], iMatrix[, chunkseq])
-      }
-    } else
+    if (chunk < ncol(iMatrix))
+      tmp = createDataSet(file, "iMatrix", iMatrix, chunksize = c(nrow(iMatrix),chunk))
+    else
       file["iMatrix"] <- iMatrix
   }
   .Object@iMatrix <- file["iMatrix"]
@@ -279,19 +269,10 @@ iGroupWrite <- function(x, filename) {
   
   # write iMatrix
   chunk <- x@iMatrix@chunksize[2]
-  nchunk <- floor(x@dim[2] / chunk)
-  if (nchunk > 1) {
-    chunkseq <- seq_len(chunk)
-    file["iMatrix"] <- x@iMatrix[, chunkseq]
-    for (i in 2:nchunk) {
-      chunkseq <- chunkseq + chunk
-      if (i != nchunk)
-        file["iMatrix"] <- cbind(file["iMatrix"], x@iMatrix[, chunkseq])
-      else if ((nchunk * chunk) != x@dim[2])
-        file["iMatrix"] <- cbind(file["iMatrix"], x@iMatrix[, chunkseq[1]:x@dim[2]])
-    }
-  } else
-    file["iMatrix"] <- x@iMatrix
+  file["iMatrix"] <- x@iMatrix[, seq_len(chunk)]
+  if (ncol(x) > chunk)
+    file["iMatrix"] <- cbind(file["iMatrix"], x@iMatrix[, (chunk + 1):ncol(x)])
+  
   h5close(file)
   return(TRUE)
 }
@@ -554,7 +535,6 @@ iDataRead <- function(dirname, verbose = TRUE) {
   nd <- length(dnames)
   
   dfile <- paste("demog/col", seq_len(nd), sep = "")
-  file["demog/colnames"] <- colnames(x@demog)
   for (i in seq_len(nd)) {
     tmpfile <- paste("demog/col", i, sep = "")
     if (h5attr(file[tmpfile], "class") == "factor") {
@@ -568,21 +548,6 @@ iDataRead <- function(dirname, verbose = TRUE) {
       demog <- cbind(demog, tmp)
   }
   colnames(demog) <- dnames
-  
-  
-  if (verbose)
-    cat("Reading demog. \n")
-  demog <- as.data.frame(file["demog/matrix"][])
-  dnam <- h5attr(file["demog/matrix"], "colnames")
-  colnames(demog) <- dnam
-  for (i in seq_len(length(dnam))) {
-    dattrfile <- file[paste("demog/col", i, sep = "")]
-    dattr <- list.attributes(dattrfile)
-    if (!is.null(dattr)) {
-      for (j in seq_len(length(dattr)))
-        attr(demog[dnam[i]], dattr[j]) <- h5attr(dattrfile, dattr[j])
-    }
-  }
   
   # read each iGroup
   if (verbose)
@@ -630,6 +595,7 @@ iDataWrite <- function(x, dirname, verbose = TRUE) {
   
   file <- h5file(file.path(dirname, "iData.h5"))
   file["ngroup"] <- ng
+  
   # write index
   if (verbose)
     cat("Writing index. \n")
@@ -637,10 +603,6 @@ iDataWrite <- function(x, dirname, verbose = TRUE) {
   h5attr(file["index"], "colnames") <- colnames(x@index)
   
   # write demog
-  
-  # possible factor management
-  # tmp <- unclass(demog[, i])
-  # file[]
   if (verbose)
     cat("Writing demog. \n")
   nd <- ncol(x@demog)
@@ -650,9 +612,9 @@ iDataWrite <- function(x, dirname, verbose = TRUE) {
     dattr <- attributes(x@demog[, i])
     tmp <- unclass(x@demog[, i])
     file[dfile[i]] <- as.vector(tmp)
-    if (dattr$class == "factor") {
+    if (!is.null(dattr) && dattr$class == "factor") {
       h5attr(file[dfile[i]], "class") <- "factor"
-      h5attr(file[dfile[i]], "levels") <- attr(x@demog[, i], dattr$levels)
+      h5attr(file[dfile[i]], "levels") <- attr(x@demog[, i], "levels")
     } else
       h5attr(file[dfile[i]], "class") <- "NULL"
   }

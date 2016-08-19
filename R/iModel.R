@@ -1,7 +1,9 @@
 # TO DO:
 # replace initialize with iModelMake
 # plot.iModel
-# 
+#
+# iModelSolve testing
+#
 
 #' iModel class representing fitted models of image information
 #' 
@@ -74,7 +76,7 @@
 #' }
 #' @slot control control values for fitting the model (see \code{\link{iControl}})
 #'
-#' @export iModel
+#'
 iModel <- setClass("iModel",
                    slots = list(
                      iData = "iData",
@@ -91,7 +93,9 @@ iModel <- setClass("iModel",
                      location = "character")
                    )
 
-iModelMake <- function(X, y, iData, weights, xVi, control, filename, ...) {
+#' 
+#' @export iModelMake
+iModelMake <- function(X, y, iData, weights = NULL, xVi, control, filename, ...) {
   if (!usePkg("h5"))
     stop("Please install package h5 in order to use this function.")
   out <- iModel()
@@ -109,7 +113,7 @@ iModelMake <- function(X, y, iData, weights, xVi, control, filename, ...) {
     out@y <- out@iData@iList[[1]]@name
   else
     out@y <- y
-  
+
   control <- iControl()
   if (!missing(control))
     control[names(control)] <- control
@@ -149,7 +153,7 @@ iModelMake <- function(X, y, iData, weights, xVi, control, filename, ...) {
     out@X$K <- iFilter(K)
   
   # set X
-  if (is.null(weights) | missing(weights)) {
+  if (is.null(weights)) {
     iV <- sqrt(MASS::ginv(out@xVi$V))
     out@X$W <- iV * (abs(iV) > 1e-6)
   } else {
@@ -167,7 +171,10 @@ iModelMake <- function(X, y, iData, weights, xVi, control, filename, ...) {
   out@X$pKX <- .pinvx(out@X$KWX)
   out@X$V <- iFilter(out@X$K, iFilter(out@X$K, out@X$W %*% tcrossprod(out@xVi$V, out@X$W)))
   out@X$betaCov <- out@X$pKX %*% tcrossprod(out@X$V, out@X$pKX)
-  out@X[c("trRV", "trRVRV", "rdf")] <- .trRV(out@X$KWX, out@X$V)
+  tmp <- .trRV(out@X$KWX, out@X$V)
+  out@X$trRV <- tmp$trRV
+  out@X$trRVRV <- tmp$trRVRV
+  out@X$rdf <- tmp$rdf
   
   if (!usePkg("h5"))
     stop("Please install package h5 in order to use this function.")
@@ -186,7 +193,7 @@ iModelMake <- function(X, y, iData, weights, xVi, control, filename, ...) {
   if (nchunks > 1) {
     # setting chunksize for h5 data matrices
     if (is.null(ll$res)) {
-      file["beta"] <- data.matrix(matrix(0, out@dims$nimg, end))
+      file["beta"] <- data.matrix(matrix(0, out@dims$npred, end))
       file["beta"] <- cbind(file["beta"], data.matrix(matrix(0, out@dims$npred, out@dims$nvox - end)))
     } else
       file["beta"] <- ll$beta
@@ -218,14 +225,14 @@ iModelMake <- function(X, y, iData, weights, xVi, control, filename, ...) {
 #' @export
 setMethod("show", "iModel", function(object) {
   cat("iModel object fit by call to ", object@method[1], " \n")
-  cat("                  Predictors = ", object@dims$npred, "\n")
-  cat("                    Names:\n")
-  for (i in seq_len(object@dims$npred))
-    cat("                   ", colnames(object@X$X)[i], "\n")
+  
+  cat("                  Predictors =", colnames(object@X$X), "\n")
   cat("                      Images = ", object@dims$nimg, "\n")
-  cat(" Residual degrees of freedom =", object@dims$rdf, "\n")
+  cat(" Residual degrees of freedom = ", object@dims$rdf, "\n")
   cat("                      Voxels = ", object@dims$nvox, "\n")
   cat("                Optimization = ", object@control$opt, "\n")
+  cat("                    location = ", object@location, "\n")
+  cat("--- \n")
   
   if (object@control$rft && length(object@dims$fwhm > 0)) {
     cat("                        FWHM = ", round(object@dims$fwhm, 2), "\n")
@@ -325,9 +332,7 @@ iModelRead <- function(filename, iData_dirname) {
   x@control$iso <- file["control/iso"][]  
   x@control$os <- file["control/os"][]
   x@control$rft <- file["control/rft"][] 
-  x@control$opt <- file["control/opt"][] 
-  x@control$chunksize <- file["control/chunksize"][] 
-  
+
   # read dims
   x@dims$npred <- file["dims/npred"]
   x@dims$nvox <- file["dims/nvox"]
@@ -438,9 +443,7 @@ iModelWrite <- function(x, filename, iData_dirname) {
   file["control/iso"] <- x@control$iso 
   file["control/os"] <- x@control$os
   file["control/rft"] <- x@control$rft
-  file["control/opt"] <- x@control$opt
-  file["control/chunksize"] <- x@control$chunksize
-  
+
   # write dims
   file["dims/npred"] <- x@dims$npred
   file["dims/nvox"] <- x@dims$nvox
@@ -517,25 +520,29 @@ iModelWrite <- function(x, filename, iData_dirname) {
 #' @details \strong{iModelSolve} Solve already initialized iModel for coefficients, residuals, and mean residual sum of squares
 #' @rdname iModel-methods
 iModelSolve <-  function(x, verbose = TRUE) {
-  end <- x@iData@iList[[x@y]]@iMatrix@chunksize
-  nchunks <- floor(x@dims$nvox / end)
-  start <- 1 + end
+  chunksize <- x@iData@iList[[x@y]]@iMatrix@chunksize[2]
+  nchunks <- floor(x@dims$nvox / chunksize)
+  vrange <- seq_len(chunksize)
+  if (verbose)
+    progress <- txtProgressBar(min = 0, max = nchunks, style = 3)
   for (j in seq_len(nchunks)) {
-    if (j == nchunks)
-      vrange <- start:x@dims$nvox
-    else
-      vrange <- start:end
+    if (vrange[chunksize] > x@dims$nvox)
+      vrange <- vrange[1]:x@dims$nvox
     
-    KWY <- iFilter(x@X$K, x@X$W %*% x@iData[[x@y]]@iMatrix[, vrange])
-    x@beta[, vrange] <- x@X$pKX %*% x@KWY
-    x@res[, vrange] <- .res(X$KWX, KWY)
+    KWY <- iFilter(x@X$K, x@X$W %*% x@iData@iList[[x@y]]@iMatrix[, vrange])
+    x@beta[, vrange] <- x@X$pKX %*% KWY
+    x@res[, vrange] <- .res(x@X$KWX, KWY)
     x@mrss[, vrange] <- colSums(x@res[, vrange]^2) / x@X$trRV
+    
     if (x@control$scr)
       x@res[, vrange] <- t(t(x@res[, vrange]) * (1 / as.numeric(x@mrss[, vrange])))
     
-    start <- start + x@control$chunksize
-    end <- end + x@control$chunksize
+    vrange <- vrange + chunksize
+    if (verbose)
+      setTxtProgressBar(progress, j)
   }
+  if (verbose)
+    close(progress)
   return(x)
 }
 
@@ -573,78 +580,6 @@ iModelUpdate <- function(x, ...) {
 #' @rdname iModel-methods
 setMethod("model.matrix", "iModel", function(object) {
   return(object@X$X)
-})
-
-#' @export
-#' @docType methods
-#' @description \strong{summary} Compute f-statistic or t-statistic contrast for iModel object.
-#' @rdname iModel-methods
-setMethod("summary", "iModel", function(object, contrastMatrix, cthresh = 150, fieldType) {
-  connames <- rownames(contrastMatrix)
-  if (is.null(connames))
-    connames <- paste("Contrast_", seq_len(ncon), sep = "")
-  
-  if (length(contrast) != object@dims$npred)
-    stop("the contrast length must be equal to the number of predictors")
-  mask <- object@iData@iList[[object@y]]@mask
-  
-  # ensure that if previous contrasts were set they won't be erased
-  start <- length(object@C) + 1
-  ncon <- nrow(contrastMatrix) + start
-  
-  for (i in start:ncon) {
-    contrast <- matrix(contrastMatrix[i, ], ncol = 1)
-    tmp <- matrix(con, ncol = 1)
-    rownames(tmp) <- colnames(object@X$X)
-    c <- tmp
-    object@C[[i]] <- .setcon(connames[i], fieldType[i], action, contrast, object@X$KWX)
-    
-    # X1 <<- .X1(.self, iModel$X$KWX)
-    object@C[[i]]$dims <- .trMV(X1, object@X$V)
-    names(object@C[[i]]$dims) <- c("trMV", "trMVMV", "idf")
-    
-    # solve contrast
-    if (object@C[[i]]$fieldType == "T") {
-      Vc <- crossprod(object@C[[i]]$c, object@covBeta) %*% object@C[[i]]$c
-      se <- sqrt(object@mrss * as.numeric(Vc))
-      tvec <- crossprod(object@C[[i]]$c, object@beta) / se
-      object@C[[i]]$contrastImage <- makeImage(mask, tvec)
-    } else if (object@C[[i]]$fieldType == "F") {
-      h <- .hsqr(object@C[[i]], object@X$KWX)
-      ss <- (rowSums((h %*% object@beta)^2) / object@C[[i]]$dims$trMV)
-      object@C[[i]]$contrastImage <- makeImage(mask, ss / object@mrss)
-    }
-    
-    if (!object@control$rft) {
-      if (!object@control$iso)
-        isotropic <- object$rpvImage
-      else
-        isotropoic <- NULL
-      z <- rftResults(object@C[[i]]$contrastImage, object@dims$resels, object@dims$fwhm,
-                      c(object@C[[i]]$dims$idf, object$dims$edf), object@C[[i]]$fieldType, rpvImage = isotropic,
-                      k = cthresh[i], ll$threshType, ll$pval, ll$pp, ll$n, ll$statdir, ll$verbose)
-      
-      object@C[[i]]$sthresh <- z$threshold
-      object@C[[i]]$clusterImage <- z$clusterImage
-      object@C[[i]]$results$setLevel <- z$setLevel
-      object@C[[i]]$results$peakLevel <- z$peakLevel
-      object@C[[i]]$results$clusterLevel <- z$clusterLevel
-    } else {
-      # don't use random field theory for summary
-      object@C[[i]]$sthresh <-
-        statFieldThresh(object@C[[i]]$contrastImage, ll$pval, object@dims$nvox,
-                        ll$n, fwhm = c(1, 1, 1), resels(mask, c(1, 1, 1)),
-                        c(object@C[[i]]$dims$idf, object$dims$rdf),
-                        object@C[[i]]$fieldType, ll$tt, ll$pp)
-      
-      object@C[[i]]$clusterImage <-
-        labelClusters(object@C[[i]]$contrastImage, minClusterSize = cthresh[i],
-                      minThresh = object@C[[i]]$sthresh, maxThresh = Inf)
-      
-      object@C[[i]]$results <- labelStats(object@C[[i]]$contrastImage, object@C[[i]]$clusterImage)
-    }
-  }
-  return(object)
 })
 
 #' Control parameters for RFT based analyses
