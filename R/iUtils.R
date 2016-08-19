@@ -302,7 +302,7 @@
 
 # return residual forming matrix or set residuals'
 .res <- function(x, y, check = FALSE) {
-  if (missisng(y)) {
+  if (missing(y)) {
     out <- diag(ncol(x$X)) - .op(x)
     if (check)
       out[abs(out < x$tol)] <- 0

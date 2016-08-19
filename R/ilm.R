@@ -1,5 +1,6 @@
 # to do:
 # multiple modality eigenanatomy stuff
+# impute for ilm
 
 #' iData Model Formulae 
 #' 
@@ -9,7 +10,9 @@
 #' @param iData Object of class \code{\link{iData}} containing data represented in the provided formula.
 #' @param impute Impute NA values (not yet implemented)
 #' 
+#' z <- iFormula(wb ~ Age, mydata)
 #' out <- iModelMake(X = z$X, y = z$y, iData = z$iData)
+#' out <- iModelSolve(out)
 #' 
 #' @export iFormula
 iFormula <- function(formula, iData, impute) {
@@ -71,7 +74,7 @@ ilm <- function(formula, iData, weights = NULL, optim = "none", control, verbose
   for (i in seq_len(length(z$y))) {
     if (verbose)
       cat(paste("Fitting response", z$y[i], "\n"))
-    out[[i]] <- iModelMake(X = z$X, y = z$y[i], data = z$iData, weights = weights, control = control)
+    out[[i]] <- iModelMake(X = z$X, y = z$y[i], iData = z$iData, weights = weights, control = control)
     out[[i]]@method <- c("ilm", optim)
     if (optim == "REML") {
       out[[i]]@xVi <- estNonSphericity(object)
@@ -122,7 +125,7 @@ ilm <- function(formula, iData, weights = NULL, optim = "none", control, verbose
     } else
       out[[i]] <- iModelSolve(out[[i]])
     
-    if (ctrl$rft) {
+    if (out[[i]]@control$rft) {
       smooth <- estSmooth(out[[i]]@res[], out[[i]]@iData[[out[[i]]@y]]@mask, out[[i]]@X$rdf, scaleResid = FALSE, sample = control$sar, verbose = verbose)
       out[[i]]@dims$fwhm <- smooth$fwhm
       out[[i]]@dims$rpvImage <- smooth$rpvImage
