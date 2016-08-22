@@ -145,18 +145,18 @@ rftResults <- function(x, resels, fwhm, df, fieldType,
   k <- k * vox2res # convert voxel number to resels
 
 
-  # create tables--------------------------------------------------------------
+  # create tables----
   ClusterStats <- matrix(nrow = nclus, ncol = 7)
-  ClusterStats[1:nclus, 5:7]  <- getCentroids(clust)[1:nclus, 1:3] # get locations of clusters
+  ClusterStats[seq_len(nclus), 5:7]  <- getCentroids(clust)[seq_len(nclus), 1:3] # get locations of clusters
   PeakStats <- matrix(nrow = nclus, ncol = 4)
 
-  # Set-Level------------------------------------------------------------------
+  # Set-Level----
   Pset <- rftPval(D, nclus, k, u, n, resels, df, fieldType)$Pcor
   Ez <- rftPval(D, 1, 0, u, n, resels, df, fieldType)$Ec
 
-  # Cluster-Level--------------------------------------------------------------
-  ClusterStats[, 4] <- sapply(labs, function(tmp)(sum(as.array(clust[clust == tmp])) / tmp))
-  K <- sapply(ClusterStats[, 4], function(tmp)(
+  # Cluster-Level----
+  ClusterStats[, 4] <- sapply(labs, function(tmp) (sum(as.array(clust[clust == tmp])) / tmp))
+  K <- sapply(ClusterStats[, 4], function(tmp) (
     if (is.null(rpvImage)) {
       # follows isotropic image assumptions
       K <- tmp * vox2res
@@ -171,11 +171,11 @@ rftResults <- function(x, resels, fwhm, df, fieldType,
       iv <- iv %*% matrix(c(1 / 2, 2 / 3, 2 / 3, 1), ncol = 1)
       K <- iv * lkc
     }))
-  ClusterStats[, 1] <- sapply(K, function(tmp)(rftPval(D, 1, tmp, u, n, resels, df, fieldType)$Pcor)) # fwe p-value (cluster)
-  ClusterStats[, 3] <- sapply(K, function(tmp)(rftPval(D, 1, tmp, u, n, resels, df, fieldType)$Punc)) # uncorrected p-value (cluster)
+  ClusterStats[, 1] <- sapply(K, function(tmp) (rftPval(D, 1, tmp, u, n, resels, df, fieldType)$Pcor))  # fwe p-value (cluster)
+  ClusterStats[, 3] <- sapply(K, function(tmp) (rftPval(D, 1, tmp, u, n, resels, df, fieldType)$Punc))  # uncorrected p-value (cluster)
   ClusterStats[, 2] <- p.adjust(ClusterStats[, 3], "BH") # FDR (cluster)
 
-  # Peak-Level-----------------------------------------------------------------
+  # Peak-Level----
   PeakStats[, 4] <- sapply(labs, function(tmp)(max(x[clust == tmp]))) # max value for each cluster
   PeakStats[, 1] <- sapply(PeakStats[, 4], function(tmp)(rftPval(D, 1, 0, tmp, n, resels, df, fieldType)$Pcor)) # fwe p-value (peak)
   PeakStats[, 2] <- sapply(PeakStats[, 4], function(tmp)(p.adjust(rftPval(D, 1, 0, tmp, n, resels, df, fieldType)$Ec / Ez, "BH", n = nclus))) # FDR (peak)
@@ -189,7 +189,7 @@ rftResults <- function(x, resels, fwhm, df, fieldType,
     else if (fieldType == "X")
       1 - pchisq(tmp, df[1], df[2]))) # uncorrected p-value (peak)
 
-  # prepare output-------------------------------------------------------------
+  # prepare output----
   PeakStats <- data.frame("P-fwe" = PeakStats[, 1],
                           "P-fdr" = PeakStats[, 2],
                           "P" = PeakStats[, 3],

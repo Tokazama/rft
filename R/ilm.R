@@ -13,6 +13,7 @@
 #' z <- iFormula(wb ~ Age, mydata)
 #' out <- iModelMake(X = z$X, y = z$y, iData = z$iData)
 #' out <- iModelSolve(out)
+#' out <- summary(out, contrastMatrix = matrix(c(0, 1), nrow = 1), cthresh = 0)
 #' 
 #' @export iFormula
 iFormula <- function(formula, iData, impute) {
