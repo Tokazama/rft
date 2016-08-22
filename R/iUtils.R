@@ -1,4 +1,5 @@
 # To Do:
+# check: .c2tsp, maybe .res
 # I can probably use 'identical()' instead of these other ones
 # .C1inC2
 # .notunique (~unique)
@@ -99,7 +100,7 @@
 # coordinates of X in the base of uk'
 .cukx <- function(x, y, check = FALSE) {
   if (x$rk > 0)
-    out <- tcrossprod(diag(x$d[seq_len(x$rk) ]), x$v[, seq_len(x$rk) ])
+    out <- tcrossprod(diag(x$d[seq_len(x$rk)]), x$v[, seq_len(x$rk)])
   else
     out <- rep(0, ncol(x$X))
   if (!missing(y))
@@ -300,28 +301,28 @@
     .nop(out, y, check = check)
 }
 
-# return residual forming matrix or set residuals'
+# return residual forming matrix or set residuals
 .res <- function(x, y, check = FALSE) {
   if (missing(y)) {
-    out <- diag(ncol(x$X)) - .op(x)
-    if (check)
-      out[abs(out < x$tol)] <- 0
+    out <- diag(nrow(x$X)) - .op(x)
   } else {
+    # sf_rY(x, y)
+    dimx <- dim(x$X)
     if (x$rk > 0) {
-      dimx <- dim(x$X)
-      if (x$rk < dimx[1] - dimx[2])
-        out <- y - tcrossprod(x$u[, seq_len(x$rk)], x$u[, seq_len(x$rk)]) %*% y
+      if (x$rk < (dimx[1] - x$rk))
+        out <- y - x$u[, seq_len(x$rk)] %*% crossprod(x$u[, seq_len(x$rk)], y)
       else {
-        if (ncol(y) < 5 * q)
-          out <- (diag(ncol(x$X)) - .op(x)) %*% y
-        else
+        if (ncol(y) < (5 * dimx[1]))
+          out <- (diag(nrow(x$X)) - .op(x)) %*% y
+        else {
           n <- .np(x)
-        out <- n %*% crossprod(n, y)
+          out <- n %*% crossprod(n, y)
+        }
       }
-      if (check)
-        out[abs(out < x$tol)] <- 0
     }
   }
+  if (check)
+    out[out < x$tol] <- 0
   return(out)
 }
 
@@ -349,7 +350,7 @@
     return(0)
   } else {
     out <- all(abs(.opp(x) %*% c - c) <= tol)
-    return(colSums(out) > 0)
+    return(sum(out) > 0)
   }
 }
 
@@ -482,36 +483,53 @@
 
 # orthonormal partitioning implied by F-contrast
 .c2tsp <- function(x, c, oneout = FALSE, plus = FALSE) {
+  # check arguments
+  if (!.isspc(x))
+    x <- .setx(x)
+  
   if (oneout) {
-    if (is.list(c) && is.null(c)) {
-      if (plus)
-        out <- .cukxp(x, c, check = FALSE)
-      else
-        out <- x$X %*% c
-    } else if (!is.list(c)) {
+    if (length(c) > 0 && !is.null(c[[1]])) {  # check argument here
       if (plus)
         out <- .cukxp(x, c, check = TRUE)
       else
-        out <- .xp(x, c, check = TRUE)
+        out <- .pinvxp(x, c, check = TRUE)
+    } else if (length(c) == 0)  # check argument here
+      out <- list()
+    else {
+      if (plus)
+        out <- .cukx(x, c)
+      else
+        out <- x$X %*% c
     }
   } else {
-    if (is.list(c) && is.null(c)) {
+    if (length(c) > 0 && !is.null(c[[1]])) {
       if (plus)
-        out <- c(.cukxp(x, c), .cukx(x, .r(.setx(c))))
+        out <- list(.cukxp(x, c, check = TRUE),  # X1
+                    .cukx(x, .res(.setx(c))))  # X0
       else {
-        out <- .xp(x, c, check = FALSE)
-        out[out < x$tol] <- 0
-        out <- c(out, x$X %*% .r(.setx(c)))
-      }
-    } else if (!is.list(c)) {
-      if (plus) {
-        out <- .cukx(x, c)
-        out[out < x$tol] <- 0
-        out2 <- .cukxp(x)
+        out1 <- .pinvxp(x, c, check = TRUE)  # X1
+        out1[out1 < x$tol] <- 0
+        out2 <- x$X %*% .r(.setx(c))  # X0
         out2[out2 < x$tol] <- 0
-        out <- c(out, out2)
-      } else
-        out <- c(x$X %*% c, x$X)
+        out <- list(out1, out2)
+      }
+    } else {
+      if (length(c) == 0) {
+        if (plus)
+          out <- c(list(), .cukx(x))
+        else
+          out <- c(list(), x$X)
+      } else {
+        if (plus) {
+          out1 <- .cukx(x, c)
+          out1[out1 < x$tol] <- 0
+          out2 <- .cukx(x)
+          out2[out2 < x$tol] <- 0
+          out <- list(out1, out2)
+        } else {
+          out <- list(x$X %*% c, x$X)
+        }
+      }
     }
   }
   return(out)
@@ -636,11 +654,12 @@
       else
         return(list(trMV = rk, trMVMV = rk, idf = rk - 1))
     } else {
+      u <- x$u[, seq_len(rk)]
       if (oneout)
-        return(sum(t(x$u) * crossprod(x$u, v)))
+        return(sum(t(u) * crossprod(u, v)))
       else {
-        vu <- v %*% x$u
-        trmv <- sum(x$u * vu)
+        vu <- v %*% u
+        trmv <- sum(u * vu)
         trmvmv <- norm(crossprod(u, vu), "f")^2
         idf <- (trmv^2) / trmvmv
         return(list(trMV = trmv, trMVMV = trmvmv, idf = idf))
@@ -651,17 +670,13 @@
 
 ## from sp_FcUtil----
 .fconfields <- function() {
-  out <- list()
-  out$name <- c()
-  out$fieldType <- c()
-  out$c <- c()
-  out$X0 <- c()
-  out$X1 <- c()
-  out$iX0 <- c()
-  out$idf <- c()
-  out$Vcon <- c()
-  out$Vspm <- c()
-  return(out)
+  list(name = "",
+       fieldType = "",
+       c = matrix(0, 0, 0),
+       X0 = matrix(0, 0, 0),
+       X1 = matrix(0, 0, 0),
+       iX0 = "",
+       idf = 0)
 }
 
 # set contrast fields'
@@ -686,8 +701,8 @@
     c[abs(c) < x$tol] <- 0
     if (length(c) == 0) {
       out <- .c2tsp(x, c(), plus = TRUE)
-      Fc$X1$ukX1 <- out[[1]]
-      Fc$X0$ukX0 <- out[[2]]
+      suppressWarnings(Fc$X1$ukX1 <- out[[1]])
+      suppressWarnings(Fc$X0$ukX0 <- out[[2]])
       Fc$c <- c
     } else if (nrow(c) != sL)
       stop("not contrast dim")
@@ -700,8 +715,8 @@
         stop("trying to define a T that looks like an F")
       Fc$c <- c
       out <- .c2tsp(x, c, plus = TRUE)
-      Fc$X1$ukX1 <- out[[1]]
-      Fc$X0$ukX0 <- out[[2]]
+      suppressWarnings(Fc$X1$ukX1 <- out[[1]])
+      suppressWarnings(Fc$X0$ukX0 <- out[[2]])
     }
   } else if (action == "X0") {
     Fc$iX0 <- action
@@ -709,39 +724,39 @@
     X0[X0 < x$tol] <- 0
     if (length(X0) == 0) {
       Fc$c <- .xpx(x)
-      Fc$X1$ukX1 <- .cukx(x)
-      Fc$X0$ukX0 <- c()
+      suppressWarnings(Fc$X1$ukX1 <- .cukx(x))
+      suppressWarnings(Fc$X0$ukX0 <- matrix(0, 0, 0))
     } else if (nrow(X0) != sC) {
       stop("dimesion of X0 wrong in set")
     } else {
       Fc$c <- .X02c(x, X0)
-      Fc$X0$ukX0 <- crossprod(.ox(x), X0)
-      Fc$X1$ukX1 <- .c2tsp(x, Fc$c, plus = TRUE)
+      suppressWarnings(Fc$X0$ukX0 <- crossprod(.ox(x), X0))
+      suppressWarnings(Fc$X1$ukX1 <- .c2tsp(x, Fc$c, plus = TRUE))
     }
   } else if (action == "ukX0") {
     Fc$iX0 <- action
     if (length(ukX0) == 0) {
       Fc$c <- .xpx(x)
       Fc$X1$ukX1 <- .cukx(x)
-      Fc$X0$ukX0 <- c()
+      suppressWarnings(Fc$X0$ukX0 <- matrix(0, 0, 0))
     } else if (nrow(X0) != sC)
       stop("dimension of X0 wrong in set")
     else {
       Fc$c <- .X02c(x, X0)
-      Fc$X0$ukX0 <- crossprod(.ox(x), X0)
-      Fc$X1$ukX1 <- .c2tsp(x, Fc$c, plus = TRUE)
+      suppressWarnings(Fc$X0$ukX0 <- crossprod(.ox(x), X0))
+      suppressWarnings(Fc$X1$ukX1 <- .c2tsp(x, Fc$c, plus = TRUE))
     }
   } else {
     iX0 <- c
     iX0 <- .iX0check(iX0, sL)
     Fc$iX0 <- .iX0check(iX0, sL)
-    out$X0$uKX0 <- tcrossprod(.ox(x), x$X[, iX0])
+    suppressWarnings(out$X0$uKX0 <- tcrossprod(.ox(x), x$X[, iX0]))
     if (length(iX0) == 0) {
       FC$c <- .xpx(x)
-      Fc$X1$uKX1 <- .cukx(x)
+      suppressWarnings(Fc$X1$uKX1 <- .cukx(x))
     } else {
       Fc$c <- .i02c(x, iX0)
-      Fc$X1$uKX1 <- .c2tsp(x, out$c, plus = TRUE)
+      suppressWarnings(Fc$X1$uKX1 <- .c2tsp(x, out$c, plus = TRUE))
     }
   }
   return(Fc)
@@ -761,12 +776,16 @@
 
 .X1 <- function(Fc, x) {
   if (!.isfcon(Fc))
-    stop("argument is not a contrast structure")
+    stop("Argument is not a contrast structure.")
   if (!.isspc(x))
     x <- .setx(x)
   
-  if (is.list(Fc$X0))
-    .ox(x) %*% Fc$X1$ukX1
+  if (is.list(Fc$X0)) {
+    if (class(Fc$X1$ukX1) == "matrix")
+      .ox(x) %*% Fc$X1$ukX1
+    else
+      .ox(x) * Fc$X1$ukX1
+  }
   else
     Fc$X1
 }
@@ -782,6 +801,7 @@
     if (!b)
       break
   }
+  return(b)
 }
 
 .fconedf <- function(Fc, x, V, oneout = FALSE) {
@@ -1048,11 +1068,11 @@
 
 .minFc <- function() {
   out <- list()
-  out$name <- c()
-  out$fieldType <- c()
-  out$c <- c()
-  out$X0 <- c()
-  out$X1 <- c()
+  out$name <- ""
+  out$fieldType <- ""
+  out$c <- matrix(0, 0, 0)
+  out$X0 <- matrix(0, 0, 0)
+  out$X1 <- matrix(0, 0, 0)
   return(out)
 }
 
@@ -1079,7 +1099,6 @@
   else
     is.null(Fc$X0)
 }
-
 
 .in <- function(Fc1, x, Fc2) {
   L1 <- length(Fc1)
@@ -1115,7 +1134,7 @@
   return(boul)
 }
 
-# Fc list unique'
+# Fc list unique
 .notunique <- function(Fc, x) {
   l <- length(Fc)
   if (l == 1)

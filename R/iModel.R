@@ -228,25 +228,25 @@ setMethod("show", "iModel", function(object) {
   
   cat("                  Predictors =", colnames(object@X$X), "\n")
   cat("                      Images = ", object@dims$nimg, "\n")
-  cat(" Residual degrees of freedom = ", object@dims$rdf, "\n")
+  cat(" Residual degrees of freedom = ", object@X$rdf, "\n")
   cat("                      Voxels = ", object@dims$nvox, "\n")
   cat("                Optimization = ", object@control$opt, "\n")
   cat("                    location = ", object@location, "\n")
-  cat("--- \n")
   
   if (object@control$rft && length(object@dims$fwhm > 0)) {
     cat("                        FWHM = ", round(object@dims$fwhm, 2), "\n")
     cat("                      Resels = ", round(object@dims$resels), "\n")
   }
+  cat("--- \n")
   
   ncon <- length(object@C)
   if (ncon == 0)
     cat("Contrasts not set.\n")
   else {
     for (i in seq_len(ncon)) {
-      cat("Contrast", x@C[[i]]$name, "\n")
+      cat("Contrast", object@C[[i]]$name, "\n")
       cat(" Contrast weights: \n")
-      print(t(object@c))
+      print(t(object@C[[i]]$c))
       
       if (object@control$rft) {
         cat(" Set-level: \n")
@@ -584,17 +584,18 @@ setMethod("model.matrix", "iModel", function(object) {
 
 #' Control parameters for RFT based analyses
 #' 
-#' @param cf critical F-threshold for selecting voxels over which the non-sphericity is estimated (default = \code{0.001})
-#' @param mi maximum iterations for optimizing fitted models
-#' @param scr logical. scale residuals? (default = \code{TRUE})
-#' @param sar number of residual images to sample for estimating the FWHM (default = \code{64})
-#' @param tt threshType (see \code{statFieldThresh})
-#' @param pval thresh p-value
-#' @param pp primary/initial p-value threshold used for FDR thresholding
-#' @param n images in conjunction (default = \code{1})
-#' @param iso logical. should images be assumed to be isotropic? (default = \code{TRUE})
-#' @param os offset weighting for iteratively reweighted least squares (default = \code{3})
-#' @param rft logical. should voxels be estimated in resel space for random field theory analysis (default = \code{TRUE})
+#' @param cf Critical F-threshold for selecting voxels over which the non-sphericity is estimated (default = \code{0.001}).
+#' @param mi Maximum iterations for optimizing fitted models.
+#' @param scr Logical. scale residuals? (default = \code{TRUE}).
+#' @param sar Number of residual images to sample for estimating the FWHM (default = \code{64}).
+#' @param tt threshType (see \code{statFieldThresh}).
+#' @param pval Threshold p-value.
+#' @param pp Primary/initial p-value threshold used for FDR thresholding.
+#' @param n images in conjunction (default = \code{1}).
+#' @param iso logical. should images be assumed to be isotropic? (default = \code{TRUE}).
+#' @param os offset weighting for iteratively reweighted least squares (default = \code{3}).
+#' @param rft logical. should voxels be estimated in resel space for random field theory analysis (default = \code{TRUE}).
+#' @param optimization method "none", "IWLS", or "REML" (default = \code{"none"}).
 #' @return 
 #' 
 #' @export iControl
@@ -610,5 +611,6 @@ iControl <- function(cf = 0.05, mi = 200, scr = TRUE, sar = 64, tt = "pRFT",
        n = n,
        iso = iso,
        os = os,
-       rft = rft)
+       rft = rft,
+       opt = "none")
 }
