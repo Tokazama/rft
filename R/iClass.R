@@ -1,6 +1,6 @@
 #' iGroup
 #' 
-#' Object for representing single image modality
+#' Object for representing single image modality and preserving active memory.
 #' 
 #' @param .Object inpute object to convert
 #' @param iMatrix image by voxel matrix
@@ -21,6 +21,8 @@
 #' @slot mask mask with number of non-zero entries defining the matrix columns.
 #' @slot K filter information
 #' @slot dim dimensions of iMatrix
+#' 
+#' @seealso \code{\link{iGroup-methods}}, \code{\link{iData-methods}}
 #' 
 #' 
 #' @export iGroup
@@ -152,6 +154,8 @@ setMethod("show", "iGroup", function(object) {
 #' 
 #' @param x,object Object of class iGroup.
 #' @param filename h5 file to save iGroup object to
+#' @seealso \code{\link{iData-methods}}
+#' 
 #' @name iGroup-methods
 NULL
 
@@ -291,8 +295,7 @@ iGroupWrite <- function(x, filename) {
 #' @slot demog demographic information
 #' @slot index index that coordinates iGroup rows with demographic rows
 #' 
-#' @description 
-#' See \link{iGroup/iData-class} for examples
+#' @seealso \code{\link{iGroup}}, \code{\link{iData-methods}}
 #' 
 #' @export iData
 iData <- setClass("iData",
@@ -387,6 +390,56 @@ setMethod("show", "iData", function(object) {
 #' Otherwise, proportion of rows in training data.
 #' @param na.omit Omit NA/missing values.
 #' @param verbose enables verbose output. (default = \code{TRUE})
+#' 
+#' @examples
+#' # create iGroup object
+#' ilist <- getANTsRData("population")
+#' mask <- getMask(ilist[[1]])
+#' imat <- imageListToMatrix(ilist, mask)
+#' iGroup1 <- iGroup(imat, "pop1", mask, modality = "T1")
+#' 
+#' # ensure only active voxels are included in mask
+#' 
+#' 
+#' ilist <- lappend(ilist, ilist[[1]])
+#' imat <- imageListToMatrix(ilist, mask)
+#' iGroup2 <- iGroup(imat, "pop2", mask, modality = "T1")
+#' 
+#' # save iGroup object
+#' tmpfile <- tempfile(fileext = ".h5")
+#' iGroupWrite(iGroup1, tmpfile)
+#' 
+#' # load saved iGroup object
+#' (iGroup1_reload <- iGroupRead(tmpfile))
+#' 
+#' demog <- data.frame(id = c("A", "B", "C", NA),
+#'   age = c(11, 7, 18, 22), sex = c("M", "M", "F", "F"))
+#'   
+#' bool1 <- c(TRUE, TRUE, TRUE, FALSE)
+#' bool2 <- c(TRUE, TRUE, TRUE, TRUE)
+#' 
+#' # create iData object that holds demographics info
+#' mydata <- iData(iGroup1, bool1, demog)
+#' 
+#' # add iGroup object to iData
+#' mydata <- add(mydata, iGroup2, bool1)
+#' 
+#' # save iData object
+#' tmpdir <- "iData_test"
+#' iDataWrite(mydata, tmpdir)
+#' 
+#' # load saved iData object
+#' (mydata_reload <- iDataRead(tmpdir))
+#' 
+#' # split iData object into k-folds or train and test groups
+#' mydatasplit <- iDataSplit(mydata, 0.3)
+#' 
+#' # retreive demographic information specific to an iGroup
+#' getDemog(mydata, "pop1", c("age", "sex"))
+#' 
+#' # omit all values that are NA while selecting for specific groups and variables
+#' (mydata_omitted <- select(mydata, groups = "id", vars = "id", na.omit = TRUE))
+#' 
 #' @name iData-methods
 NULL
 

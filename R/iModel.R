@@ -282,6 +282,7 @@ setMethod("show", "iModel", function(object) {
 #' @param filename h5 file to save iModel to.
 #' @param iData_dirname Directory for iData component of iModel.
 #' @param docname Prefix name for report documents.
+#' @param output_format File format for report to be rendered in (see rmarkdown::render).
 #' @param verbose enables verbose output. (default = \code{TRUE})
 #' @param ... additional named arguments passed to \code{iModelUpdate}
 #' @name iModel-methods
@@ -626,8 +627,13 @@ setMethod("model.matrix", "iModel", function(object) {
 #' @docType methods
 #' @details \strong{report} Create a report of for iModel objects
 #' @rdname iModel-methods
-report <- function(x, docname) {
+report <- function(x, filename, output_format, md_name) {
+  
   md <- paste(docname, ".md", sep = "")
+  if (missing(md_name))
+    md <- tempfile(fileext = ".md")
+  else
+    md <- md_name
   zz <- file(md, open = "wt")
   sink(zz, type = "message")
   
@@ -690,7 +696,7 @@ report <- function(x, docname) {
   }
   sink()
   
-  rmarkdown::render(md, "pdf_document")
+  rmarkdown::render(inpute = md, output_format = output_format, output_file = filename)
   
   # markdown::markdownToHTML(md, paste(docname, ".html", sep = ""))
   # system(paste("pandoc -s ", paste(docname, ".html", sep = ""), "-o ", paste(docname, ".pdf", sep = ""), sep = ""))

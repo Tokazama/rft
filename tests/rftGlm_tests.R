@@ -1,31 +1,68 @@
-# read in data
-filepath <- '/Volumes/SANDISK/datasets/ptbp/rft/warp/'
-ifiles <- file.path(filepath, list.files(filepath)[1:33])
-mask <- getMask(antsImageRead(ifiles[1]))
-imat <- imagesToMatrix(ifiles, mask)
-ptbp <- read.csv('/Volumes/SANDISK/datasets/ptbp/data/ptbp_summary_demographics.csv')
-X <- model.matrix(~ptbp$AgeAtScan)
-conmat <- matrix(c(0, 1, 0, -1), 2, 2, byrow = TRUE)
-
-# rftModel
-fm1 <- rftModel(X, imat, mask, conmat)
-
-# rftREML
-remlparams <- rftREML(rftmod$varParams$Cy, X, rftmod$varParams$V)
-
-# update
-fm2 <- update(fm1, V = remlparams$V)
+library(ANTsR)
+library(h5)
 
 
-# rftGlm
-fm3 <- rftLm(imat, ~AgeAtScan, mask, data = ptbp, intercept = TRUE, conmat,
-              statdir = '/Users/zach8769/Desktop/', verbose = TRUE)
+home <- '/Volumes/SANDISK/datasets/ucsd/'
+ucsd <- read.csv(paste(home, 'spreadsheets/ucsdWOna.csv', sep = ""))[, -1]
 
-# summary
-sumfm3 <- summary(fm3)
+path2rft <- "Desktop/git/rft/R/"
+source(paste(path2rft, "iClass.R", sep = ""))
+source(paste(path2rft, "iModel.R", sep = ""))
+source(paste(path2rft, "ilm.R", sep = ""))
+source(paste(path2rft, "iUtils.R", sep = ""))
+source(paste(path2rft, "iContrast.R", sep = ""))
+source(paste(path2rft, "iFilter.R", sep = ""))
+source(paste(path2rft, "rftResults.R", sep = ""))
 
-# anova
-aovfm3 <- anova(fm3)
+# Read in VBM----
+wblist <- c()
+boolwb <- rep(FALSE, nrow(ucsd))
+for (i in 1:nrow(ucsd)) {
+  tmppath <- paste(home, "warp/", ucsd$file_names[i], ".nii.gz", sep = "")
+  if (file.exists(tmppath)) {
+    wblist <- c(wblist, tmppath)
+    boolwb[i] <- TRUE
+  }
+}
+
+mask <- getMask(antsImageRead(wblist[1]), cleanup = 0)
+imat <- imagesToMatrix(wblist, mask)
+wb <- iGroup(imat, "wb", mask, modality = "VBM", checkMask = TRUE)
+iGroupWrite(wb, paste(home, "wb.h5", sep = ""))
+
+# Read in CT----
+ctlist <- c()
+boolct <- rep(FALSE, nrow(ucsd))
+for (i in 1:nrow(ucsd)) {
+  tmppath <- paste(home, "/ct/", ucsd$file_names[i], ".nii.gz", sep = "")
+  if (file.exists(tmppath)) {
+    ctlist <- c(ctlist, tmppath)
+    boolct[i] <- TRUE
+  }
+}
+
+mask <- getMask(antsImageRead(ctlist[1]), cleanup = 0)
+ct <- imagesToMatrix(ctlist, mask) %>% iGroup("ct", mask, modality = "CT", filename = paste(home, "ct.h5", sep = ""))
+
+# Create iData----
+(mydata <- iData(list(ct, wb), list(boolct, boolwb), ucsd))
+iDataWrite(mydata, paste(home, "iData", sep = ""))
+(mydata <- substract(mydata, "wb"))
+mydata <- add(mydata, wb, boolwb)
+
+# Regression----
+mydata <- iDataRead(paste(home, "iData", sep = ""))
+fit1 <- ilm(wb ~ Age, mydata)
+contrastMatrix <- matrix(c(0,          1,    # positive correlation
+                           0,         -1),   # negative correlation
+                         2, 2, byrow = TRUE)
+rownames(contrastMatrix) <- c("pos", "neg")
+fit1 <- summary(fit1, contrastMatrix, cthresh = 150)
+report(fit1, paste(home, "report.pdf"))
+
+# 
+
+
 
 # predict
 
