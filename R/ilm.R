@@ -62,12 +62,13 @@ iFormula <- function(formula, iData, impute) {
 #' @param iData Object of class iData containing the variabels in the model.
 #' @param weights 
 #' @param optim optimization method ("none", "REML", "IWLS")
+#' @param its Maximum iterations for optimizing fitted models.
 #' @param control 
 #' @param verbose 
 #'
 #'
 #' @export ilm
-ilm <- function(formula, iData, weights = NULL, optim = "none", control, verbose = TRUE) {
+ilm <- function(formula, iData, weights = NULL, optim = "none", its, control, verbose = TRUE) {
   cl <- match.call()
   z <- iFormula(formula, iData)
   
@@ -78,11 +79,15 @@ ilm <- function(formula, iData, weights = NULL, optim = "none", control, verbose
     out[[i]] <- iModelMake(X = z$X, y = z$y[i], iData = z$iData, weights = weights, control = control)
     out[[i]]@method <- c("ilm", optim)
     if (optim == "REML") {
-      out[[i]]@xVi <- estNonSphericity(object)
+      if (missing(its))
+        its <- 32
+      out[[i]]@xVi <- estNonSphericity(object, its)
       out[[i]] <- iModelUpdate(out[[i]])
       out[[i]] <- iModelSolve(out[[i]])
     } else if (optim == "IWLS") {
       # compute leverages
+      if (missing(its))
+        its <- 200
       H <- diag(out[[i]]@X$X %*% tcrossprod(MASS::ginv(crossprod(out[[i]]@X$X), out[[i]]@X$X)))
       ores <- 1
       nres <- 10
@@ -99,7 +104,7 @@ ilm <- function(formula, iData, weights = NULL, optim = "none", control, verbose
         for (i in seq_len(out[[i]]@dims$nvox))
           out[[i]]@beta[, i] <- MASS::ginv(crossprod(out[[i]]@X$X, diag(W[, i])) %*% out[[i]]@X$X) %*% crossprod(out[[i]]@X$X, diag(W[, i])) %*% out[[i]]@iData@iList[[y]]@iMatrix[, i]
         
-        if (n > out[[i]]@control$mi) {
+        if (n > its) {
           warning("ilm could not converge. Maximal number of iterations exceeded.");
           break
         }
@@ -127,10 +132,12 @@ ilm <- function(formula, iData, weights = NULL, optim = "none", control, verbose
       out[[i]] <- iModelSolve(out[[i]])
     
     if (out[[i]]@control$rft) {
-      smooth <- estSmooth(out[[i]]@res[], out[[i]]@iData[[out[[i]]@y]]@mask, out[[i]]@X$rdf, scaleResid = FALSE, sample = control$sar, verbose = verbose)
+      if (verbose)
+        cat("Estimating FWHM/Resels. \n")
+      smooth <- estSmooth(out[[i]]@res[], out[[i]]@iData@iList[[out[[i]]@y]]@mask, out[[i]]@X$rdf, scaleResid = FALSE, sample = out[[i]]@control$sar, verbose = verbose)
       out[[i]]@dims$fwhm <- smooth$fwhm
-      out[[i]]@dims$rpvImage <- smooth$rpvImage
-      out[[i]]@dims$resels <- resels(out[[i]]@iData[[x@y]]@mask, smooth$fwhm)
+      out[[i]]@dims$rpvImage <- smooth[[2]]
+      out[[i]]@dims$resels <- resels(out[[i]]@iData@iList[[out[[i]]@y]]@mask, smooth$fwhm)
     }
   }
   if (length(out) == 1)

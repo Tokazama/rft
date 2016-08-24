@@ -5,7 +5,7 @@
 # .notunique (~unique)
 
 ## from spm_sp----
-# set the filtered and whitened design matrix'
+# set the filtered and whitened design matrix
 # the `nu` and `nv` arguments seem to make the difference between the matlab svd and R svd
 .setx <- function(x) {
   out <- list()
@@ -28,7 +28,7 @@
   return(out)
 }
 
-# orthogonal projectors on space of X'
+# orthogonal projectors on space of X
 .op <- function(x, y, check = FALSE) {
   if (x$rk > 0)
     out <- tcrossprod(x$u[, seq_len(x$rk)], x$u[, seq_len(x$rk)])
@@ -41,7 +41,7 @@
   return(out)
 }
 
-# orthogonal projectors on space of t(X)'
+# orthogonal projectors on space of t(X)
 .opp <- function(x, y, check = FALSE) {
   if (x$rk > 0)
     out <- crossprod(x$v[, seq_len(x$rk)], x$v[, seq_len(x$rk)])
@@ -54,7 +54,7 @@
   return(out)
 }
 
-# pseudo inverse of X'
+# pseudo inverse of X
 .pinvx <- function(x, y, check = FALSE) {
   if (x$rk > 0 ) {
     out <- x$v[, seq_len(x$rk)] %*% 
@@ -69,7 +69,7 @@
   return(out)
 }
 
-# pseudo-inverse of t(X)'
+# pseudo-inverse of t(X)
 .pinvxp <- function(x, y, check = FALSE) {
   if (x$rk > 0)
     out <- x$u[, seq_len(x$rk)] %*% 
@@ -84,7 +84,7 @@
   return(out)
 }
 
-# coordinates of pseudo-inverse of t(X) in the base of uk'
+# coordinates of pseudo-inverse of t(X) in the base of uk
 .cukxp <- function(x, y, check = FALSE) {
   if (x$rk > 0)
     out <- tcrossprod(diag(rep(1, x$rk) / x$d[seq_len(x$rk)]), x$v[, seq_len(x$rk)])
@@ -97,7 +97,7 @@
   return(out)
 }
 
-# coordinates of X in the base of uk'
+# coordinates of X in the base of uk
 .cukx <- function(x, y, check = FALSE) {
   if (x$rk > 0)
     out <- tcrossprod(diag(x$d[seq_len(x$rk)]), x$v[, seq_len(x$rk)])
@@ -110,7 +110,7 @@
   return(out)
 }
 
-# orthonormal basis sets for X'
+# orthonormal basis sets for X
 .ox <- function(x, y, check = FALSE) {
   if (x$rk > 0) {
     out <- x$u[,seq_len(x$rk)]
@@ -123,7 +123,7 @@
   return(out)
 }
 
-# orthonormal basis sets for t(X)'
+# orthonormal basis sets for t(X)
 .oxp <- function(x, y, check = FALSE) {
   if (x$rk > 0)
     x$v[, seq_len(x$rk)]
@@ -145,7 +145,7 @@
   return(out)
 }
 
-# computation of crossprod(X)'
+# computation of crossprod(X)
 .xpx <- function(x, y, check = FALSE) {
   if (x$rk > 0) {
     out <- x$v[, seq_len(x$rk)] %*%
@@ -186,7 +186,7 @@
   return(out)
 }
 
-# computation of tcrossprod(X)'
+# computation of tcrossprod(X)
 .xxp <- function(x, y, check = FALSE) {
   if (x$rk > 0) {
     if(missing(y)) {
@@ -203,7 +203,7 @@
   return(out)
 }
 
-# computes u * (diag(x^n)) * t(u)'
+# computes u * (diag(x^n)) * t(u)
 .power <- function(x, n, y, check = FALSE) {
   if (missing(n))
     n <- 1
@@ -225,7 +225,7 @@
   return(out)
 }
 
-# computes v * (diag(x^n)) * t(v)'
+# computes v * (diag(x^n)) * t(v)
 .powerp <- function(x, n, y, check = FALSE) {
   if (missing(n))
     n <- 1
@@ -265,7 +265,7 @@
   return(n)
 }
 
-# project into null space X'
+# project into null space X
 .nop <- function(x, y, check = FALSE) {
   dimX <- dim(x$X)
   if (x$rk > 0) {
@@ -354,7 +354,7 @@
   }
 }
 
-# each column of c in space or in dual space'
+# each column of c in space or in dual space
 .eachinsp <- function(x, c, tol) {
   if (missing(tol))
     tol <- x$tol
@@ -365,7 +365,7 @@
     return(all(abs(.op(x) %*% c - c) <= tol))
 }
 
-# each column of c in space or in dual space'
+# each column of c in space or in dual space
 .eachinspp <- function(x, c, tol) {
   if (missing(tol))
     tol <- x$tol
@@ -376,7 +376,7 @@
     return(all(abs(.opp(x) %*% c - c) <= tol))
 }
 
-# test wether two spaces are the same'
+# test wether two spaces are the same
 .equal <- function(x, X2) {
   x2 <- .setx(X2)
   maxtol <- max(x$tol, x2$tol)
@@ -415,7 +415,7 @@
 }
 
 ## from spm_SpUtil----
-#test whether weight vectors specify contrast'
+#test whether weight vectors specify contrast
 .iscon <- function(x, c) {
   if (!.isspc(x))
     x <- .setx(X)

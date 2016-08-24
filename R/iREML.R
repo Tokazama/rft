@@ -8,7 +8,7 @@
 #' @param t regularisation (default 4)
 #' @param hE hyperprior (default 0)
 #' @param hP hyperprecision (default 1e-16)
-#' @param mi maximum iterations
+#' @param its maximum iterations
 #'
 #' @return
 #' \item{V} {m x m estimated errors = h[1]*Q[[1]] + h[2]*Q[[2]] + ...}
@@ -19,7 +19,7 @@
 #' \item{Fc} {complexity (F = Fa - Fc)}
 #' adapted from spm_ReML
 #' @export iREML
-iREML <- function(YY, X, Q, N, D, t, hE, hP, mi) {
+iREML <- function(YY, X, Q, N, D, t, hE, hP, its) {
   if (missing(N))
     N <- 1
   if (missing(D))
@@ -63,7 +63,7 @@ iREML <- function(YY, X, Q, N, D, t, hE, hP, mi) {
   PQ <- list()
 
   # ReML (EM/VB)----
-  for (it in seq_len(maxIter)) {
+  for (it in seq_len(its)) {
     # compute current estimate of covariance----
     #C <- matrix(0, n, n)
     C <- 0

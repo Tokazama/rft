@@ -10,8 +10,8 @@
 #' 
 #'
 #' 
-#' @param X design matrix
-#' @param y name of iGroup that corresponds to the response value
+#' @param X Design matrix.
+#' @param y Name of iGroup that corresponds to the response value
 #' @param data iData object containing design information
 #' @param weights optional vector or matrix of prior weights to be used in the fitting process
 #' @param xVi sphericity measurements
@@ -19,20 +19,20 @@
 #' @param filename optional filename location to save object to 
 #' @param ... named arguments
 #' 
-#' @slot iData iData reference class object for fitted model
-#' @slot y character naming the iGroup used within iData for the response to the fitted model
-#' @slot X information about the design
+#' @slot iData iData reference class object for fitted model.
+#' @slot y Character naming the iGroup used within iData for the response to the fitted model.
+#' @slot X Information about the design.
 #' \itemize{
-#'  \item{X} {design matrix}
-#'  \item{K} {filter information specific to each image}
+#'  \item{X} {Design matrix.}
+#'  \item{K} {Filter information specific to each image.}
 #'  \item{W} {weights}
-#'  \item{KWX} {weighted design matrix information}
-#'  \item{pKX} {pseudoinverse of X}
-#'  \item{V} {non-sphericity matrix}
-#'  \item{betaCov}
-#'  \item{trRV} {trace of RV}
-#'  \item{trRVRV} {trace of RVRV}
-#'  \item{rdf} {residual degrees of freedom}
+#'  \item{KWX} {Weighted design matrix information.}
+#'  \item{pKX} {Pseudoinverse of X.}
+#'  \item{V} {Non-sphericity matrix.}
+#'  \item{betaCov} {Covariance of correlation coefficients.}
+#'  \item{trRV} {Trace of RV.}
+#'  \item{trRVRV} {Trace of RVRV.}
+#'  \item{rdf} {Residual degrees of freedom.}
 #' }
 #' @slot beta beta coefficient matrix
 #' @slot res residual matrix
@@ -42,41 +42,41 @@
 #'  \item{Vi} {list of non-sphericity components}
 #'  \item{V} {non-sphericity matrix (Cov(e) = sigma^2*V)}
 #'  \item{h} {hyperparameters}
-#'  \item{Cy} {covariance of response matrix}
+#'  \item{Cy} {Covariance of response matrix.}
 #' }
 #' @slot dims model dimensions
 #' \itemize{
-#'  \item{npred} {number of predictors}
-#'  \item{nimg} {number of images}
-#'  \item{nvox} {number of voxels}
+#'  \item{npred} {Number of predictors.}
+#'  \item{nimg} {Number of images.}
+#'  \item{nvox} {Number of voxels.}
 #'  \item{fwhm} {full-width at half-maxima}
-#'  \item{resels} {resolution elements}
-#'  \item{rpvImage} {resels per voxel image}
+#'  \item{resels} {Resolution elements.}
+#'  \item{rpvImage} {Resels per voxel image.}
 #' }
 #' @slot call the original matched call information
 #' @slot C list of contrasts
 #' \itemize{
-#'  \item{name} {name of the contrast}
-#'  \item{c} {contrast weights}
+#'  \item{name} {Name of the contrast.}
+#'  \item{c} {Contrast weights.}
 #'  \item{X1} {Reamaining design space (orthogonal to X0)}
 #'  \item{X0} {Reduced design matrix.}
-#'  \item{iX0} {Indicates how contrat was specified}
-#'  \item{dims} {dimensions for contrast}
+#'  \item{iX0} {Indicates how contrat was specified.}
+#'  \item{dims} {Dimensions for contrast}
 #'  \itemize{
-#'    \item{trRV} {trace of RV}
-#'    \item{trRVRV} {trace of RVRV}
-#'    \item{idf} {degrees of interest}
+#'    \item{trRV} {Trace of RV.}
+#'    \item{trRVRV} {Trace of RVRV.}
+#'    \item{idf} {Degrees of interest.}
 #'  }
-#'  \item{fieldType} {type of statyistical field being fitted}
-#'  \item{contrastImage} {object of class antsImage representing contrast}
-#'  \item{clusterImage} {object of class antsImage representing the thresholded contrastImage}
-#'  \item{results} {either a list or data.frame containing the results of a given contrast}
-#'  \item{sthresh} {statistical threshold}
-#'  \item{cthresh} {cluster threshold}
+#'  \item{fieldType} {Type of statyistical field being fitted.}
+#'  \item{contrastImage} {Object of class antsImage representing contrast.}
+#'  \item{clusterImage} {Object of class antsImage representing the thresholded contrastImage.}
+#'  \item{results} {Either a list or data.frame containing the results of a given contrast.}
+#'  \item{sthresh} {Statistical threshold.}
+#'  \item{cthresh} {Cluster threshold.}
 #' }
 #' @slot control control values for fitting the model (see \code{\link{iControl}})
 #'
-#'
+#' @rdname iModel-class
 iModel <- setClass("iModel",
                    slots = list(
                      iData = "iData",
@@ -93,8 +93,10 @@ iModel <- setClass("iModel",
                      location = "character")
                    )
 
-#' 
-#' @export iModelMake
+#' @export 
+#' @docType methods
+#' @details \strong{iModelMake} Make iModel object.
+#' @rdname iModel-method
 iModelMake <- function(X, y, iData, weights = NULL, xVi, control, filename, ...) {
   if (!usePkg("h5"))
     stop("Please install package h5 in order to use this function.")
@@ -237,7 +239,8 @@ setMethod("show", "iModel", function(object) {
     cat("                        FWHM = ", round(object@dims$fwhm, 2), "\n")
     cat("                      Resels = ", round(object@dims$resels), "\n")
   }
-  cat("--- \n")
+  
+  cat("--- \n\n")
   
   ncon <- length(object@C)
   if (ncon == 0)
@@ -246,8 +249,10 @@ setMethod("show", "iModel", function(object) {
     for (i in seq_len(ncon)) {
       cat("Contrast", object@C[[i]]$name, "\n")
       cat(" Contrast weights: \n")
-      print(t(object@C[[i]]$c))
-      
+      c <- t(object@C[[i]]$c)
+      colnames(c) <- colnames(object@X$X)
+      print(c)
+      cat("\n")
       if (object@control$rft) {
         cat(" Set-level: \n")
         cat(" Clusters = ", ncol(object@C[[i]]$results$clusterLevel), "\n")
@@ -262,10 +267,11 @@ setMethod("show", "iModel", function(object) {
       } else {
         print(object@C[[i]]$results)
       }
-      cat("Interest degrees of freedom = ", object@C[[i]]$dims$idf, "\n")
-      cat("Statistical threshold = ", round(object@C[[i]]$sthresh, 2), "\n")
-      cat("Cluster threshold = ", object@C[[i]]$cthresh, "\n")
-      cat("\n___\n\n")
+      cat("Interest degrees of freedom: ", object@C[[i]]$dims$idf, "\n")
+      cat("Statistical threshold: ", round(object@C[[i]]$sthresh, 2), "\n")
+      cat("Cluster threshold: ", object@C[[i]]$cthresh, "\n")
+      cat("Threshold type: ", object@C[[i]]$threshType, "\n")
+      cat("---\n\n")
     }
   }
 })
@@ -275,11 +281,9 @@ setMethod("show", "iModel", function(object) {
 #' @param x,object Object of class iModel.
 #' @param filename h5 file to save iModel to.
 #' @param iData_dirname Directory for iData component of iModel.
+#' @param docname Prefix name for report documents.
 #' @param verbose enables verbose output. (default = \code{TRUE})
 #' @param ... additional named arguments passed to \code{iModelUpdate}
-#' @param contrastMatrix matrix of contrasts
-#' @param cthresh cluster level threshold
-#' @param fieldType statistical field type for contrast
 #' @name iModel-methods
 NULL
 
@@ -315,6 +319,12 @@ iModelRead <- function(filename, iData_dirname) {
   if (!file.exists(filename))
     stop("filename does not exist.")
   x <- iModel()
+  file <- h5file(filename)
+  
+  # load big matrices
+  x@mrss <- file["mrss"]
+  x@beta <- file["beta"]
+  x@res <- file["res"]
   
   x@location <- filename
   x@y <- file["y"][]
@@ -426,7 +436,40 @@ iModelWrite <- function(x, filename, iData_dirname) {
   }
   if (!usePkg("h5"))
     stop("Please install package h5 in order to use this function.")
-  file.copy(x@location, filename)
+  
+  file <- h5file(filename)
+  
+  #### write big matrices
+  chunksize <- x@beta@chunksize[2]
+  chunkseq <- seq_len(chunksize)
+  nvox <- x@iData@iList[[x@y]]@dim[2]
+  nchunk <- floor(nvox / chunksize)
+  
+  # initialize files
+  file["beta"] <- x@beta[, chunkseq]
+  file["res"]  <- x@res[, chunkseq]
+  file["mrss"] <- x@mrss[, chunkseq]
+  
+  beta <- file["beta"]
+  res  <- file["res"]
+  mrss <- file["mrss"]
+  
+  # starting on 2nd chunk fill in matrices
+  for (i in seq_len(nchunk - 1)) {
+    chunkseq <- chunkseq + chunksize
+    beta <- cbind(beta, x@beta[, chunkseq])
+    res  <- cbind(res, x@res[, chunkseq])
+    mrss <- cbind(mrss, x@mrss[, chunkseq])
+  }
+  
+  # fill in any remaining chunkage
+  if (((nvox / chunksize) - nchunk) > 0) {
+    beta <- cbind(beta, x@beta[, chunkseq[chunksize]:nvox])
+    res  <- cbind(res, x@res[, chunkseq[chunksize]:nvox])
+    mrss <- cbind(mrss, x@mrss[, chunkseq[chunksize]:nvox])
+  }
+  #### end big matrices
+  
   
   file["y"] <- x@y
   file["method"] <- x@method
@@ -436,9 +479,6 @@ iModelWrite <- function(x, filename, iData_dirname) {
   file["control/mi"] <- x@control$mi
   file["control/scr"] <- x@control$scr
   file["control/sar"] <- x@control$sar
-  file["control/tt"] <- x@control$tt
-  file["control/pval"] <- x@control$pval
-  file["control/pp"] <- x@control$pp
   file["control/n"] <- x@control$n
   file["control/iso"] <- x@control$iso 
   file["control/os"] <- x@control$os
@@ -582,15 +622,85 @@ setMethod("model.matrix", "iModel", function(object) {
   return(object@X$X)
 })
 
+#' @export
+#' @docType methods
+#' @details \strong{report} Create a report of for iModel objects
+#' @rdname iModel-methods
+report <- function(x, docname) {
+  md <- paste(docname, ".md", sep = "")
+  zz <- file(md, open = "wt")
+  sink(zz, type = "message")
+  
+  # describe the model----
+  cat("iModel object fit by call to ", x@method[1])
+  if (x@control$rft)
+    cat(" using random field theory. \n")
+  else
+    cat(". \n")
+  
+  cat("                  Predictors =", colnames(x@X$X), "\n")
+  cat("                      Images = ", x@dims$nimg, "\n")
+  cat(" Residual degrees of freedom = ", x@X$rdf, "\n")
+  cat("                      Voxels = ", x@dims$nvox, "\n")
+  cat("                Optimization = ", x@control$opt, "\n")
+  
+  if (object@control$rft && length(x@dims$fwhm > 0)) {
+    cat("                        FWHM = ", round(x@dims$fwhm, 2), "\n")
+    cat("                      Resels = ", round(x@dims$resels), "\n")
+  }
+  cat("--------------------------------------------- \n\n")
+  
+  # contrast results----
+  ncon <- length(x@C)
+  cat("## Contrast Results")
+  for (i in seq_len(ncon)) {
+    cat("### ", object@C[[i]]$name, "\n")
+    
+    ## render images----
+    brain <- renderSurfaceFunction( surfimg = list(x@iData@iList[[x@y]]@mask), funcimg = list(x@C[[i]]$clusterImage), alphasurf = 0.1, smoothsval = 1.5)
+    tmp <- make3ViewPNG(tempfile(fileext = ".png"))
+    imgchunk <- paste("![conimg", i, "](", tmp, ")", sep = "")
+    cat(imgchunk)
+    
+    ## render results----
+    cat("Contrast weights: \n")
+    c <- t(object@C[[i]]$c)
+    colnames(c) <- colnames(object@X$X)
+    print(c)
+    cat("\n")
+    if (object@control$rft) {
+      cat("Set-level: \n")
+      cat("  Clusters = ", ncol(object@C[[i]]$results$clusterLevel), "\n")
+      cat("  p-value = ", object@C[[i]]$results$setLevel, "\n\n")
+      
+      cat("Cluster-Level: \n")
+      print(round(object@C[[i]]$results$clusterLevel, 3))
+      cat("\n")
+      
+      cat("Peak-level: \n")
+      print(round(object@C[[i]]$results$peakLevel, 3))
+    } else {
+      print(object@C[[i]]$results)
+    }
+    cat("Interest degrees of freedom: ", object@C[[i]]$dims$idf, "\n")
+    cat("Statistical threshold: ", round(object@C[[i]]$sthresh, 2), "\n")
+    cat("Cluster threshold: ", object@C[[i]]$cthresh, "\n")
+    cat("Threshold type: ", object@C[[i]]$threshType, "\n")
+    cat("---\n\n")
+  }
+  sink()
+  
+  rmarkdown::render(md, "pdf_document")
+  
+  # markdown::markdownToHTML(md, paste(docname, ".html", sep = ""))
+  # system(paste("pandoc -s ", paste(docname, ".html", sep = ""), "-o ", paste(docname, ".pdf", sep = ""), sep = ""))
+}
+
 #' Control parameters for RFT based analyses
 #' 
 #' @param cf Critical F-threshold for selecting voxels over which the non-sphericity is estimated (default = \code{0.001}).
-#' @param mi Maximum iterations for optimizing fitted models.
 #' @param scr Logical. scale residuals? (default = \code{TRUE}).
 #' @param sar Number of residual images to sample for estimating the FWHM (default = \code{64}).
-#' @param tt threshType (see \code{statFieldThresh}).
-#' @param pval Threshold p-value.
-#' @param pp Primary/initial p-value threshold used for FDR thresholding.
 #' @param n images in conjunction (default = \code{1}).
 #' @param iso logical. should images be assumed to be isotropic? (default = \code{TRUE}).
 #' @param os offset weighting for iteratively reweighted least squares (default = \code{3}).
@@ -599,15 +709,10 @@ setMethod("model.matrix", "iModel", function(object) {
 #' @return 
 #' 
 #' @export iControl
-iControl <- function(cf = 0.05, mi = 200, scr = TRUE, sar = 64, tt = "pRFT",
-                     pval = 0.05, pp = 0.01, n = 1, iso = TRUE, os = 3, rft = TRUE) {
+iControl <- function(cf = 0.05, scr = TRUE, sar = 64, n = 1, iso = TRUE, os = 3, rft = TRUE) {
   list(cf = cf,
-       mi =  mi,
        scr = scr,
        sar = sar,
-       tt = tt,
-       pval = pval,
-       pp = pp,
        n = n,
        iso = iso,
        os = os,

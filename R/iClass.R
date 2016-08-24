@@ -75,15 +75,13 @@ setMethod("initialize", "iGroup", function(.Object, iMatrix = matrix(1, 1, 1), n
   
   # mask
   if (!missing(iMatrix) && !missing(mask) && checkMask) {
-    nimg <- nrow(iMatrix)
-    mask_vec <- iMatrix
-    mask_vec[mask_vec != 0] <- 1
+    mask_vec <- abs(iMatrix)
     mask_vec <- colSums(mask_vec)
-    mask_vec[mask_vec != nimg] <- 0
-    mask_vec[mask_vec == nimg] <- 1
+    mask_vec[mask_vec != 0] <- 1
     iMatrix <- iMatrix[, as.logical(mask_vec)]
     mask <- makeImage(mask, mask_vec)
   }
+  
   ## configure
   if (missing(mask))
     .Object@mask <- makeImage(c(1, 1, 1), 1)
@@ -138,6 +136,7 @@ setMethod("initialize", "iGroup", function(.Object, iMatrix = matrix(1, 1, 1), n
   .Object@iMatrix <- file["iMatrix"]
   return(.Object)
 })
+
 #' @export
 setMethod("show", "iGroup", function(object) {
   cat("iGroup object:\n")

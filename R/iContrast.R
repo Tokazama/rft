@@ -1,83 +1,31 @@
+# To do:
+# plot
+# report
 
-
-#' @export
-#' @docType methods
-#' @description \strong{summary} Compute f-statistic or t-statistic contrast for iModel object.
-#' @rdname iModel-contrasts
-setMethod("anova", "iModel", function(object, contrastMatrix, cthresh = 150, verbose = TRUE) {
-  if (missing(contrastMatrix)) {
-    contrastMatrix <- matrix(rep(1, ncol(object@X$X)), nrow = 1)
-    colnames(contrastMatrix) <- colnames(object@X$X)
-    if (any(colnames(contrastMatrix) == "(Intercept)"))
-      contrastMatrix[, "Intercept"] <- 0
-  }
-  
-  connames <- rownames(contrastMatrix)
-  if (is.null(connames))
-    connames <- paste("Contrast_", seq_len(ncon), sep = "")
-  
-  if (length(contrast) != object@dims$npred)
-    stop("the contrast length must be equal to the number of predictors")
-  mask <- object@iData@iList[[object@y]]@mask
-  
-  # ensure that if previous contrasts were set they won't be erased
-  start <- length(object@C) + 1
-  ncon <- nrow(contrastMatrix) + start
-  
-  for (i in start:ncon) {
-    contrast <- matrix(contrastMatrix[i, ], ncol = 1)
-    tmp <- matrix(con, ncol = 1)
-    rownames(tmp) <- colnames(object@X$X)
-    c <- tmp
-    object@C[[i]] <- .setcon(connames[i], fieldType = "F", action, contrast, object@X$KWX)
-    
-    # X1 <<- .X1(.self, iModel$X$KWX)
-    object@C[[i]]$dims <- .trMV(X1, object@X$V)
-    names(object@C[[i]]$dims) <- c("trMV", "trMVMV", "idf")
-    
-    # solve contrast
-    h <- .hsqr(object@C[[i]], object@X$KWX)
-    ss <- (rowSums((h %*% object@beta)^2) / object@C[[i]]$dims$trMV)
-    object@C[[i]]$contrastImage <- makeImage(mask, ss / object@mrss)
-    
-    if (!object@control$rft) {
-      if (!object@control$iso)
-        isotropic <- object$rpvImage
-      else
-        isotropoic <- NULL
-      z <- rftResults(object@C[[i]]$contrastImage, object@dims$resels, object@dims$fwhm,
-                      c(object@C[[i]]$dims$idf, object$dims$edf), object@C[[i]]$fieldType, rpvImage = isotropic,
-                      k = cthresh[i], ll$threshType, ll$pval, ll$pp, ll$n, ll$statdir, verbose = verbose)
-      
-      object@C[[i]]$sthresh <- z$threshold
-      object@C[[i]]$clusterImage <- z$clusterImage
-      object@C[[i]]$results$setLevel <- z$setLevel
-      object@C[[i]]$results$peakLevel <- z$peakLevel
-      object@C[[i]]$results$clusterLevel <- z$clusterLevel
-    } else {
-      # don't use random field theory for summary
-      object@C[[i]]$sthresh <-
-        statFieldThresh(object@C[[i]]$contrastImage, ll$pval, object@dims$nvox,
-                        ll$n, fwhm = c(1, 1, 1), resels(mask, c(1, 1, 1)),
-                        c(object@C[[i]]$dims$idf, object$dims$rdf),
-                        object@C[[i]]$fieldType, ll$tt, ll$pp)
-      
-      object@C[[i]]$clusterImage <-
-        labelClusters(object@C[[i]]$contrastImage, minClusterSize = cthresh[i],
-                      minThresh = object@C[[i]]$sthresh, maxThresh = Inf)
-      
-      object@C[[i]]$results <- labelStats(object@C[[i]]$contrastImage, object@C[[i]]$clusterImage)
-    }
-  }
-  names(object@C)[start:ncon] <- connames
-  return(object)
-})
+#' iModel Contrasts
+#' 
+#' @param object Object of class iModel.
+#' @param contrastMatrix
+#' @param cthresh Minimum desired cluster size (default = \code{150})
+#' @param threshType A numeric value to threshold the statistical field or a character of the following methods:
+#' \itemize{
+#'	\item{cRFT:} {Computes a threshold per expected cluster level probability.}
+#'	\item{pRFT:} {Uses the mask and pval calculates the minimum statistical threshold.}
+#'	\item{cFDR:} {Uses an uncorrected threshold at the alpha level and then computes and FDR threshold based on cluster maxima.}
+#'	\item{pFDR:} {Computes the fdr threshold for the entire field of voxels.}
+#' }
+#' @param pval The p-value for estimating the threshold (default = \code{0.05}).
+#' @param pp The primary (initial) p-value for thresholding (only used for FDR methods; default = \code{0.001}).
+#' @param verbose Enables verbose output.
+#' 
+#' @name iModel-contrasts
+NULL
 
 #' @export
 #' @docType methods
 #' @description \strong{summary} Compute f-statistic or t-statistic contrast for iModel object.
 #' @rdname iModel-contrasts
-setMethod("summary", "iModel", function(object, contrastMatrix, cthresh = 150, verbose = TRUE) {
+setMethod("anova", "iModel", function(object, contrastMatrix, cthresh = 150, threshType = "pRFT", pval = 0.05, pp = 0.001, verbose = TRUE) {
   if (missing(contrastMatrix)) {
     contrastMatrix <- matrix(rep(1, ncol(object@X$X)), nrow = 1)
     colnames(contrastMatrix) <- colnames(object@X$X)
@@ -90,7 +38,106 @@ setMethod("summary", "iModel", function(object, contrastMatrix, cthresh = 150, v
     stop("The contrast length must be equal to the number of predictors")
   ncon <- nrow(contrastMatrix)
   if (length(cthresh) != ncon)
-    cthresh <- rep(cthresh, ncon)
+    cthresh <- rep(cthresh[1], ncon)
+  if (length(threshType) != ncon)
+    threshType <- rep(threshType[1], ncon)
+  if (length(pval) != ncon)
+    pval <- rep(pval[1], ncon)
+  if (length(pp) != ncon)
+    pp <- rep(pp[1], ncon)
+  
+  
+  # set isotropic option
+  if (!object@control$iso)
+    isotropic <- object@dims$rpvImage
+  else
+    isotropic <- NULL
+  
+  # set contrast names
+  connames <- rownames(contrastMatrix)
+  if (is.null(connames))
+    connames <- paste("Contrast_", seq_len(ncon), sep = "")
+  
+  
+  mask <- object@iData@iList[[object@y]]@mask
+  
+  # ensure that if previous contrasts were set they won't be erased
+  old <- length(object@C)
+  conseq <- seq_len(ncon) + old
+  
+  ll <- object@control
+  colnames(contrastMatrix) <- colnames(object@X$X)
+  for (i in conseq) {
+    c <- matrix(contrastMatrix[i, ], ncol = 1)
+    object@C[[i]] <- .setcon(connames[i - old], fieldType = "F", "c+", c, object@X$KWX)
+    
+    X1 <- .X1(object@C[[i]], object@X$KWX)
+    object@C[[i]]$dims <- .trMV(X1, object@X$V)
+    
+    # calculate t-contrast----
+    h <- .hsqr(object@C[[i]], object@X$KWX)
+    ss <- (rowSums((h %*% object@beta)^2) / object@C[[i]]$dims$trMV)
+    object@C[[i]]$contrastImage <- makeImage(mask, ss / object@mrss)
+    object@C[[i]]$cthresh <- cthresh[i - old]
+    object@C[[i]]$threshType <- threshType[i - old]
+    object@C[[i]]$pval <- pval[i - old]
+    object@C[[i]]$pp <- pp[i - old]
+    
+    # summary of information----
+    if (object@control$rft) {
+      z <- rftResults(object@C[[i]]$contrastImage, object@dims$resels, object@dims$fwhm, 
+                      c(object@C[[i]]$dims$idf, object@X$rdf), object@C[[i]]$fieldType, rpvImage = isotropic,
+                      k = object@C[[i]]$cthresh, object@C[[i]]$threshType, object@C[[i]]$pval, object@C[[i]]$pp, ll$n, NULL, verbose = verbose)
+      
+      object@C[[i]]$sthresh <- z$threshold
+      object@C[[i]]$clusterImage <- z$clusterImage
+      object@C[[i]]$results$setLevel <- z$setLevel
+      object@C[[i]]$results$peakLevel <- z$peakLevel
+      object@C[[i]]$results$clusterLevel <- z$clusterLevel
+    } else {
+      # don't use random field theory for summary----
+      object@C[[i]]$sthresh <-
+        statFieldThresh(object@C[[i]]$contrastImage, object@C[[i]]$pval, object@dims$nvox,
+                        ll$n, fwhm = c(1, 1, 1), resels(mask, c(1, 1, 1)),
+                        c(object@C[[i]]$dims$idf, object$dims$rdf),
+                        object@C[[i]]$fieldType, object@C[[i]]$threshType, object@C[[i]]$pp)
+      
+      object@C[[i]]$clusterImage <-
+        labelClusters(object@C[[i]]$contrastImage, minClusterSize = object@C[[i]]$cthresh,
+                      minThresh = object@C[[i]]$sthresh, maxThresh = Inf)
+      
+      object@C[[i]]$results <- labelStats(object@C[[i]]$contrastImage, object@C[[i]]$clusterImage)
+    }
+  }
+  names(object@C)[conseq] <- connames
+  return(object)
+})
+
+#' @export
+#' @docType methods
+#' @description \strong{summary} Compute f-statistic or t-statistic contrast for iModel object.
+#' @rdname iModel-contrasts
+setMethod("summary", "iModel", function(object, contrastMatrix, cthresh = 150, threshType = "pRFT", pval = 0.05, pp = 0.001, verbose = TRUE) {
+  if (missing(contrastMatrix)) {
+    contrastMatrix <- matrix(rep(1, ncol(object@X$X)), nrow = 1)
+    colnames(contrastMatrix) <- colnames(object@X$X)
+    if (any(colnames(contrastMatrix) == "(Intercept)"))
+      contrastMatrix[, "Intercept"] <- 0
+  }
+  
+  # check arguments----
+  if (ncol(contrastMatrix) != object@dims$npred)
+    stop("The contrast length must be equal to the number of predictors")
+  ncon <- nrow(contrastMatrix)
+  if (length(cthresh) != ncon)
+    cthresh <- rep(cthresh[1], ncon)
+  if (length(threshType) != ncon)
+    threshType <- rep(threshType[1], ncon)
+  if (length(pval) != ncon)
+    pval <- rep(pval[1], ncon)
+  if (length(pp) != ncon)
+    pp <- rep(pp[1], ncon)
+  
   
   # set isotropic option
   if (!object@control$iso)
@@ -126,12 +173,15 @@ setMethod("summary", "iModel", function(object, contrastMatrix, cthresh = 150, v
     tvec <- crossprod(object@C[[i]]$c, object@beta[]) / se
     object@C[[i]]$contrastImage <- makeImage(mask, tvec)
     object@C[[i]]$cthresh <- cthresh[i - old]
+    object@C[[i]]$threshType <- threshType[i - old]
+    object@C[[i]]$pval <- pval[i - old]
+    object@C[[i]]$pp <- pp[i - old]
     
     # summary of information----
     if (object@control$rft) {
       z <- rftResults(object@C[[i]]$contrastImage, object@dims$resels, object@dims$fwhm, 
                       c(object@C[[i]]$dims$idf, object@X$rdf), object@C[[i]]$fieldType, rpvImage = isotropic,
-                      k = object@C[[i]]$cthresh, ll$tt, ll$pval, ll$pp, ll$n, NULL, verbose = verbose)
+                      k = object@C[[i]]$cthresh, object@C[[i]]$threshType, object@C[[i]]$pval, object@C[[i]]$pp, ll$n, NULL, verbose = verbose)
       
       object@C[[i]]$sthresh <- z$threshold
       object@C[[i]]$clusterImage <- z$clusterImage
@@ -141,10 +191,10 @@ setMethod("summary", "iModel", function(object, contrastMatrix, cthresh = 150, v
     } else {
       # don't use random field theory for summary----
       object@C[[i]]$sthresh <-
-        statFieldThresh(object@C[[i]]$contrastImage, ll$pval, object@dims$nvox,
+        statFieldThresh(object@C[[i]]$contrastImage, object@C[[i]]$pval, object@dims$nvox,
                         ll$n, fwhm = c(1, 1, 1), resels(mask, c(1, 1, 1)),
                         c(object@C[[i]]$dims$idf, object$dims$rdf),
-                        object@C[[i]]$fieldType, ll$tt, ll$pp)
+                        object@C[[i]]$fieldType, object@C[[i]]$threshType, object@C[[i]]$pp)
       
       object@C[[i]]$clusterImage <-
         labelClusters(object@C[[i]]$contrastImage, minClusterSize = object@C[[i]]$cthresh,
@@ -156,13 +206,3 @@ setMethod("summary", "iModel", function(object, contrastMatrix, cthresh = 150, v
   names(object@C)[conseq] <- connames
   return(object)
 })
-
-# #' @export
-# #' @docType methods
-# #' @description
-# #' @rdname iModel-contrasts
-# setMethod("plot", "iModel", function(x, conname) {
-#   for (i in seq_len(length(conname))) {
-#     plot(x@iData@iList[[x@y]]@mask, x@C[[conname[i]]]$clusterImage)
-#   }
-# })
