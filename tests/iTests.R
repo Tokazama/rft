@@ -53,6 +53,7 @@ mydata <- add(mydata, wb, boolwb)
 # Regression----
 mydata <- iDataRead(paste(home, "iData", sep = ""))
 fit1 <- ilm(wb ~ Age, mydata)
+                           # Intercept # Age
 contrastMatrix <- matrix(c(0,          1,    # positive correlation
                            0,         -1),   # negative correlation
                          2, 2, byrow = TRUE)
@@ -60,12 +61,21 @@ rownames(contrastMatrix) <- c("pos", "neg")
 fit1 <- summary(fit1, contrastMatrix, cthresh = 150)
 report(fit1, paste(home, "report.pdf"))
 
-# 
+# ANOVA----
+fit2 <- ilm(y ~ Injury:Gender - 1)
+contrastMatrix <- matrix(nrow = 5, ncol = 4)
+                         # Male*OI  # Female*OI  # Male*TBI  # Female*TBI
+contrastMatrix[1, ] <- c( 1,       -1,           1,         -1)   # the main effect of Gender
+contrastMatrix[2, ] <- c(-1,        1,          -1,          1)
+contrastMatrix[3, ] <- c( 1,        1,          -1,         -1)   # the main effect of Injury
+contrastMatrix[4, ] <- c(-1,       -1,           1,          1)
+contrastMatrix[5, ] <- c( 1,       -1,          -1,          1)   # the interaction between Gender and Injury
 
+rownames(contrastMatrix) <- c("M > F", "M < F", "OI > TBI", "OI < TBI", "Gender x Injury")
+fit2 <- anova(fit4, contrastMatrix, cthresh = 100)
 
+# predict----
 
-# predict
+# predict.summary----
 
-# predict.summary
-
-# predict.anova
+# predict.anova----

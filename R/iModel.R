@@ -625,10 +625,11 @@ setMethod("model.matrix", "iModel", function(object) {
 
 #' @export
 #' @docType methods
-#' @details \strong{report} Create a report of for iModel objects
+#' @details \strong{report} Create a report of for iModel objects (requires package rmardown)
 #' @rdname iModel-methods
 report <- function(x, filename, output_format, md_name) {
-  
+  if (!usePkg("rmarkdown"))
+    stop("Please install package rmarkdown in order to use this function.")
   md <- paste(docname, ".md", sep = "")
   if (missing(md_name))
     md <- tempfile(fileext = ".md")
@@ -697,7 +698,7 @@ report <- function(x, filename, output_format, md_name) {
   sink()
   
   rmarkdown::render(inpute = md, output_format = output_format, output_file = filename)
-  
+  retun(TRUE)
   # markdown::markdownToHTML(md, paste(docname, ".html", sep = ""))
   # system(paste("pandoc -s ", paste(docname, ".html", sep = ""), "-o ", paste(docname, ".pdf", sep = ""), sep = ""))
 }
