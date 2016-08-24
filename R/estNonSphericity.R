@@ -10,7 +10,7 @@
 # \item{Cy} {spatially whitened <Y*Y'> (used by ReML to estimate h)}
 # 
 # @export estNonSphericity
-estNonSphericity <- function(object) {
+estNonSphericity <- function(object, its) {
   if (!is.null(object@xVi$Fcontrast))
     con <- .setcon("usc", "F", "c", object@xVi$Fcontrast, object@X$KWX)
   else 
@@ -87,12 +87,12 @@ estNonSphericity <- function(object) {
       Xp <- lappend(Xp, object@X$K[[i]]$X0)
       
       # ReML
-      reml <- iREML(Cy[q, q], Xp, Qp, mi = object$control$mi)
+      reml <- iREML(Cy[q, q], Xp, Qp, its = its)
       V[q, q] <- V[q, q] + reml$Vp
       h[p] <- reml$hp
     }
   } else {
-    reml <- iREML(Cy, object@X$X, object@xVi$Vi, mi = object$control$mi)
+    reml <- iREML(Cy, object@X$X, object@xVi$Vi, its = its)
     V <- reml$V
     h <- reml$h
   }
