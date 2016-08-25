@@ -1,6 +1,5 @@
 # To do:
 # plot
-# report
 
 #' iModel Contrasts
 #' 
@@ -160,7 +159,7 @@ setMethod("summary", "iModel", function(object, contrastMatrix, cthresh = 150, t
   ll <- object@control
   colnames(contrastMatrix) <- colnames(object@X$X)
   for (i in conseq) {
-    c <- matrix(contrastMatrix[i, ], ncol = 1)
+    c <- matrix(contrastMatrix[i - old, ])  # by default makes a 1 column matrix
     object@C[[i]] <- .setcon(connames[i - old], fieldType = "T", "c+", c, object@X$KWX)
     
     X1 <- .X1(object@C[[i]], object@X$KWX)
@@ -179,15 +178,19 @@ setMethod("summary", "iModel", function(object, contrastMatrix, cthresh = 150, t
     
     # summary of information----
     if (object@control$rft) {
-      z <- rftResults(object@C[[i]]$contrastImage, object@dims$resels, object@dims$fwhm, 
+      z <- rftResults(object@C[[i]]$contrastImage, object@dims$resels, object@dims$fwhm,
                       c(object@C[[i]]$dims$idf, object@X$rdf), object@C[[i]]$fieldType, rpvImage = isotropic,
                       k = object@C[[i]]$cthresh, object@C[[i]]$threshType, object@C[[i]]$pval, object@C[[i]]$pp, ll$n, NULL, verbose = verbose)
-      
-      object@C[[i]]$sthresh <- z$threshold
-      object@C[[i]]$clusterImage <- z$clusterImage
-      object@C[[i]]$results$setLevel <- z$setLevel
-      object@C[[i]]$results$peakLevel <- z$peakLevel
-      object@C[[i]]$results$clusterLevel <- z$clusterLevel
+      if (z == "NA") {
+        object@C[[i]]$results <- "No voxels survive threshold."
+        object@C[[i]]$sthresh <- 0
+      } else {
+        object@C[[i]]$sthresh <- z$threshold
+        object@C[[i]]$clusterImage <- z$clusterImage
+        object@C[[i]]$results$setLevel <- z$setLevel
+        object@C[[i]]$results$peakLevel <- z$peakLevel
+        object@C[[i]]$results$clusterLevel <- z$clusterLevel
+      }
     } else {
       # don't use random field theory for summary----
       object@C[[i]]$sthresh <-

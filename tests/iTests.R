@@ -13,6 +13,8 @@ source(paste(path2rft, "iUtils.R", sep = ""))
 source(paste(path2rft, "iContrast.R", sep = ""))
 source(paste(path2rft, "iFilter.R", sep = ""))
 source(paste(path2rft, "rftResults.R", sep = ""))
+source(paste(path2rft, "statFieldThresh.R", sep = ""))
+
 
 # Read in VBM----
 wblist <- c()
@@ -57,7 +59,7 @@ fit1 <- ilm(wb ~ Age, mydata)
 contrastMatrix <- matrix(c(0,          1,    # positive correlation
                            0,         -1),   # negative correlation
                          2, 2, byrow = TRUE)
-rownames(contrastMatrix) <- c("pos", "neg")
+rownames(contrastMatrix) <- c("Age +", "Age -")
 fit1 <- summary(fit1, contrastMatrix, cthresh = 150)
 report(fit1, paste(home, "report.pdf"))
 

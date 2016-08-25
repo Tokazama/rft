@@ -254,23 +254,31 @@ setMethod("show", "iModel", function(object) {
       print(c)
       cat("\n")
       if (object@control$rft) {
-        cat(" Set-level: \n")
-        cat(" Clusters = ", ncol(object@C[[i]]$results$clusterLevel), "\n")
-        cat(" p-value = ", object@C[[i]]$results$setLevel, "\n\n")
-        
-        cat("  Cluster-Level: \n")
-        print(round(object@C[[i]]$results$clusterLevel, 3))
-        cat("\n")
-        
-        cat(" Peak-level: \n")
-        print(round(object@C[[i]]$results$peakLevel, 3))
+        if (class(object@C[[i]]$results) == "character") {
+          cat(object@C[[i]]$results, "\n\n")
+        } else {
+          cat(" Set-level: \n")
+          cat("  Clusters = ", ncol(object@C[[i]]$results$clusterLevel), "\n")
+          cat("  p-value  = ", object@C[[i]]$results$setLevel, "\n\n")
+          
+          cat(" Cluster-Level: \n")
+          print(round(object@C[[i]]$results$clusterLevel, 3))
+          cat("\n")
+          
+          cat(" Peak-level: \n")
+          print(round(object@C[[i]]$results$peakLevel, 3))
+          cat("\n")
+        }
       } else {
-        print(object@C[[i]]$results)
+        if (class(object@C[[i]]$results) == "character") {
+          cat(object@C[[i]]$results, "\n\n")
+        } else
+          print(object@C[[i]]$results)
       }
-      cat("Interest degrees of freedom: ", object@C[[i]]$dims$idf, "\n")
-      cat("Statistical threshold: ", round(object@C[[i]]$sthresh, 2), "\n")
-      cat("Cluster threshold: ", object@C[[i]]$cthresh, "\n")
-      cat("Threshold type: ", object@C[[i]]$threshType, "\n")
+      cat("Interest degrees of freedom = ", object@C[[i]]$dims$idf, "\n")
+      cat("      Statistical threshold = ", round(object@C[[i]]$sthresh, 2), "\n")
+      cat("          Cluster threshold = ", object@C[[i]]$cthresh, "\n")
+      cat("             Threshold type = ", object@C[[i]]$threshType, "\n")
       cat("---\n\n")
     }
   }
@@ -662,41 +670,51 @@ report <- function(x, docname, imgdir) {
     cat("### ", x@C[[i]]$name, "\n\n")
     
     ## render images----
-    brain <- renderSurfaceFunction( surfimg = list(x@iData@iList[[x@y]]@mask), funcimg = list(x@C[[i]]$clusterImage), alphasurf = 0.1, smoothsval = 1.5)
-    if (missing(imgdir))
-      tmpfile <- tempfile(fileext = ".png")
-    else
-      tmpfile <- file.path(imgdir, paste(x@C[[i]]@name, ".png", sep = ""))
-    tmp <- make3ViewPNG(tmpfile)
-    imgchunk <- paste("![conimg", i, "](", tmpfile, ")", sep = "")
-    cat(imgchunk)
+    if (class(x@C[[i]]$results) != "character") {
+        brain <- renderSurfaceFunction( surfimg = list(x@iData@iList[[x@y]]@mask), funcimg = list(x@C[[i]]$clusterImage), alphasurf = 0.1, smoothsval = 1.5)
+      if (missing(imgdir))
+        tmpfile <- tempfile(fileext = ".png")
+      else
+        tmpfile <- file.path(imgdir, paste(x@C[[i]]@name, ".png", sep = ""))
+      tmp <- make3ViewPNG(tmpfile)
+      imgchunk <- paste("![conimg", i, "](", tmpfile, ")", sep = "")
+      cat(imgchunk)
+    }
     
     ## render results----
     cat("Contrast weights: \n\n")
     c <- t(x@C[[i]]$c)
     colnames(c) <- colnames(x@X$X)
     print(c)
-    cat("\n")
+    cat("\n\n")
     if (x@control$rft) {
-      cat("#### Set-level \n\n")
-      cat("  Clusters = ", ncol(x@C[[i]]$results$clusterLevel), "\n\n")
-      cat("  p-value = ", x@C[[i]]$results$setLevel, "\n\n")
-      
-      cat("#### Cluster-Level: \n\n")
-      print(round(x@C[[i]]$results$clusterLevel, 3))
-      cat("\n\n")
-      
-      cat("#### Peak-level: \n\n")
-      print(round(x@C[[i]]$results$peakLevel, 3))
-      cat("\n\n")
+      if (class(x@C[[i]]$results) == "character") {
+        cat(x@C[[i]]$results, "\n\n")
+      } else {
+        cat("#### Set-level \n\n")
+        cat("  Clusters = ", ncol(x@C[[i]]$results$clusterLevel), "\n\n")
+        cat("  p-value  = ", x@C[[i]]$results$setLevel, "\n\n")
+        
+        cat("#### Cluster-Level: \n\n")
+        print(round(x@C[[i]]$results$clusterLevel, 3))
+        cat("\n\n")
+        
+        cat("#### Peak-level: \n\n")
+        print(round(x@C[[i]]$results$peakLevel, 3))
+        cat("\n\n")
+      }
     } else {
-      print(x@C[[i]]$results)
+      if (class(x@C[[i]]$results) == "character") {
+        cat(x@C[[i]]$results, "\n\n")
+      } else {
+        print(x@C[[i]]$results)
+      }
     }
-    cat("Interest degrees of freedom: ", x@C[[i]]$dims$idf, "\n\n")
-    cat("Statistical threshold: ", round(x@C[[i]]$sthresh, 2), "\n\n")
-    cat("Cluster threshold: ", x@C[[i]]$cthresh, "\n\n")
-    cat("Threshold type: ", x@C[[i]]$threshType, "\n\n")
-    cat("---\n\n")
+    cat("Interest degrees of freedom = ", x@C[[i]]$dims$idf, "\n\n")
+    cat("      Statistical threshold = ", round(x@C[[i]]$sthresh, 2), "\n\n")
+    cat("          Cluster threshold = ", x@C[[i]]$cthresh, "\n\n")
+    cat("             Threshold type = ", x@C[[i]]$threshType, "\n\n")
+    cat("---- \n\n")
   }
   sink(type = "message")
   sink()
@@ -707,6 +725,44 @@ report <- function(x, docname, imgdir) {
   # markdown::markdownToHTML(md, paste(docname, ".html", sep = ""))
   # system(paste("pandoc -s ", paste(docname, ".html", sep = ""), "-o ", paste(docname, ".pdf", sep = ""), sep = ""))
 }
+
+#' @export
+#' @docType methods
+#' @details \strong{getCluster} Retrieve a cluster of a specific contrast.
+#' @rdname iModel-methods
+getCluster <- function(x, contrast, value) {
+  out <- antsImageClone(x@C[[contrast]]$clusterImage)
+  if (!missing(value))
+    out[out == value]
+  return(out)
+}
+
+#' @export
+#' @docType methods
+#' @details \strong{plot} 
+#' @rdname iModel-methods
+setMethod("plot", "iModel", function(x, contrast) {
+  if (is.null(x@C[[contrast]]$clusterImage))
+    stop("No results to plot.")
+  ci <- x@C[[contrast]]$clusterImage
+  iclust <- unique(ci[ ci > 0])
+  
+  # set dimensions for graph layout
+  tmp <- sqrt(length(iclust))
+  pdim <- c(0, floor(tmp))
+  if ((floor(tmp) - tmp) > 0)
+    pdim[1] <- ceiling(tmp)
+  else
+    pdim[1] <- floor(tmp)
+  par(mfrow = pdim)
+  for (i in seq_len(prod(pdim))) {
+    if (i <= length(iclust)) {
+      nci <- getCluster(x, contrast, iclust[i])
+      plot(x@iData, x@y, clusterImage = nci, main = paste("Cluster ", i, sep = ""))
+    }
+    plot.new()
+  }
+})
 
 #' Control parameters for RFT based analyses
 #' 

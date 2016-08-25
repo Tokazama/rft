@@ -63,12 +63,12 @@
 #'
 #' @export statFieldThresh
 statFieldThresh <- function(x, pval, nvox, n, fwhm, resels, df = c(idf, rdf), fieldType, threshType, pp = .001, verbose = FALSE) {
-    D <- x@dimension
+    D <- length(dim(x))
     vox2res <- 1 / prod(fwhm)
     k <- nvox * vox2res
     nvox <- length(as.vector(x[x != 0]))
 
-    # RFT based thresholding ------------------------------------------------------------------------------------------
+    # RFT based thresholding----
     if (threshType == "cRFT" | threshType == "pRFT") {
         u <- max(x)
         if (threshType == "cRFT")
@@ -76,16 +76,17 @@ statFieldThresh <- function(x, pval, nvox, n, fwhm, resels, df = c(idf, rdf), fi
         else if (threshType == "pRFT")
             alpha <- rftPval(D, 1, 0, u, n, resels, df, fieldType)$Pcor
         if (alpha > pval)
-            stop("No voxels survive threshold given the parameters")
-        while (alpha < pval) {
-            u <- u - .01
+            u <- "NA"
+        else {
+          while (alpha < pval) {
+            u <- u - 0.01
             if (threshType == "cRFT")
-                alpha <- rftPval(D, 1, k, u, n, resels, df, fieldType)$Pcor
+              alpha <- rftPval(D, 1, k, u, n, resels, df, fieldType)$Pcor
             else if (threshType == "pRFT")
-                alpha <- rftPval(D, 1, 0, u, n, resels, df, fieldType)$Pcor
+              alpha <- rftPval(D, 1, 0, u, n, resels, df, fieldType)$Pcor
+          }
         }
-
-    # FDR based thresholding ------------------------------------------------------------------------------------------
+    # FDR based thresholding----
     } else if (threshType == "cFDR" | threshType == "pFDR") {
         # find initial threshold for given fieldType
         if (fieldType == "Z")
@@ -101,27 +102,27 @@ statFieldThresh <- function(x, pval, nvox, n, fwhm, resels, df = c(idf, rdf), fi
             fdrlabs <- unique(clust[clust > 0])
             cmax <- c()
 
-            if (verbose == "True")
+            if (verbose)
                 progress <- txtProgressBar(min = 0, max = n, style = 3)
             for (i in 1:length(fdrlabs)) {
                 cmax <- c(cmax, rftPval(D, 1, 0, max(x[fdrclust]), n, resels, df, fieldType)$Ec)
-                if (verbose == "TRUE")
+                if (verbose)
                     setTxtProgressBar(progress, i)
             }
-            if (verbose == "TRUE")
+            if (verbose)
                 close(progress)
         } else if (threshType == "pFDR") {
             fdrclust <- antsImageClone(x)
             fdrclust[fdrclust < stat] <- 0
             cmax <- as.numeric(fdrclust)
-            if (verbose == "True")
+            if (verbose)
                 progress <- txtProgressBar(min = 0, max = n, style = 3)
             for (i in 1:length(cmax)) {
                 cmax[i] <- rftPval(D, 1, 0, max(x[fdrclust]), n, resels, df, fieldType)$Ec
-                if (verbose == "TRUE")
+                if (verbose)
                     setTxtProgressBar(progress, i)
             }
-            if (verbose == "TRUE")
+            if (verbose)
                 close(progress)
         }
         cmax <- cmax / rftPval(D, 1, 0, stat, n, resels, df, fieldType)$Ec
@@ -140,5 +141,5 @@ statFieldThresh <- function(x, pval, nvox, n, fwhm, resels, df = c(idf, rdf), fi
         else if (fieldType == "X")
             u <- qchisq(1 - cmax[i], df[1], df[2])
     }
-    u
-    }
+    return(u)
+}

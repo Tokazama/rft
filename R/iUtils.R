@@ -1061,7 +1061,8 @@
   boul <- 1
   if (!.isinspp(x, c))
     c <- .opp(x, c, check = TRUE)
-  if ((rank(c) > 1) || any(crossprod(c) < 0))
+  # SPM12 uses "rank(c) > 1" instead of "sum(abs(c))) > 1"
+  if ((sum(abs(c)) > 1) || any(crossprod(c) < 0))  
     boul <- 0
   return(boul)
 }
