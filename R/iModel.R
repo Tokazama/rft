@@ -282,6 +282,8 @@ setMethod("show", "iModel", function(object) {
 #' @param filename h5 file to save iModel to.
 #' @param iData_dirname Directory for iData component of iModel.
 #' @param docname Prefix name for report documents.
+#' @param imgdir Optional directory to save images to.
+#' @param output_format File format for report to be rendered in (see rmarkdown::render).
 #' @param verbose enables verbose output. (default = \code{TRUE})
 #' @param ... additional named arguments passed to \code{iModelUpdate}
 #' @name iModel-methods
@@ -624,74 +626,84 @@ setMethod("model.matrix", "iModel", function(object) {
 
 #' @export
 #' @docType methods
-#' @details \strong{report} Create a report of for iModel objects
+#' @details \strong{report} Creates a .pdf and .html report of for iModel objects (requires package rmarkdown)
 #' @rdname iModel-methods
-report <- function(x, docname) {
-  md <- paste(docname, ".md", sep = "")
+report <- function(x, docname, imgdir) {
+  if (!usePkg("rmarkdown"))
+    stop("Please install package rmarkdown in order to use this function.")
+  md <- paste(docname, ".Rmd", sep =)
   zz <- file(md, open = "wt")
+  sink(zz)
   sink(zz, type = "message")
   
   # describe the model----
-  cat("iModel object fit by call to ", x@method[1])
+  cat("## iModel object fit by call to ", x@method[1])
   if (x@control$rft)
     cat(" using random field theory. \n")
   else
-    cat(". \n")
+    cat(". \n\n")
   
-  cat("                  Predictors =", colnames(x@X$X), "\n")
-  cat("                      Images = ", x@dims$nimg, "\n")
-  cat(" Residual degrees of freedom = ", x@X$rdf, "\n")
-  cat("                      Voxels = ", x@dims$nvox, "\n")
-  cat("                Optimization = ", x@control$opt, "\n")
+  cat("                Predictors = ", colnames(x@X$X), "\n\n")
+  cat("                    Images = ", x@dims$nimg, "\n\n")
+  cat("        Degrees of freedom = ", x@X$rdf, "\n\n")
+  cat("                    Voxels = ", x@dims$nvox, "\n\n")
+  cat("              Optimization = ", x@control$opt, "\n\n")
   
-  if (object@control$rft && length(x@dims$fwhm > 0)) {
-    cat("                        FWHM = ", round(x@dims$fwhm, 2), "\n")
-    cat("                      Resels = ", round(x@dims$resels), "\n")
+  if (x@control$rft && length(x@dims$fwhm > 0)) {
+    cat("                      FWHM = ", round(x@dims$fwhm, 2), "\n\n")
+    cat("                    Resels = ", round(x@dims$resels), "\n\n")
   }
-  cat("--------------------------------------------- \n\n")
+  cat("---- \n\n")
   
   # contrast results----
   ncon <- length(x@C)
   cat("## Contrast Results")
   for (i in seq_len(ncon)) {
-    cat("### ", object@C[[i]]$name, "\n")
+    cat("### ", x@C[[i]]$name, "\n\n")
     
     ## render images----
     brain <- renderSurfaceFunction( surfimg = list(x@iData@iList[[x@y]]@mask), funcimg = list(x@C[[i]]$clusterImage), alphasurf = 0.1, smoothsval = 1.5)
-    tmp <- make3ViewPNG(tempfile(fileext = ".png"))
-    imgchunk <- paste("![conimg", i, "](", tmp, ")", sep = "")
+    if (missing(imgdir))
+      tmpfile <- tempfile(fileext = ".png")
+    else
+      tmpfile <- file.path(imgdir, paste(x@C[[i]]@name, ".png", sep = ""))
+    tmp <- make3ViewPNG(tmpfile)
+    imgchunk <- paste("![conimg", i, "](", tmpfile, ")", sep = "")
     cat(imgchunk)
     
     ## render results----
-    cat("Contrast weights: \n")
-    c <- t(object@C[[i]]$c)
-    colnames(c) <- colnames(object@X$X)
+    cat("Contrast weights: \n\n")
+    c <- t(x@C[[i]]$c)
+    colnames(c) <- colnames(x@X$X)
     print(c)
     cat("\n")
-    if (object@control$rft) {
-      cat("Set-level: \n")
-      cat("  Clusters = ", ncol(object@C[[i]]$results$clusterLevel), "\n")
-      cat("  p-value = ", object@C[[i]]$results$setLevel, "\n\n")
+    if (x@control$rft) {
+      cat("#### Set-level \n\n")
+      cat("  Clusters = ", ncol(x@C[[i]]$results$clusterLevel), "\n\n")
+      cat("  p-value = ", x@C[[i]]$results$setLevel, "\n\n")
       
-      cat("Cluster-Level: \n")
-      print(round(object@C[[i]]$results$clusterLevel, 3))
-      cat("\n")
+      cat("#### Cluster-Level: \n\n")
+      print(round(x@C[[i]]$results$clusterLevel, 3))
+      cat("\n\n")
       
-      cat("Peak-level: \n")
-      print(round(object@C[[i]]$results$peakLevel, 3))
+      cat("#### Peak-level: \n\n")
+      print(round(x@C[[i]]$results$peakLevel, 3))
+      cat("\n\n")
     } else {
-      print(object@C[[i]]$results)
+      print(x@C[[i]]$results)
     }
-    cat("Interest degrees of freedom: ", object@C[[i]]$dims$idf, "\n")
-    cat("Statistical threshold: ", round(object@C[[i]]$sthresh, 2), "\n")
-    cat("Cluster threshold: ", object@C[[i]]$cthresh, "\n")
-    cat("Threshold type: ", object@C[[i]]$threshType, "\n")
+    cat("Interest degrees of freedom: ", x@C[[i]]$dims$idf, "\n\n")
+    cat("Statistical threshold: ", round(x@C[[i]]$sthresh, 2), "\n\n")
+    cat("Cluster threshold: ", x@C[[i]]$cthresh, "\n\n")
+    cat("Threshold type: ", x@C[[i]]$threshType, "\n\n")
     cat("---\n\n")
   }
+  sink(type = "message")
   sink()
   
-  rmarkdown::render(md, "pdf_document")
-  
+  rmarkdown::render(md)
+  rmarkdown::render(md, pdf_document())
+  return(TRUE)
   # markdown::markdownToHTML(md, paste(docname, ".html", sep = ""))
   # system(paste("pandoc -s ", paste(docname, ".html", sep = ""), "-o ", paste(docname, ".pdf", sep = ""), sep = ""))
 }
