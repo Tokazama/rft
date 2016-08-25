@@ -636,9 +636,20 @@ setMethod("model.matrix", "iModel", function(object) {
 #' @docType methods
 #' @details \strong{report} Creates a .pdf and .html report of for iModel objects (requires package rmarkdown)
 #' @rdname iModel-methods
-report <- function(x, docname, imgdir) {
+report <- function(x, docname, surfimg) {
   if (!usePkg("rmarkdown"))
     stop("Please install package rmarkdown in order to use this function.")
+  ncon <- length(x@C)
+  if (missing(surfimg))
+    surfimg <- x@iData@iList[[x@y]]@mask
+  ## render images----
+  for (i in seq_len(ncon)) {
+    if (class(x@C[[i]]$results) != "character") {
+      brain <- renderSurfaceFunction(surfimg = list(surfimg), funcimg = list(x@C[[i]]$clusterImage), alphasurf = 0.1, smoothsval = 1.5)
+      tmp <- make3ViewPNG(fnprefix = paste(docname, "_", x@C[[i]]$name, sep = ""))
+    }
+  }
+  
   md <- paste(docname, ".Rmd", sep =)
   zz <- file(md, open = "wt")
   sink(zz)
@@ -663,23 +674,14 @@ report <- function(x, docname, imgdir) {
   }
   cat("---- \n\n")
   
+
   # contrast results----
-  ncon <- length(x@C)
-  cat("## Contrast Results")
+  cat("## Contrast Results \n\n")
   for (i in seq_len(ncon)) {
     cat("### ", x@C[[i]]$name, "\n\n")
     
-    ## render images----
-    if (class(x@C[[i]]$results) != "character") {
-        brain <- renderSurfaceFunction( surfimg = list(x@iData@iList[[x@y]]@mask), funcimg = list(x@C[[i]]$clusterImage), alphasurf = 0.1, smoothsval = 1.5)
-      if (missing(imgdir))
-        tmpfile <- tempfile(fileext = ".png")
-      else
-        tmpfile <- file.path(imgdir, paste(x@C[[i]]@name, ".png", sep = ""))
-      tmp <- make3ViewPNG(tmpfile)
-      imgchunk <- paste("![conimg", i, "](", tmpfile, ")", sep = "")
-      cat(imgchunk)
-    }
+    if (class(x@C[[i]]$results) != "character")
+      cat(paste("![conimg", i, "](", docname, "_", x@C[[i]]$name, ".png) \n\n", sep = ""))
     
     ## render results----
     cat("Contrast weights: \n\n")
