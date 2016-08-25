@@ -1,3 +1,6 @@
+# to do:
+# plot
+
 #' iGroup
 #' 
 #' Object for representing single image modality and preserving active memory.
@@ -742,3 +745,20 @@ select <- function(x, groups, vars, na.omit = TRUE) {
   }
   return(out)
 }
+
+#' @export
+#' @docType methods
+#' @details \strong{plot}
+#' @rdname iData-methods
+setMethod("plot", "iData", function(x, group, vars, clusterImage) {
+  matseq <- seq_len(dim(x@iList[[group]])[2])
+  clustvec <- clusterImage[x@iList[[group]]@mask == 1]
+  clustseq <- matseq[clustvec != 0]
+  demog <- getDemog(x, group, vars)
+  
+  df <- matrix(0, 0, 2)
+  for (i in clustseq)
+    df <- rbind(df, cbind(x@iList[[group]]@iMatrix[, i], demog))
+  colnames(df) <- c("Voxel Intensity", var)
+  plot(df)
+})

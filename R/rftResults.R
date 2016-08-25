@@ -123,96 +123,100 @@ rftResults <- function(x, resels, fwhm, df, fieldType,
     stop("Must specify fieldType")
 
   if (class(threshType) == "character") {
-    if (verbose == "TRUE")
-      cat("Calculating threshold \n")
+    if (verbose)
+      cat("Calculating threshold... \n")
     u <- statFieldThresh(x, pval, k, n, fwhm, resels, df, fieldType, threshType = threshType, pp, verbose = verbose)
-  } else if (class(threshType) == "numeric") {
+  } else if (class(threshType) == "numeric")
     u <- threshType
-  } else {
+  else
     stop("threshType must be a numeric value or a character specifying the chosen method for calculating a threshold")
+  
+  if (u == "NA") {
+    results <- "NA"
+  } else {
+    D <- x@dimension
+    vox2res <- 1 / prod(fwhm)
+    nvox <- length(as.vector(x[x != 0]))
+    mask <- getMask(x)
+    # extract clusters at threshold
+    clust <- labelClusters(x, k, u, Inf)
+    if (!is.null(statdir))
+      antsImageWrite(clust, filename = paste(statdir, "clusterImage.nii.gz", sep = ""))
+    labs <- unique(clust[clust > 0])
+    nclus <- length(labs) # number of clusters
+    cnames <- paste("Cluster", 1:nclus, sep = "") # create name for each cluster
+    k <- k * vox2res # convert voxel number to resels
+    
+    
+    # create tables----
+    ClusterStats <- matrix(nrow = nclus, ncol = 7)
+    ClusterStats[seq_len(nclus), 5:7]  <- getCentroids(clust)[seq_len(nclus), 1:3] # get locations of clusters
+    PeakStats <- matrix(nrow = nclus, ncol = 4)
+    
+    # Set-Level----
+    Pset <- rftPval(D, nclus, k, u, n, resels, df, fieldType)$Pcor
+    Ez <- rftPval(D, 1, 0, u, n, resels, df, fieldType)$Ec
+    
+    # Cluster-Level----
+    ClusterStats[, 4] <- sapply(labs, function(tmp) (sum(as.array(clust[clust == tmp])) / tmp))
+    K <- sapply(ClusterStats[, 4], function(tmp) (
+      if (is.null(rpvImage)) {
+        # follows isotropic image assumptions
+        K <- tmp * vox2res
+      } else {
+        # extract resels per voxel in cluster (for non-isotropic image)
+        cmask <- antsImageClone(clust)
+        cmask[cmask != tmp] <- 0
+        cmask[cmask == tmp] <- 1
+        rkc <- rpvImage[cmask == 1]
+        lkc <- sum(rkc) / tmp
+        iv <- matrix(resels(cmask, c(1, 1, 1)), nrow = 1)
+        iv <- iv %*% matrix(c(1 / 2, 2 / 3, 2 / 3, 1), ncol = 1)
+        K <- iv * lkc
+      }))
+    ClusterStats[, 1] <- sapply(K, function(tmp) (rftPval(D, 1, tmp, u, n, resels, df, fieldType)$Pcor))  # fwe p-value (cluster)
+    ClusterStats[, 3] <- sapply(K, function(tmp) (rftPval(D, 1, tmp, u, n, resels, df, fieldType)$Punc))  # uncorrected p-value (cluster)
+    ClusterStats[, 2] <- p.adjust(ClusterStats[, 3], "BH") # FDR (cluster)
+    
+    # Peak-Level----
+    PeakStats[, 4] <- sapply(labs, function(tmp)(max(x[clust == tmp]))) # max value for each cluster
+    PeakStats[, 1] <- sapply(PeakStats[, 4], function(tmp)(rftPval(D, 1, 0, tmp, n, resels, df, fieldType)$Pcor)) # fwe p-value (peak)
+    PeakStats[, 2] <- sapply(PeakStats[, 4], function(tmp)(p.adjust(rftPval(D, 1, 0, tmp, n, resels, df, fieldType)$Ec / Ez, "BH", n = nclus))) # FDR (peak)
+    PeakStats[, 3] <- sapply(PeakStats[, 4], function(tmp)(
+      if (fieldType == "Z")
+        1 - pnorm(tmp)
+      else if (fieldType == "T")
+        1 - pt(tmp, df[2])
+      else if (fieldType == "F")
+        1 - pf(tmp, df[1], df[2])
+      else if (fieldType == "X")
+        1 - pchisq(tmp, df[1], df[2]))) # uncorrected p-value (peak)
+    
+    # prepare output----
+    PeakStats <- data.frame("P-fwe" = PeakStats[, 1],
+                            "P-fdr" = PeakStats[, 2],
+                            "P" = PeakStats[, 3],
+                            "Max stat-value" = PeakStats[, 4])
+    rownames(PeakStats) <- cnames
+    
+    ClusterStats <- data.frame("P-fwe" = ClusterStats[, 1],
+                               "P-fdr" = ClusterStats[, 2],
+                               "P" = round(ClusterStats[, 3], 3),
+                               "Voxels" = ClusterStats[, 4],
+                               "x" = ClusterStats[, 5],
+                               "y" = ClusterStats[, 6],
+                               "z" = ClusterStats[, 7])
+    rownames(ClusterStats) <- cnames
+    
+    ClusterStats <- round(ClusterStats, 4)
+    PeakStats <- round(PeakStats, 4)
+    results <- list("setLevel" = Pset, "clusterLevel" = ClusterStats, "peakLevel" = PeakStats,
+                    "LabeledClusters" = nclus, "threshold" = u, "clusterImage" = clust)
+    
+    if (!is.null(statdir)) {
+      write.csv(ClusterStats, file = paste(statdir, "ClusterStats", sep = ""))
+      write.csv(PeakStats, file = paste(statdir, "PeakStats", sep = ""))
+    }
   }
-  D <- x@dimension
-  vox2res <- 1 / prod(fwhm)
-  nvox <- length(as.vector(x[x != 0]))
-  mask <- getMask(x)
-  # extract clusters at threshold
-  clust <- labelClusters(x, k, u, Inf)
-  if (!is.null(statdir))
-    antsImageWrite(clust, filename = paste(statdir, "clusterImage.nii.gz", sep = ""))
-  labs <- unique(clust[clust > 0])
-  nclus <- length(labs) # number of clusters
-  cnames <- paste("Cluster", 1:nclus, sep = "") # create name for each cluster
-  k <- k * vox2res # convert voxel number to resels
-
-
-  # create tables----
-  ClusterStats <- matrix(nrow = nclus, ncol = 7)
-  ClusterStats[seq_len(nclus), 5:7]  <- getCentroids(clust)[seq_len(nclus), 1:3] # get locations of clusters
-  PeakStats <- matrix(nrow = nclus, ncol = 4)
-
-  # Set-Level----
-  Pset <- rftPval(D, nclus, k, u, n, resels, df, fieldType)$Pcor
-  Ez <- rftPval(D, 1, 0, u, n, resels, df, fieldType)$Ec
-
-  # Cluster-Level----
-  ClusterStats[, 4] <- sapply(labs, function(tmp) (sum(as.array(clust[clust == tmp])) / tmp))
-  K <- sapply(ClusterStats[, 4], function(tmp) (
-    if (is.null(rpvImage)) {
-      # follows isotropic image assumptions
-      K <- tmp * vox2res
-    } else {
-      # extract resels per voxel in cluster (for non-isotropic image)
-      cmask <- antsImageClone(clust)
-      cmask[cmask != tmp] <- 0
-      cmask[cmask == tmp] <- 1
-      rkc <- rpvImage[cmask == 1]
-      lkc <- sum(rkc) / tmp
-      iv <- matrix(resels(cmask, c(1, 1, 1)), nrow = 1)
-      iv <- iv %*% matrix(c(1 / 2, 2 / 3, 2 / 3, 1), ncol = 1)
-      K <- iv * lkc
-    }))
-  ClusterStats[, 1] <- sapply(K, function(tmp) (rftPval(D, 1, tmp, u, n, resels, df, fieldType)$Pcor))  # fwe p-value (cluster)
-  ClusterStats[, 3] <- sapply(K, function(tmp) (rftPval(D, 1, tmp, u, n, resels, df, fieldType)$Punc))  # uncorrected p-value (cluster)
-  ClusterStats[, 2] <- p.adjust(ClusterStats[, 3], "BH") # FDR (cluster)
-
-  # Peak-Level----
-  PeakStats[, 4] <- sapply(labs, function(tmp)(max(x[clust == tmp]))) # max value for each cluster
-  PeakStats[, 1] <- sapply(PeakStats[, 4], function(tmp)(rftPval(D, 1, 0, tmp, n, resels, df, fieldType)$Pcor)) # fwe p-value (peak)
-  PeakStats[, 2] <- sapply(PeakStats[, 4], function(tmp)(p.adjust(rftPval(D, 1, 0, tmp, n, resels, df, fieldType)$Ec / Ez, "BH", n = nclus))) # FDR (peak)
-  PeakStats[, 3] <- sapply(PeakStats[, 4], function(tmp)(
-    if (fieldType == "Z")
-      1 - pnorm(tmp)
-    else if (fieldType == "T")
-      1 - pt(tmp, df[2])
-    else if (fieldType == "F")
-      1 - pf(tmp, df[1], df[2])
-    else if (fieldType == "X")
-      1 - pchisq(tmp, df[1], df[2]))) # uncorrected p-value (peak)
-
-  # prepare output----
-  PeakStats <- data.frame("P-fwe" = PeakStats[, 1],
-                          "P-fdr" = PeakStats[, 2],
-                          "P" = PeakStats[, 3],
-                          "Max stat-value" = PeakStats[, 4])
-  rownames(PeakStats) <- cnames
-
-  ClusterStats <- data.frame("P-fwe" = ClusterStats[, 1],
-                             "P-fdr" = ClusterStats[, 2],
-                             "P" = round(ClusterStats[, 3], 3),
-                             "Voxels" = ClusterStats[, 4],
-                             "x" = ClusterStats[, 5],
-                             "y" = ClusterStats[, 6],
-                             "z" = ClusterStats[, 7])
-  rownames(ClusterStats) <- cnames
-
-  ClusterStats <- round(ClusterStats, 4)
-  PeakStats <- round(PeakStats, 4)
-  results <- list("setLevel" = Pset, "clusterLevel" = ClusterStats, "peakLevel" = PeakStats,
-                  "LabeledClusters" = nclus, "threshold" = u, "clusterImage" = clust)
-
-  if (!is.null(statdir)) {
-    write.csv(ClusterStats, file = paste(statdir, "ClusterStats", sep = ""))
-    write.csv(PeakStats, file = paste(statdir, "PeakStats", sep = ""))
-  }
-  results
+  return(results)
 }
