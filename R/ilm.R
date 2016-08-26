@@ -47,9 +47,12 @@ iFormula <- function(formula, iData, impute) {
   else # quick because should be using same pointers as original iData object
     iData <- select(iData, groups, vars, na.omit = FALSE)
   
-  tt <- terms(formula)
-  tt <- delete.response(tt)
-  rhs <- reformulate(attr(tt, "term.labels"))
+  # probably not the most robust way to isolate right hand side
+  rhs <- as.formula(paste("~", as.character(formula)[3], sep = ""))
+  # This method drops out nonvariable terms (i.e. "-1")
+  # tt <- terms(formula)
+  # tt <- delete.response(tt)
+  # rhs <- reformulate(attr(tt, "term.labels"))
   X <- model.matrix(rhs, data = iData@demog)
   list(y = groups, X = X, iData = iData)
 }

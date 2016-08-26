@@ -274,10 +274,20 @@ iGroupWrite <- function(x, filename) {
   h5attr(file["mask"] , "origin") <- antsGetOrigin(x@mask)
   
   # write iMatrix
-  chunk <- x@iMatrix@chunksize[2]
-  file["iMatrix"] <- x@iMatrix[, seq_len(chunk)]
-  if (ncol(x) > chunk)
-    file["iMatrix"] <- cbind(file["iMatrix"], x@iMatrix[, (chunk + 1):ncol(x)])
+  chunksize <- x@iMatrix@chunksize[2]
+  chunkseq <- seq_len(chunksize)
+  nvox <- x@dim[2]
+  nchunk <- floor(nvox / chunksize)
+  
+  file["iMatrix"] <- x@iMatrix[, chunkseq]
+  imat <- file["iMatrix"]
+  for (i in seq_len(nchunk - 1)) {
+    chunkseq <- chunkseq + chunksize
+    imat <- cbind(imat, x@iMatrix[, chunkseq])
+  }
+  
+  if (((nvox / chunksize) - nchunk) > 0)
+    imat <- cbind(imat, x@iMatrix[, chunkseq[chunksize]:nvox])
   
   h5close(file)
   return(TRUE)

@@ -1095,7 +1095,7 @@
 }
 
 .isemptyX0 <- function(Fc) {
-  if (is.list(x$X0))    
+  if (is.list(Fc$X0))    
     is.null(Fc$X0$ukX0)
   else
     is.null(Fc$X0)

@@ -342,12 +342,9 @@ iModelRead <- function(filename, iData_dirname) {
   
   # read control
   x@control$cf <- file["control/cf"][]
-  x@control$mi <- file["control/mi"][]
   x@control$scr <- file["control/scr"][]
   x@control$sar <- file["control/sar"][] 
-  x@control$tt <- file["control/tt"][]
   x@control$pval <- file["control/pval"] 
-  x@control$pp <- file["control/pp"][] 
   x@control$n <- file["control/n"][]
   x@control$iso <- file["control/iso"][]  
   x@control$os <- file["control/os"][]
@@ -486,7 +483,6 @@ iModelWrite <- function(x, filename, iData_dirname) {
   
   # write control
   file["control/cf"] <- x@control$cf
-  file["control/mi"] <- x@control$mi
   file["control/scr"] <- x@control$scr
   file["control/sar"] <- x@control$sar
   file["control/n"] <- x@control$n

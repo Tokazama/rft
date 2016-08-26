@@ -1,12 +1,12 @@
 #' Produces a threshold value based on cluster or voxel level statistics
 #' 
-#' @param x statistical map of class antsImage 
-#' @param pval p-value for determining threshold
-#' @param nvox minimum desired cluster size (in voxels)
-#' @param n number of images in conjunction
-#' @param fwhm-full width at half maxima
-#' @param mask-antsImage mask
-#' @param df degrees of freedom expressed as df[degrees of interest, degrees of error]
+#' @param x Statistical map of class antsImage.
+#' @param pval p-value for determining threshold.
+#' @param nvox Minimum desired cluster size (in voxels)
+#' @param n Number of images in conjunction.
+#' @param fwhm Full width at half maxima.
+#' @param mask antsImage mask.
+#' @param df Degrees of freedom expressed as c(degrees of interest, degrees of error).
 #' @param fieldType:
 #' \itemize{
 #' \item{"T"}{T-field} 
@@ -16,10 +16,10 @@
 #' }
 #' @param threshType:
 #' \itemize{
-#'	\item{"cRFT"}{computes a threshold per expected cluster level probability}
-#'	\item{"pRFT"}{uses the mask and pval calculates the minimum statistical threshold}
-#'	\item{"cFDR"}{uses an uncorrected threshold at the alpha level and then computes and FDR threshold based on cluster maxima}
-#'	\item{"pFDR"}{computes the fdr threshold for the entire field of voxels}
+#'	\item{"cRFT"}{Computes a threshold per expected cluster level probability.}
+#'	\item{"pRFT"}{Uses the mask and pval calculates the minimum statistical threshold.}
+#'	\item{"cFDR"}{Uses an uncorrected threshold at the alpha level and then computes and FDR threshold based on cluster maxima.}
+#'	\item{"pFDR"}{Computes the fdr threshold for the entire field of voxels.}
 #' }
 #' @param pp primary (initial) p-value threshold used in FDR methods
 #' @param verbose enables verbose output
@@ -67,7 +67,6 @@ statFieldThresh <- function(x, pval, nvox, n, fwhm, resels, df = c(idf, rdf), fi
     vox2res <- 1 / prod(fwhm)
     k <- nvox * vox2res
     nvox <- length(as.vector(x[x != 0]))
-
     # RFT based thresholding----
     if (threshType == "cRFT" | threshType == "pRFT") {
         u <- max(x)
@@ -75,9 +74,9 @@ statFieldThresh <- function(x, pval, nvox, n, fwhm, resels, df = c(idf, rdf), fi
             alpha <- rftPval(D, 1, k, u, n, resels, df, fieldType)$Pcor
         else if (threshType == "pRFT")
             alpha <- rftPval(D, 1, 0, u, n, resels, df, fieldType)$Pcor
-        if (alpha > pval)
-            u <- "NA"
-        else {
+        if (alpha > pval | is.na(alpha)) {
+          u <- "NA"
+        } else {
           while (alpha < pval) {
             u <- u - 0.01
             if (threshType == "cRFT")

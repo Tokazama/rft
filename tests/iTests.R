@@ -47,6 +47,10 @@ mask <- getMask(antsImageRead(ctlist[1]), cleanup = 0)
 ct <- imagesToMatrix(ctlist, mask) %>% iGroup("ct", mask, modality = "CT", filename = paste(home, "ct.h5", sep = ""))
 
 # Create iData----
+ct <- iGroupRead(paste(home, "ct.h5", sep = ""))
+wb <- iGroupRead(paste(home, "wb.h5", sep = ""))
+
+
 (mydata <- iData(list(ct, wb), list(boolct, boolwb), ucsd))
 iDataWrite(mydata, paste(home, "iData", sep = ""))
 (mydata <- substract(mydata, "wb"))
@@ -64,17 +68,17 @@ fit1 <- summary(fit1, contrastMatrix, cthresh = 150)
 report(fit1, paste(home, "report.pdf"))
 
 # ANOVA----
-fit2 <- ilm(y ~ Injury:Gender - 1)
+fit2 <- ilm(wb ~ Injury:Gender - 1, mydata)
 contrastMatrix <- matrix(nrow = 5, ncol = 4)
-                         # Male*OI  # Female*OI  # Male*TBI  # Female*TBI
-contrastMatrix[1, ] <- c( 1,       -1,           1,         -1)   # the main effect of Gender
-contrastMatrix[2, ] <- c(-1,        1,          -1,          1)
-contrastMatrix[3, ] <- c( 1,        1,          -1,         -1)   # the main effect of Injury
-contrastMatrix[4, ] <- c(-1,       -1,           1,          1)
-contrastMatrix[5, ] <- c( 1,       -1,          -1,          1)   # the interaction between Gender and Injury
+                         # Female*OI  # Female*TBI  # Male*OI  # Female*TBI
+contrastMatrix[1, ] <- c( 1,          1,           -1,         -1)   # the main effect of Gender
+contrastMatrix[2, ] <- c(-1,         -1,            1,          1)
+contrastMatrix[3, ] <- c( 1,         -1,            1,         -1)   # the main effect of Injury
+contrastMatrix[4, ] <- c(-1,          1,           -1,          1)
+contrastMatrix[5, ] <- c( 1,         -1,           -1,          1)   # the interaction between Gender and Injury
 
-rownames(contrastMatrix) <- c("M > F", "M < F", "OI > TBI", "OI < TBI", "Gender x Injury")
-fit2 <- anova(fit4, contrastMatrix, cthresh = 100)
+rownames(contrastMatrix) <- c("F > M", " F < M", "OI > TBI", "OI < TBI", "Gender x Injury")
+fit2 <- anova(fit2, contrastMatrix, cthresh = 100)
 
 # predict----
 

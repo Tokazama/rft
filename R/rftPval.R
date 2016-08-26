@@ -2,13 +2,13 @@
 #'
 #' Calculates p-values of a statistical field using random field theory
 #' 
-#' @param D image dimensions
-#' @param c Threshold
-#' @param k spatial extent in resels
-#' @param u Number of clusters
-#' @param n number of statistical field in conjunction
-#' @param resels resel measurements of the search region 
-#' @param df degrees of freedom expressed as df[degrees of interest, degrees of error]
+#' @param D Image dimensions.
+#' @param c Number of clusters.
+#' @param k Spatial extent in resels
+#' @param u Statistical threshold.
+#' @param n Number of statistical field in conjunction.
+#' @param resels Resel measurements of the search region.
+#' @param df Degrees of freedom expressed as c(degrees of interest, degrees of error).
 #' @param fieldType:
 #' \itemize{
 #' \item{"T"}{T-field} 
