@@ -80,6 +80,14 @@ contrastMatrix[5, ] <- c( 1,         -1,           -1,          1)   # the inter
 rownames(contrastMatrix) <- c("F > M", " F < M", "OI > TBI", "OI < TBI", "Gender x Injury")
 fit2 <- anova(fit2, contrastMatrix, cthresh = 100)
 
+# plot----
+# iData plotting
+plot(mydata, "wb", "Age", fit1@C[[1]]$clusterImage)  # should plot specific cluster
+plot(mydata)  # should just plot demographics
+
+# iModel plotting
+plot(fit1, "Age +", 1)  # should plot specific cluster
+
 # predict----
 
 # predict.summary----

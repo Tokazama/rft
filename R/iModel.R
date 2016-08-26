@@ -737,28 +737,20 @@ getCluster <- function(x, contrast, value) {
 
 #' @export
 #' @docType methods
-#' @details \strong{plot} 
+#' @details \strong{plot} Create plot of variables against specific cluster withing contrast
 #' @rdname iModel-methods
-setMethod("plot", "iModel", function(x, contrast) {
-  if (is.null(x@C[[contrast]]$clusterImage))
-    stop("No results to plot.")
-  ci <- x@C[[contrast]]$clusterImage
-  iclust <- unique(ci[ ci > 0])
-  
-  # set dimensions for graph layout
-  tmp <- sqrt(length(iclust))
-  pdim <- c(0, floor(tmp))
-  if ((floor(tmp) - tmp) > 0)
-    pdim[1] <- ceiling(tmp)
-  else
-    pdim[1] <- floor(tmp)
-  par(mfrow = pdim)
-  for (i in seq_len(prod(pdim))) {
-    if (i <= length(iclust)) {
-      nci <- getCluster(x, contrast, iclust[i])
-      plot(x@iData, x@y, clusterImage = nci, main = paste("Cluster ", i, sep = ""))
-    }
-    plot.new()
+setMethod("plot", "iModel", function(x, contrast, cluster) {
+  if (length(contrast) > 1)
+    stop("Contrast must be of length 1.")
+  if (is.null(x@C[[contrast]]$clusterImage)) {
+    warning("No results to plot.")
+    return(0)
+  } else {
+    # create mask for specific cluster
+    clustimg <- x@C[[contrast]]$clusterImage
+    clustimg[clustimg != cluster] <- 0
+    clustimg[clustimg != 0] <- 1
+    plot(x@iData, x@y, mask = clustimg)
   }
 })
 

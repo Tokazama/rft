@@ -760,15 +760,32 @@ select <- function(x, groups, vars, na.omit = TRUE) {
 #' @docType methods
 #' @details \strong{plot}
 #' @rdname iData-methods
-setMethod("plot", "iData", function(x, group, vars, clusterImage) {
-  matseq <- seq_len(dim(x@iList[[group]])[2])
-  clustvec <- clusterImage[x@iList[[group]]@mask == 1]
-  clustseq <- matseq[clustvec != 0]
-  demog <- getDemog(x, group, vars)
+setMethod("plot", "iData", function(x, group, vars, mask) {
+  # argument checks
+  if (missing(x))
+    stop("Must specific iData object.")
+  if (missing(group))
+    nogroup <- TRUE
+  else
+    nogroup <- FALSE
+  if (missing(vars))
+    vars <- colnames(x@demog)
+  if (missing(mask) && !nogroup)
+    mask <- antsImageClone(x@iList[[group]]@mask)
   
-  df <- matrix(0, 0, 2)
-  for (i in clustseq)
-    df <- rbind(df, cbind(x@iList[[group]]@iMatrix[, i], demog))
-  colnames(df) <- c("Voxel Intensity", var)
+  # actual function
+  if (!nogroup) {
+    matseq <- seq_len(dim(x@iList[[group]])[2])
+    clustvec <- mask[x@iList[[group]]@mask == 1]
+    clustseq <- matseq[clustvec != 0]
+    demog <- getDemog(x, group, vars)
+    
+    df <- matrix(0, 0, 2)
+    for (i in clustseq)
+      df <- rbind(df, cbind(x@iList[[group]]@iMatrix[, i], demog))
+    colnames(df) <- c("Voxel Intensity", var)
+  } else
+    df <- x@demog[[vars]]
+  
   plot(df)
 })

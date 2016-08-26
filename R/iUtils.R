@@ -870,7 +870,7 @@
     else
       stop("Fc must be set")
   } else {
-    if (is.list(Fc))
+    if (is.list(Fc$X0))
       return(crossprod(.hsqr(Fc, sX)))
     else
       return(Fc$c %*% tcrossprod(MASS::ginv(crossprod(Fc$X1)), Fc$c))
