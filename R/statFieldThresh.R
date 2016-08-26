@@ -97,14 +97,14 @@ statFieldThresh <- function(x, pval, nvox, n, fwhm, resels, df = c(idf, rdf), fi
         else if (fieldType == "X")
             stat <- qchisq(1 - pp, df[1], df[2])
         if (threshType == "cFDR") {
-            fdrclust <- labelClusters(x, k, u, Inf)
-            fdrlabs <- unique(clust[clust > 0])
+            fdrclust <- labelClusters(x, k, stat, Inf)
+            fdrlabs <- unique(fdrclust[fdrclust > 0])
             cmax <- c()
 
             if (verbose)
                 progress <- txtProgressBar(min = 0, max = n, style = 3)
-            for (i in 1:length(fdrlabs)) {
-                cmax <- c(cmax, rftPval(D, 1, 0, max(x[fdrclust]), n, resels, df, fieldType)$Ec)
+            for (i in fdrlabs) {
+                cmax <- c(cmax, rftPval(D, 1, 0, max(x[fdrclust == i]), n, resels, df, fieldType)$Ec)
                 if (verbose)
                     setTxtProgressBar(progress, i)
             }
@@ -125,12 +125,21 @@ statFieldThresh <- function(x, pval, nvox, n, fwhm, resels, df = c(idf, rdf), fi
                 close(progress)
         }
         cmax <- cmax / rftPval(D, 1, 0, stat, n, resels, df, fieldType)$Ec
-        cmax <- sort(cmax, decreasing = TRUE)
-        fdrvec <- sort((pval * (1:length(cmax)) / length(cmax)), decreasing = TRUE)
+        cmax <- sort(cmax)
+        
+        lc <- length(cmax)
+        fdrvec <- seq_len(lc) / lc * pval
         i <- 1
-        while (cmax[i] >= fdrvec[i])
-            (i <- i + 1)
-
+        for (i in seq_len(lc)) {
+          if (cmax[i] > fdrvec[i])
+            break
+          i <- i + 1
+          if (i > lc) {
+            i <- i - 1
+            break
+          }
+        }
+        
         if (fieldType == "Z")
             u <- qnorm(1 - cmax[i])
         else if (fieldType == "T")

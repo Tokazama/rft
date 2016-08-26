@@ -78,7 +78,7 @@ contrastMatrix[4, ] <- c(-1,          1,           -1,          1)
 contrastMatrix[5, ] <- c( 1,         -1,           -1,          1)   # the interaction between Gender and Injury
 
 rownames(contrastMatrix) <- c("F > M", " F < M", "OI > TBI", "OI < TBI", "Gender x Injury")
-fit2 <- anova(fit2, contrastMatrix, cthresh = 100)
+fit2 <- anova(fit2, contrastMatrix, cthresh = 100, threshType = "cFDR")
 
 # plot----
 # iData plotting

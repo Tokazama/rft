@@ -131,7 +131,7 @@ rftResults <- function(x, resels, fwhm, df, fieldType,
   else
     stop("threshType must be a numeric value or a character specifying the chosen method for calculating a threshold")
   
-  if (u == "NA") {
+  if (is.null(u) | u == "NA") {
     results <- "NA"
   } else {
     D <- x@dimension

@@ -682,11 +682,11 @@
 # set contrast fields'
 .setcon <- function(name, fieldType, action, c, x) {
   if (!is.character(name))
-    stop("name must be a character")
+    stop("Name must be a character.")
   if (!(fieldType == "F" | fieldType == "T" | fieldType == "P"))
-    stop("fieldType must be F, T, or P")
+    stop("fieldType must be F, T, or P.")
   if (!(action == "c" | action == "c+" | action == "X0" | action == "ukX0" | action == "iX0"))
-    stop("action must be c, c+, X0, ukX0, iX0")
+    stop("Action must be c, c+, X0, ukX0, iX0.")
   
   Fc <- .fconfields()
   Fc$name <- name
