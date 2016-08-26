@@ -849,7 +849,7 @@
     else
       stop("Fc must be set")
   } else {
-    if (!is.null(Fc$X0))
+    if (is.list(Fc$X0))
       return(crossprod(.ox(.setx(Fc$X1$ukX1)), .cukx(x)))
     else
       return(crossprod(.ox(.setx(Fc$X1)), x$X))

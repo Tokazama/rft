@@ -73,10 +73,11 @@ setMethod("anova", "iModel", function(object, contrastMatrix, cthresh = 150, thr
     X1 <- .X1(object@C[[i]], object@X$KWX)
     object@C[[i]]$dims <- .trMV(X1, object@X$V)
     
-    # calculate t-contrast----
     # calculate F-contrast----
     h <- .hsqr(object@C[[i]], object@X$KWX)
-    ss <- (rowSums((h %*% object@beta[])^2) / object@C[[i]]$dims$trMV)
+    ss <- (colSums((h %*% object@beta[])^2) / object@C[[i]]$dims$trMV)
+    mrss <- object@mrss[]
+    mrss[mrss == 0] <- 0
     object@C[[i]]$contrastImage <- makeImage(mask, ss / object@mrss[])
     object@C[[i]]$cthresh <- cthresh[i - old]
     object@C[[i]]$threshType <- threshType[i - old]
