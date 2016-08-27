@@ -279,9 +279,10 @@ setMethod("show", "iModel", function(object) {
 #' @param x,object Object of class iModel.
 #' @param filename h5 file to save iModel to.
 #' @param iData_dirname Directory for iData component of iModel.
-#' @param docname Prefix name for report documents.
-#' @param imgdir Optional directory to save images to.
-#' @param output_format File format for report to be rendered in (see rmarkdown::render).
+#' @param dirname Directory to place \code{report} output.
+#' @param contrast Name of contrast.
+#' @param rpv Return resels per voxel image?
+#' @param mask Return mask used for iModel?
 #' @param verbose Enables verbose output. (default = \code{TRUE}).
 #' @param ... Additional named arguments passed to \code{iModelUpdate}.
 #' 
@@ -627,21 +628,25 @@ setMethod("model.matrix", "iModel", function(object) {
 #' @details \strong{report} Creates a .pdf and .html report of for iModel
 #'  objects (requires package rmarkdown).
 #' @rdname iModel-methods
-report <- function(x, docname, surfimg) {
+report <- function(x, dirname, surfimg) {
   if (!usePkg("rmarkdown"))
     stop("Please install package rmarkdown in order to use this function.")
   ncon <- length(x@C)
   if (missing(surfimg))
     surfimg <- x@iData@iList[[x@y]]@mask
+  
+  dirname <- normalizePath(dirname)
+  if (!file.exists(dirname))
+    dir.create(dirname)
   ## render images----
   for (i in seq_len(ncon)) {
     if (class(x@C[[i]]$results) != "character") {
       brain <- renderSurfaceFunction(surfimg = list(surfimg), funcimg = list(x@C[[i]]$clusterImage), alphasurf = 0.1, smoothsval = 1.5)
-      tmp <- make3ViewPNG(fnprefix = paste(docname, "_", x@C[[i]]$name, sep = ""))
+      tmp <- make3ViewPNG(fnprefix = paste(dirname, "/", x@C[[i]]$name, sep = ""))
     }
   }
   
-  md <- paste(docname, ".Rmd", sep =)
+  md <- file.path(dirname, "out.Rmd")
   zz <- file(md, open = "wt")
   sink(zz)
   sink(zz, type = "message")
@@ -672,7 +677,7 @@ report <- function(x, docname, surfimg) {
     cat("### ", x@C[[i]]$name, "\n\n")
     
     if (class(x@C[[i]]$results) != "character")
-      cat(paste("![conimg", i, "](", docname, "_", x@C[[i]]$name, ".png) \n\n", sep = ""))
+      cat(paste("![conimg", i, "](", file.path(dirname, paste(x@C[[i]]$name, ".png", sep = "")), ")  \n\n", sep = ""))
     
     ## render results----
     cat("Contrast weights: \n\n")
@@ -689,18 +694,20 @@ report <- function(x, docname, surfimg) {
         cat("  p-value  = ", x@C[[i]]$results$setLevel, "\n\n")
         
         cat("#### Cluster-Level: \n\n")
-        print(round(x@C[[i]]$results$clusterLevel, 3))
+        tmp <- knitr::kable(round(x@C[[i]]$results$clusterLevel, 3))
+        print(tmp)
         cat("\n\n")
         
         cat("#### Peak-level: \n\n")
-        print(round(x@C[[i]]$results$peakLevel, 3))
+        tmp <- knitr::kable(round(x@C[[i]]$results$peakLevel, 3))
+        print(tmp)
         cat("\n\n")
       }
     } else {
       if (class(x@C[[i]]$results) == "character") {
         cat(x@C[[i]]$results, "\n\n")
       } else {
-        print(x@C[[i]]$results)
+        knitr::kable(x@C[[i]]$results)
       }
     }
     cat("Interest degrees of freedom = ", x@C[[i]]$dims$idf, "\n\n")
@@ -715,18 +722,25 @@ report <- function(x, docname, surfimg) {
   rmarkdown::render(md)
   rmarkdown::render(md, pdf_document())
   return(TRUE)
-  # markdown::markdownToHTML(md, paste(docname, ".html", sep = ""))
-  # system(paste("pandoc -s ", paste(docname, ".html", sep = ""), "-o ", paste(docname, ".pdf", sep = ""), sep = ""))
 }
 
 #' @export
 #' @docType methods
-#' @details \strong{getCluster} Retrieve a cluster of a specific contrast.
+#' @details \strong{getImages} Returns antsImages of specified contrasts within model iModel.
 #' @rdname iModel-methods
-getCluster <- function(x, contrast, value) {
-  out <- antsImageClone(x@C[[contrast]]$clusterImage)
-  if (!missing(value))
-    out[out == value]
+getImages <- function(x, contrast, rpv = FALSE, mask = FALSE) {
+  out <- list()
+  for (i in seq_len(length(contrast))) {
+    out[[i]]$clusterImage <- antsImageClone(x@C[[contrast]]$clusterImage)
+    out[[i]]$contrastImage <- antsImageClone(x@C[[contrast]]$clusterImage)
+  }
+  names(out) <- contrast
+
+  if (rpv)
+    out$rpvImage <- antsImageClone(x@dims$rpvImage)
+  if (mask)
+    out$mask <- antsImageClone(x@iData@iList[[x@y]]@mask)
+  
   return(out)
 }
 
@@ -743,9 +757,13 @@ setMethod("plot", "iModel", function(x, contrast, cluster) {
     return(0)
   } else {
     # create mask for specific cluster
-    clustimg <- x@C[[contrast]]$clusterImage
-    clustimg[clustimg != cluster] <- 0
-    clustimg[clustimg != 0] <- 1
+    clustimg <- antsImageClone(x@C[[contrast]]$clusterImage)
+    if (missing(cluster))
+      clustimg[clustimg != 0] <- 1
+    else {
+      clustimg[clustimg != cluster] <- 0
+      clustimg[clustimg != 0] <- 1
+    }
     plot(x@iData, x@y, mask = clustimg)
   }
 })

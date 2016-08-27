@@ -14,8 +14,6 @@
 #' @param rowslist row of iMatrix constituting block/partitions
 #' @param HParam cut-off period in seconds
 #' @param RT observation interval in seconds
-#' @param checkMask logical ensure mask only represents active voxels (default
-#'  = \code{TRUE})
 #' @param filename optional filename to save iGroup object (default = 
 #' \code{tempfile(fileext = ".h5")})
 #' 
@@ -48,7 +46,7 @@ iGroup <- setClass("iGroup",
 
 #' @export
 setMethod("initialize", "iGroup", function(.Object, iMatrix = matrix(1, 1, 1), name, mask,
-                                           modality, rowslist, HParam, RT, checkMask = TRUE, filename) {
+                                           modality, rowslist, HParam, RT, filename) {
   if (!usePkg("h5"))
     stop("Please install package h5 in order to use this function.")
   
@@ -81,15 +79,6 @@ setMethod("initialize", "iGroup", function(.Object, iMatrix = matrix(1, 1, 1), n
   } else {
     file["name"] <- name
     .Object@name <- name
-  }
-  
-  # mask
-  if (!missing(iMatrix) && !missing(mask) && checkMask) {
-    mask_vec <- abs(iMatrix)
-    mask_vec <- colSums(mask_vec)
-    mask_vec[mask_vec != 0] <- 1
-    iMatrix <- iMatrix[, as.logical(mask_vec)]
-    mask <- makeImage(mask, mask_vec)
   }
   
   ## configure
@@ -763,14 +752,15 @@ select <- function(x, groups, vars, na.omit = TRUE) {
     colnames(out@index) <- groups
     for (i in seq_len(length(groups))) {
       tmp <- out@index[, groups[i]]
-      out@iList[[i]] <- x@iList[[groups]][tmp]
-      names(out@iList[[i]]) <- x@iList[[i]]@name
+      out@iList[[i]] <- x@iList[[groups[i]]][tmp]
+      names(out@iList) <- groups[i]
     }
   } else {
     out <- x
     out@demog <- x@demog[vars]
     out@index <- x@index[groups]
     out@iList <- x@iList[groups]
+    names(out@iList) <- groups
   }
   return(out)
 }

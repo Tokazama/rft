@@ -4,11 +4,18 @@
 
 #' iData Model Formulae 
 #' 
-#' Reads a formula and derives pertinent information from iData object.
+#' Reads a formula and derives pertinent information from iData object. If any 
+#' variables in the formula have \code{NA} values a new \code{\link{iData}}
+#' object is generated either omitting those values or if function is provided
+#' for \code{impute} argument \code{NA} values are imputed (see 
+#' \code{\link{antsrimpute}}). Unlike \code{\link{antsrimpute}} there's no
+#' options for additional arguments to be passed to the impute function.
+#' Therefore, if additional arguments are necessary one may need to create a
+#' temporary function including those arguments as default (see examples).
 #' 
 #' @param formula Object of class \code{formula} (or one that can be coerced to that class): a symbolic description of the model to be fitted. The details of model specification are given under ‘Details’.
 #' @param iData Object of class \code{\link{iData}} containing data represented in the provided formula.
-#' @param impute Impute NA values (not yet implemented)
+#' @param impute Function for imputing NA values.
 #' 
 #' @return Creates list including:
 #' \item{y} {Character value for the response variable (representative of an iGroup object within iData)}
@@ -18,10 +25,35 @@
 #' @author Zachary P. Christensen
 #' 
 #' @example 
-#' z <- iFormula(wb ~ Age, mydata)
-#' out <- iModelMake(X = z$X, y = z$y, iData = z$iData)
-#' out <- iModelSolve(out)
-#' out <- summary(out, contrastMatrix = matrix(c(0, 1), nrow = 1), cthresh = 0)
+#' 
+#' ilist <- getANTsRData("population")
+#' mask <- getMask(ilist[[1]])
+#' imat <- imageListToMatrix(ilist, mask)
+#' iGroup1 <- iGroup(imat, "pop1", mask, modality = "T1")
+#' 
+#' 
+#' ilist <- lappend(ilist, ilist[[1]])
+#' imat <- imageListToMatrix(ilist, mask)
+#' iGroup2 <- iGroup(imat, "pop2", mask, modality = "T1")
+#' 
+#' demog <- data.frame(id = c("A", "B", "C", NA),
+#'   age = c(11, 7, 18, 22), sex = c("M", "M", "F", "F"))
+#'   
+#' bool1 <- c(TRUE, TRUE, TRUE, FALSE)
+#' bool2 <- c(TRUE, TRUE, TRUE, TRUE)
+#' 
+#' # create iData object that holds demographics info
+#' mydata <- iData(list(iGroup1, iGroup2), c(bool1, bool2), demog)
+#' 
+#' z <- iFormula(iGroup1 ~ age, mydata)
+#' 
+#' 
+#' # quick function for mean with custom defaults
+#' myfunc <- function(x) {
+#'   mean(x, trim = .1)
+#' }
+#' 
+#' z <- iFormula(iGroup1 ~ age, mydata, myfunc)
 #' 
 #' @export iFormula
 iFormula <- function(formula, iData, impute) {
@@ -39,6 +71,11 @@ iFormula <- function(formula, iData, impute) {
     vartest <- !any(is.na(iData@demog[vars[i]]))
     if (!vartest)
       break
+  }
+  
+  if (!vartest && !missing(impute)) {
+    iData@demog <- antsrimpute(iData@demog[vars], impute)
+    vartest <- TRUE
   }
   
   # are there any images not common between groups
@@ -202,6 +239,8 @@ setMethod("anova", "iModel", function(object, contrastMatrix, cthresh = 150, thr
   # check arguments----
   if (ncol(contrastMatrix) != object@dims$npred)
     stop("The contrast length must be equal to the number of predictors")
+  if (any(is.na(contrastMatrix)))
+    stop("There cannot be any NA values in the contrastMatrix.")
   ncon <- nrow(contrastMatrix)
   if (length(cthresh) != ncon)
     cthresh <- rep(cthresh[1], ncon)
@@ -234,6 +273,8 @@ setMethod("anova", "iModel", function(object, contrastMatrix, cthresh = 150, thr
   ll <- object@control
   colnames(contrastMatrix) <- colnames(object@X$X)
   for (i in conseq) {
+    if (verbose)
+      cat("Calculating contrast: ", connames[i - old], ".\n")
     c <- matrix(contrastMatrix[i - old, ])  # by default makes a 1 column matrix
     object@C[[i]] <- .setcon(connames[i - old], fieldType = "F", "c+", c, object@X$KWX)
     
@@ -254,8 +295,8 @@ setMethod("anova", "iModel", function(object, contrastMatrix, cthresh = 150, thr
     if (object@control$rft) {
       z <- rftResults(object@C[[i]]$contrastImage, object@dims$resels, object@dims$fwhm,
                       c(object@C[[i]]$dims$idf, object@X$rdf), object@C[[i]]$fieldType, rpvImage = isotropic,
-                      k = object@C[[i]]$cthresh, object@C[[i]]$threshType, object@C[[i]]$pval, object@C[[i]]$pp, ll$n, NULL, verbose = verbose)
-      if (z[1] == "NA") {
+                      k = object@C[[i]]$cthresh, object@C[[i]]$threshType, object@C[[i]]$pval, object@C[[i]]$pp, ll$n, verbose = verbose)
+      if (is.null(z)) {
         object@C[[i]]$results <- "No voxels survive threshold."
         object@C[[i]]$sthresh <- 0
       } else {
@@ -299,6 +340,8 @@ setMethod("summary", "iModel", function(object, contrastMatrix, cthresh = 150, t
   # check arguments----
   if (ncol(contrastMatrix) != object@dims$npred)
     stop("The contrast length must be equal to the number of predictors")
+  if (any(is.na(contrastMatrix)))
+    stop("There cannot be any NA values in the contrastMatrix.")
   ncon <- nrow(contrastMatrix)
   if (length(cthresh) != ncon)
     cthresh <- rep(cthresh[1], ncon)
@@ -331,6 +374,8 @@ setMethod("summary", "iModel", function(object, contrastMatrix, cthresh = 150, t
   ll <- object@control
   colnames(contrastMatrix) <- colnames(object@X$X)
   for (i in conseq) {
+    if (verbose)
+      cat("Calculating contrast: ", connames[i - old], ".\n")
     c <- matrix(contrastMatrix[i - old, ])  # by default makes a 1 column matrix
     object@C[[i]] <- .setcon(connames[i - old], fieldType = "T", "c+", c, object@X$KWX)
     
@@ -352,8 +397,8 @@ setMethod("summary", "iModel", function(object, contrastMatrix, cthresh = 150, t
     if (object@control$rft) {
       z <- rftResults(object@C[[i]]$contrastImage, object@dims$resels, object@dims$fwhm,
                       c(object@C[[i]]$dims$idf, object@X$rdf), object@C[[i]]$fieldType, rpvImage = isotropic,
-                      k = object@C[[i]]$cthresh, object@C[[i]]$threshType, object@C[[i]]$pval, object@C[[i]]$pp, ll$n, NULL, verbose = verbose)
-      if (z[1] == "NA") {
+                      k = object@C[[i]]$cthresh, object@C[[i]]$threshType, object@C[[i]]$pval, object@C[[i]]$pp, ll$n, verbose = verbose)
+      if (is.null(z)) {
         object@C[[i]]$results <- "No voxels survive threshold."
         object@C[[i]]$sthresh <- 0
       } else {

@@ -70,7 +70,7 @@ report(fit1, paste(home, "report.pdf"))
 fit2 <- ilm(wb ~ Injury:Gender - 1, mydata)
 contrastMatrix <- matrix(nrow = 5, ncol = 4)
                          # Female*OI  # Female*TBI  # Male*OI  # Female*TBI
-contrastMatrix[1, ] <- c( 1,          1,           -1,         -1)   # the main effect of Gender
+contrastMatrix[1, ] <- c( 1,          1,           -1,         -1)    # the main effect of Gender
 contrastMatrix[2, ] <- c(-1,         -1,            1,          1)
 contrastMatrix[3, ] <- c( 1,         -1,            1,         -1)   # the main effect of Injury
 contrastMatrix[4, ] <- c(-1,          1,           -1,          1)
@@ -80,23 +80,25 @@ rownames(contrastMatrix) <- c("F > M", " F < M", "OI > TBI", "OI < TBI", "Gender
 fit2 <- anova(fit2, contrastMatrix, cthresh = 100, threshType = "cFDR")
 
 # ANCOVA----
-fit3 <- ilm(wb ~ WASI.IQ:Injury, mydat)
+fit3 <- ilm(wb ~ WASI.IQ:Injury, mydata)
 
-cm1 <- matrix(nrow = 2, ncol = 4)
+cm1 <- matrix(nrow = 2, ncol = 3)
               # (Intercept) # OI  # TBI
 cm1[1, ] <- c(0,            1,    -1)
 cm1[2, ] <- c(0,           -1,     1)
 rownames(cm1) <- c("OI > TBI", "OI < TBI")
 fit2 <- anova(fit3, cm1, threshType = "cFDR")
 
-cm2 <- matrix(nrow = 4, ncol = 4)
+cm2 <- matrix(nrow = 4, ncol = 3)
               # (Intercept) # OI  # TBI
-cm1[1, ] <- c(0,            1,    0)
-cm1[2, ] <- c(0,           -1,    0)
-cm1[3, ] <- c(0,            0,    1)
-cm1[4, ] <- c(0,            0,   -1)
+cm2[1, ] <- c(0,            1,    0)
+cm2[2, ] <- c(0,           -1,    0)
+cm2[3, ] <- c(0,            0,    1)
+cm2[4, ] <- c(0,            0,   -1)
 rownames(cm2) <- c("OI+", "OI-", "TBI+", "TBI-")
 fit2 <- summary(fit3, cm2)
+
+report(fit2)
 
 # REML----
 fit_reml <- ilm(wb ~ WASI.IQ, mydata, optim = "REML")
@@ -129,3 +131,15 @@ plot(fit1, "Age +", 1)  # should plot specific cluster
 # predict.summary----
 
 # predict.anova----
+
+
+fit <- ilm(wb ~ WASI., mydata)
+                           # Intercept # Variable
+contrastMatrix <- matrix(c(0,          1,    # positive correlation
+                           0,         -1),   # negative correlation
+                           2, 2, byrow = TRUE)
+rownames(contrastMatrix) <- c("Correlation +", "Correlation -")
+fasdf
+fit <- summary(fit, contrastMatrix)
+if (class(fit@C[[1]]$results) != "charachter" && class(fit@C[[2]]$results) != "charachter")
+  report(fit, paste(home, ))

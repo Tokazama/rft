@@ -73,8 +73,8 @@ statFieldThresh <- function(x, pval, nvox, n, fwhm, resels, df, fieldType, thres
           alpha <- rftPval(D, 1, k, u, n, resels, df, fieldType)$Pcor
       else if (threshType == "pRFT")
           alpha <- rftPval(D, 1, 0, u, n, resels, df, fieldType)$Pcor
-      if (alpha > pval | is.na(alpha)) {
-        u <- "NA"
+      if (is.null(alpha) | is.na(alpha) | alpha > pval) {
+        u <- NULL
       } else {
         while (alpha < pval) {
           u <- u - 0.01
@@ -96,8 +96,9 @@ statFieldThresh <- function(x, pval, nvox, n, fwhm, resels, df, fieldType, thres
       else if (fieldType == "X")
           stat <- qchisq(1 - pp, df[1], df[2])
       if (threshType == "cFDR") {
-          fdrclust <- labelClusters(x, k, stat, Inf)
+          fdrclust <- labelClusters(x, nvox, stat, Inf)
           fdrlabs <- unique(fdrclust[fdrclust > 0])
+          
           
           cmax <- c()
           for (i in fdrlabs) {
@@ -112,36 +113,38 @@ statFieldThresh <- function(x, pval, nvox, n, fwhm, resels, df, fieldType, thres
           for (i in cmax)
             cmax[i] <- rftPval(D, 1, 0, i, n, resels, df, fieldType)$Ec
       }
-      cmax <- sort(cmax)
-      
-      lc <- length(cmax)
-      fdrvec <- seq_len(lc) / lc * pval
-      
-      i <- 1
-      for (i in seq_len(lc)) {
-        if (cmax[i] > fdrvec[i])
-          break
-        else {
-          if (i == lc) {
-            i <- "NA"
+      if (!is.null(cmax)) {
+        cmax <- sort(cmax)
+        print(cam)
+        lc <- length(cmax)
+        fdrvec <- seq_len(lc) / lc * pval
+        
+        i <- 1
+        for (i in seq_len(lc)) {
+          if (cmax[i] > fdrvec[i])
             break
-          } else
-            i <- i + 1
+          else {
+            if (i == lc) {
+              i <- NULL
+              break
+            } else
+              i <- i + 1
+          }
         }
-      }
-      
-      if (i == "NA")
-        u <- "NA"
-      else {
-        if (fieldType == "Z")
-          u <- qnorm(1 - cmax[i])
-        else if (fieldType == "T")
-          u <- qt(1 - cmax[i], df[1])
-        else if (fieldType == "F")
-          u <- qf(1 - cmax[i], df[1], df[2])
-        else if (fieldType == "X")
-          u <- qchisq(1 - cmax[i], df[1], df[2])
-      }
+        if (is.null(i))
+          u <- NULL
+        else {
+          if (fieldType == "Z")
+            u <- qnorm(1 - cmax[i])
+          else if (fieldType == "T")
+            u <- qt(1 - cmax[i], df[1])
+          else if (fieldType == "F")
+            u <- qf(1 - cmax[i], df[1], df[2])
+          else if (fieldType == "X")
+            u <- qchisq(1 - cmax[i], df[1], df[2])
+        }
+      } else
+        u <- NULL
   }
   return(u)
 }
