@@ -1,27 +1,14 @@
 # TO DO:
-# replace initialize with iModelMake
 # plot.iModel
 #
-# iModelSolve testing
-#
 
-#' iModel class representing fitted models of image information
+#' Class iModel
 #' 
-#' 
-#'
-#' 
-#' @param X Design matrix.
-#' @param y Name of iGroup that corresponds to the response value
-#' @param data iData object containing design information
-#' @param weights optional vector or matrix of prior weights to be used in the fitting process
-#' @param xVi sphericity measurements
-#' @param control a list of parameters for controlling the fitting process. (see \code{\link{iControl}} for more details)
-#' @param filename optional filename location to save object to 
-#' @param ... named arguments
+#' Object containing a fitted statistical model for image data.
 #' 
 #' @slot iData iData reference class object for fitted model.
 #' @slot y Character naming the iGroup used within iData for the response to the fitted model.
-#' @slot X Information about the design.
+#' @slot X Information about the design:
 #' \itemize{
 #'  \item{X} {Design matrix.}
 #'  \item{K} {Filter information specific to each image.}
@@ -34,17 +21,17 @@
 #'  \item{trRVRV} {Trace of RVRV.}
 #'  \item{rdf} {Residual degrees of freedom.}
 #' }
-#' @slot beta beta coefficient matrix
-#' @slot res residual matrix
-#' @slot mrss mean residual sum of squares
-#' @slot xVi information about intrinsic temporal non-sphericity
+#' @slot beta Pointer beta matrix stored as h5 dataset.
+#' @slot res Pointer residual matrix stored as h5 dataset.
+#' @slot mrss Pointer mean residual sum of squares matrix stored as h5 dataset.
+#' @slot xVi Information about intrinsic temporal non-sphericity:
 #' \itemize{
-#'  \item{Vi} {list of non-sphericity components}
-#'  \item{V} {non-sphericity matrix (Cov(e) = sigma^2*V)}
-#'  \item{h} {hyperparameters}
+#'  \item{Vi} {List of non-sphericity components.}
+#'  \item{V} {Non-sphericity matrix (Cov(e) = sigma^2*V)}
+#'  \item{h} {Hyperparameters.}
 #'  \item{Cy} {Covariance of response matrix.}
 #' }
-#' @slot dims model dimensions
+#' @slot dims Model dimensions:
 #' \itemize{
 #'  \item{npred} {Number of predictors.}
 #'  \item{nimg} {Number of images.}
@@ -53,8 +40,7 @@
 #'  \item{resels} {Resolution elements.}
 #'  \item{rpvImage} {Resels per voxel image.}
 #' }
-#' @slot call the original matched call information
-#' @slot C list of contrasts
+#' @slot C list of contrasts:
 #' \itemize{
 #'  \item{name} {Name of the contrast.}
 #'  \item{c} {Contrast weights.}
@@ -74,7 +60,11 @@
 #'  \item{sthresh} {Statistical threshold.}
 #'  \item{cthresh} {Cluster threshold.}
 #' }
-#' @slot control control values for fitting the model (see \code{\link{iControl}})
+#' @slot control Control values for fitting the model (see \code{\link{iControl}}).
+#' 
+#' @author Zachary P. Christensen
+#' 
+#' @seealso \code{\link{ilm}}
 #'
 #' @rdname iModel-class
 iModel <- setClass("iModel",
@@ -152,7 +142,7 @@ iModelMake <- function(X, y, iData, weights = NULL, xVi, control, filename, ...)
   if (class(K) == "numeric")
     out@X$K <- K
   else if (class(K) == "data.frame")
-    out@X$K <- iFilter(K)
+    out@X$K <- .filter(K)
   
   # set X
   if (is.null(weights)) {
@@ -168,10 +158,10 @@ iModelMake <- function(X, y, iData, weights = NULL, xVi, control, filename, ...)
   }
   
   # set weighted design matrix
-  out@X$KWX <- .setx(iFilter(out@X$K, out@X$W %*% out@X$X))
+  out@X$KWX <- .setx(.filter(out@X$K, out@X$W %*% out@X$X))
   # pseudoinverse of X
   out@X$pKX <- .pinvx(out@X$KWX)
-  out@X$V <- iFilter(out@X$K, iFilter(out@X$K, out@X$W %*% tcrossprod(out@xVi$V, out@X$W)))
+  out@X$V <- .filter(out@X$K, .filter(out@X$K, out@X$W %*% tcrossprod(out@xVi$V, out@X$W)))
   out@X$betaCov <- out@X$pKX %*% tcrossprod(out@X$V, out@X$pKX)
   tmp <- .trRV(out@X$KWX, out@X$V)
   out@X$trRV <- tmp$trRV
@@ -292,8 +282,11 @@ setMethod("show", "iModel", function(object) {
 #' @param docname Prefix name for report documents.
 #' @param imgdir Optional directory to save images to.
 #' @param output_format File format for report to be rendered in (see rmarkdown::render).
-#' @param verbose enables verbose output. (default = \code{TRUE})
-#' @param ... additional named arguments passed to \code{iModelUpdate}
+#' @param verbose Enables verbose output. (default = \code{TRUE}).
+#' @param ... Additional named arguments passed to \code{iModelUpdate}.
+#' 
+#' @author Zachary P. Christensen
+#' 
 #' @name iModel-methods
 NULL
 
@@ -323,7 +316,7 @@ setMethod("resid", "iModel", function(object) {
 
 #' @export
 #' @docType methods
-#' @details \strong{iModelRead} read/load iModel object
+#' @details \strong{iModelRead} Read/load iModel object.
 #' @rdname iModel-methods
 iModelRead <- function(filename, iData_dirname) {
   if (!file.exists(filename))
@@ -384,7 +377,7 @@ iModelRead <- function(filename, iData_dirname) {
   K <- data.frame(Filters = x@file[file.path("K", "Filters")][], 
                   HParam = x@file[file.path("K", "HParam")][],
                   RT = x@file[file.path("K", "RT")][])
-  x@X$K <- iFilter(K)
+  x@X$K <- .filter(K)
   
   # read xVi
   if (file["xVi/Vi"][] != "null")
@@ -429,7 +422,7 @@ iModelRead <- function(filename, iData_dirname) {
 
 #' @export
 #' @docType methods
-#' @details \strong{iModelWrite} read/load iModel object
+#' @details \strong{iModelWrite} Read/load iModel object.
 #' @rdname iModel-methods
 # @describeIn iModel write/save iModel object
 iModelWrite <- function(x, filename, iData_dirname) {
@@ -563,7 +556,8 @@ iModelWrite <- function(x, filename, iData_dirname) {
 
 #' @export
 #' @docType methods
-#' @details \strong{iModelSolve} Solve already initialized iModel for coefficients, residuals, and mean residual sum of squares
+#' @details \strong{iModelSolve} Solve already initialized iModel for
+#'  coefficients, residuals, and mean residual sum of squares.
 #' @rdname iModel-methods
 iModelSolve <-  function(x, verbose = TRUE) {
   chunksize <- x@iData@iList[[x@y]]@iMatrix@chunksize[2]
@@ -575,7 +569,7 @@ iModelSolve <-  function(x, verbose = TRUE) {
     if (vrange[chunksize] > x@dims$nvox)
       vrange <- vrange[1]:x@dims$nvox
     
-    KWY <- iFilter(x@X$K, x@X$W %*% x@iData@iList[[x@y]]@iMatrix[, vrange])
+    KWY <- .filter(x@X$K, x@X$W %*% x@iData@iList[[x@y]]@iMatrix[, vrange])
     x@beta[, vrange] <- x@X$pKX %*% KWY
     x@res[, vrange] <- .res(x@X$KWX, KWY)
     x@mrss[, vrange] <- colSums(x@res[, vrange]^2) / x@X$trRV
@@ -608,10 +602,10 @@ iModelUpdate <- function(x, ...) {
   }
   
   # set weighted design matrix
-  x@X$KWX <- .setx(iFilter(x@X$K, x@X$W %*% x@X$X))
+  x@X$KWX <- .setx(.filter(x@X$K, x@X$W %*% x@X$X))
   # pseudoinverse of X
   x@X$pKX <- .pinvx(x@X$KWX)
-  x@X$V <- iFilter(x@X$K, iFilter(x@X$K, x@X$W %*% tcrossprod(x@xVi$V, x@X$W)))
+  x@X$V <- .filter(x@X$K, .filter(x@X$K, x@X$W %*% tcrossprod(x@xVi$V, x@X$W)))
   x@X$betaCov <- x@X$pKX %*% tcrossprod(x@X$V, x@X$pKX)
   out <- .trRV(x@X$KWX, x@X$V)
   x@X$trRV <- out$trRV
@@ -630,7 +624,8 @@ setMethod("model.matrix", "iModel", function(object) {
 
 #' @export
 #' @docType methods
-#' @details \strong{report} Creates a .pdf and .html report of for iModel objects (requires package rmarkdown)
+#' @details \strong{report} Creates a .pdf and .html report of for iModel
+#'  objects (requires package rmarkdown).
 #' @rdname iModel-methods
 report <- function(x, docname, surfimg) {
   if (!usePkg("rmarkdown"))
@@ -737,7 +732,8 @@ getCluster <- function(x, contrast, value) {
 
 #' @export
 #' @docType methods
-#' @details \strong{plot} Create plot of variables against specific cluster withing contrast
+#' @details \strong{plot} Create plot of variables against specific cluster
+#'  within contrast.
 #' @rdname iModel-methods
 setMethod("plot", "iModel", function(x, contrast, cluster) {
   if (length(contrast) > 1)
@@ -755,6 +751,8 @@ setMethod("plot", "iModel", function(x, contrast, cluster) {
 })
 
 #' Control parameters for RFT based analyses
+#' 
+#' Auxillary function for controlling \code{\link{iModel}} fitting.
 #' 
 #' @param cf Critical F-threshold for selecting voxels over which the non-sphericity is estimated (default = \code{0.001}).
 #' @param scr Logical. scale residuals? (default = \code{TRUE}).

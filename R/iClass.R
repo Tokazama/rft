@@ -1,29 +1,34 @@
 # to do:
 # plot
 
-#' iGroup
+#' Class iGroup
 #' 
 #' Object for representing single image modality and preserving active memory.
 #' 
 #' @param .Object inpute object to convert
 #' @param iMatrix image by voxel matrix
-#' @param name name for the iGroup object (used for reference in \code{iData and formulas})
+#' @param name name for the iGroup object (used for reference in \code{iData
+#'  and formulas})
 #' @param mask mask with number of non-zero entries defining the matrix columns.
 #' @param modality image modality that iGroup will represent
 #' @param rowslist row of iMatrix constituting block/partitions
 #' @param HParam cut-off period in seconds
 #' @param RT observation interval in seconds
-#' @param checkMask logical ensure mask only represents active voxels (default = \code{TRUE})
-#' @param filename optional filename to save iGroup object (default = \code{tempfile(fileext = ".h5")})
+#' @param checkMask logical ensure mask only represents active voxels (default
+#'  = \code{TRUE})
+#' @param filename optional filename to save iGroup object (default = 
+#' \code{tempfile(fileext = ".h5")})
 #' 
-#' @slot name name of the iGroup
-#' @slot file h5file connection
-#' @slot iMatrix h5file pointer to matrix
-#' @slot location h5file location
-#' @slot modality image modality represented
-#' @slot mask mask with number of non-zero entries defining the matrix columns.
-#' @slot K filter information
-#' @slot dim dimensions of iMatrix
+#' @slot name Name of the iGroup.
+#' @slot file h5file connection.
+#' @slot iMatrix h5file pointer to matrix.
+#' @slot location h5file location.
+#' @slot modality Image modality represented.
+#' @slot mask Mask with number of non-zero entries defining the matrix columns.
+#' @slot K Filter information.
+#' @slot dim Dimensions of iMatrix.
+#' 
+#' @author Zachary P. Christensen
 #' 
 #' @seealso \code{\link{iGroup-methods}}, \code{\link{iData-methods}}
 #' 
@@ -157,6 +162,9 @@ setMethod("show", "iGroup", function(object) {
 #' 
 #' @param x,object Object of class iGroup.
 #' @param filename h5 file to save iGroup object to
+#' 
+#' @author Zachary P. Christensen
+#' 
 #' @seealso \code{\link{iData-methods}}
 #' 
 #' @name iGroup-methods
@@ -164,7 +172,7 @@ NULL
 
 #' @export
 #' @docType methods
-#' @details \strong{dim} retrieve dimensions of iGroup's iMatrix slot
+#' @details \strong{dim} Retrieve dimensions of iGroup's iMatrix slot.
 #' @rdname iGroup-methods
 setMethod("dim", "iGroup", function(x) {
   return(x@dim)
@@ -172,7 +180,7 @@ setMethod("dim", "iGroup", function(x) {
 
 #' @export
 #' @docType methods
-#' @details \strong{names} retrieve name of iGroup object
+#' @details \strong{names} Retrieve name of iGroup object.
 #' @rdname iGroup-methods
 setMethod("names", "iGroup", function(x) {
   return(x@name)
@@ -180,7 +188,7 @@ setMethod("names", "iGroup", function(x) {
 
 #' @export
 #' @docType methods
-#' @details \strong{names<-} set name of iGroup
+#' @details \strong{names<-} Set name of iGroup.
 #' @rdname iGroup-methods
 setMethod("names<-", "iGroup", function(x, value) {
     x@name <- value
@@ -190,7 +198,7 @@ setMethod("names<-", "iGroup", function(x, value) {
 
 #' @export
 #' @docType methods
-#' @details \strong{[} set name of iGroup
+#' @details \strong{[} Set name of iGroup.
 #' @rdname iGroup-methods
 setMethod("[", "iGroup", function(x, i) {
   out <- iGroup(x@iMatrix[i, ], x@name, x@mask, modality = x@modality, checkMask = FALSE)
@@ -203,7 +211,7 @@ setMethod("[", "iGroup", function(x, i) {
 
 #' @export
 #' @docType methods
-#' @details \strong{iGroupRead} read/load iGroup from h5 file
+#' @details \strong{iGroupRead} Read/load iGroup from h5 file.
 #' @rdname iGroup-methods
 iGroupRead <- function(filename) {
   if (!usePkg("h5"))
@@ -243,7 +251,7 @@ iGroupRead <- function(filename) {
 
 #' @export
 #' @docType methods
-#' @details \strong{iGroupWrite} write/save iGroup to h5 file
+#' @details \strong{iGroupWrite} Write/save iGroup to h5 file.
 #' @rdname iGroup-methods
 iGroupWrite <- function(x, filename) {
   if (file.exists(filename))
@@ -293,7 +301,7 @@ iGroupWrite <- function(x, filename) {
   return(TRUE)
 }
 
-#' iData
+#' Class iData
 #' 
 #' Object for representing multiple image modalities and demographic data
 #' 
@@ -307,6 +315,8 @@ iGroupWrite <- function(x, filename) {
 #' @slot iList list of iGroup objects
 #' @slot demog demographic information
 #' @slot index index that coordinates iGroup rows with demographic rows
+#' 
+#' @author Zachary P. Christensen
 #' 
 #' @seealso \code{\link{iGroup}}, \code{\link{iData-methods}}
 #' 
@@ -390,10 +400,13 @@ setMethod("show", "iData", function(object) {
 
 #' iData Methods
 #' 
+#' An object that associates demographic and imaging data in such a way that 
+#' facilitates more convenient manipulation.
+#' 
 #' @param x,object Object of class iData.
 #' @param dirname Directory to write iData object to.
 #' @param value Character vector to replace current iGroup names.
-#' @param groups Name of iGroup object.
+#' @param groups,group Name of iGroup object(s).
 #' @param vars Variables from demographics slot.
 #' @param bool A vector of TRUE/FALSE values with length equal to the number of
 #'  rows in the demographics data frame and number of TRUE values equal to the 
@@ -402,7 +415,9 @@ setMethod("show", "iData", function(object) {
 #' @param nsplit If greater than one, number of folds to split data into.
 #' Otherwise, proportion of rows in training data.
 #' @param na.omit Omit NA/missing values.
-#' @param verbose enables verbose output. (default = \code{TRUE})
+#' @param verbose Enables verbose output. (default = \code{TRUE}).
+#' 
+#' @author Zachary P. Christensen
 #' 
 #' @examples
 #' # create iGroup object
@@ -458,7 +473,7 @@ NULL
 
 #' @export
 #' @docType methods
-#' @details \strong{names} retrieve names of iGroups in iList slot
+#' @details \strong{names} Retrieve names of iGroups in iList slot.
 #' @rdname iData-methods
 setMethod("names", "iData", function(x) {
     out <- c()
@@ -467,10 +482,9 @@ setMethod("names", "iData", function(x) {
     return(out)
 })
 
-
 #' @export
 #' @docType methods
-#' @details \strong{names<-} replace names of iGroups within iList slot
+#' @details \strong{names<-} Replace names of iGroups within iList slot.
 #' @rdname iData-methods
 setMethod("names<-", "iData", function(x, value) {
   if (length(value) != length(x@iList))
@@ -483,7 +497,7 @@ setMethod("names<-", "iData", function(x, value) {
 
 #' @export
 #' @docType methods
-#' @details \strong{add} add iGroup to iList slot
+#' @details \strong{add} Add iGroup to iList slot.
 #' @rdname iData-methods
 add <- function(x, iGroup, bool) {
   if (class(iGroup) != "iGroup")
@@ -517,7 +531,8 @@ add <- function(x, iGroup, bool) {
 
 #' @export
 #' @docType methods
-#' @details \strong{subtract} subtract iGroup objects with provided names from iList
+#' @details \strong{subtract} Subtract iGroup objects with provided names from
+#'  iList.
 #' @rdname iData-methods
 substract <- function(x, groups) {
   for (i in seq_len(length(groups))) {
@@ -529,7 +544,8 @@ substract <- function(x, groups) {
 
 #' @export
 #' @docType methods
-#' @details \strong{getDemog} get variables indexed according to iGroup indicated by groups
+#' @details \strong{getDemog} Get variables indexed according to iGroup.
+#' indicated by groups
 #' @rdname iData-methods
 getDemog <- function(x, groups, vars) {
   if (!any(groups == names(x)))
@@ -553,7 +569,7 @@ getDemog <- function(x, groups, vars) {
 
 #' @export
 #' @docType methods
-#' @details \strong{getGroups} retrieve list of iGroups
+#' @details \strong{getGroups} Retrieve list of iGroups.
 #' @rdname iData-methods
 getGroups <- function(x, groups) {
   if (class(x) != "iData")
@@ -563,7 +579,7 @@ getGroups <- function(x, groups) {
 
 #' @export
 #' @docType methods
-#' @details \strong{iData[i]} subset iData objects
+#' @details \strong{iData[i]} Subset iData objects.
 #' @rdname iData-methods
 setMethod("[", "iData", function(x, i) {
   out <- iData(x@iList[[1]][x@index[i, 1]], as.logical(x@index[i, 1]), x@demog[i, ])
@@ -577,7 +593,8 @@ setMethod("[", "iData", function(x, i) {
 
 #' @export
 #' @docType methods
-#' @details \strong{iDataRead} loads previously saved iData from its set directory
+#' @details \strong{iDataRead} Loads previously saved iData from its set
+#'  directory.
 #' @rdname iData-methods
 iDataRead <- function(dirname, verbose = TRUE) {
   if (!usePkg("h5"))
@@ -642,7 +659,7 @@ iDataRead <- function(dirname, verbose = TRUE) {
 
 #' @export
 #' @docType methods
-#' @details \strong{iDataWrite} write/save iData object to its own directory
+#' @details \strong{iDataWrite} Write/save iData object to its own directory.
 #' @rdname iData-methods
 iDataWrite <- function(x, dirname, verbose = TRUE) {
   if (dir.exists(dirname))
@@ -689,7 +706,8 @@ iDataWrite <- function(x, dirname, verbose = TRUE) {
 
 #' @export
 #' @docType methods
-#' @details \strong{iDataSplit} splits iData into two groups with specified ratios if nsplit < 1 or into n folds if nsplit > 1
+#' @details \strong{iDataSplit} Splits iData into two groups with specified
+#'  ratios if nsplit < 1 or into n folds if nsplit > 1.
 #' @rdname iData-methods
 iDataSplit <- function(x, nsplit) {
   ndemog <- nrow(x@demog)
@@ -711,7 +729,8 @@ iDataSplit <- function(x, nsplit) {
 
 #' @export
 #' @docType methods
-#' @details \strong{select} select only data that applies to the iGroups and variables included in the arguments
+#' @details \strong{select} Select only data that applies to the iGroups and
+#' variables included in the arguments.
 #' @rdname iData-methods
 select <- function(x, groups, vars, na.omit = TRUE) {
   if (missing(x))
@@ -758,7 +777,7 @@ select <- function(x, groups, vars, na.omit = TRUE) {
 
 #' @export
 #' @docType methods
-#' @details \strong{plot}
+#' @details \strong{plot} Render plots describing iData contents.
 #' @rdname iData-methods
 setMethod("plot", "iData", function(x, group, vars, mask) {
   # argument checks

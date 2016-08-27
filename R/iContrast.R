@@ -8,10 +8,10 @@
 #' @param cthresh Minimum desired cluster size (default = \code{150})
 #' @param threshType A numeric value to threshold the statistical field or a character of the following methods:
 #' \itemize{
-#'	\item{cRFT:} {Computes a threshold per expected cluster level probability.}
-#'	\item{pRFT:} {Uses the mask and pval calculates the minimum statistical threshold.}
-#'	\item{cFDR:} {Uses an uncorrected threshold at the alpha level and then computes and FDR threshold based on cluster maxima.}
-#'	\item{pFDR:} {Computes the fdr threshold for the entire field of voxels.}
+#'	\item{cRFT} {Computes a threshold per expected cluster level probability.}
+#'	\item{pRFT} {Uses the mask and pval calculates the minimum statistical threshold.}
+#'	\item{cFDR} {Uses an uncorrected threshold at the alpha level and then computes and FDR threshold based on cluster maxima.}
+#'	\item{pFDR} {Computes the fdr threshold for the entire field of voxels.}
 #' }
 #' @param pval The p-value for estimating the threshold (default = \code{0.05}).
 #' @param pp The primary (initial) p-value for thresholding (only used for FDR methods; default = \code{0.001}).

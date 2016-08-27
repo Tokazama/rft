@@ -2,8 +2,8 @@
 #'
 #' Calculates the euler characteristic at a threshold level
 #'
-#' @param u statistical value (typically the maxima of a cluster or SPM)
-#' @param df degrees of freedom expressed as df[degrees of interest, degrees of error]
+#' @param u Statistical value (typically the maxima of a cluster or statistical field).
+#' @param df Degrees of freedom expressed as c(degrees of interest, degrees of error).
 #' @param fieldType:
 #' \itemize{
 #' \item{'T'}{T-field} 
@@ -11,14 +11,13 @@
 #' \item{'X'}{Chi-square field'} 
 #' \item{'Z'}{Gaussian field}
 #' }
-#' @return A vector of estimated euler characteristics for dimensions 0:D
+#' @return A vector of estimated euler characteristics for dimensions 0:D.
 #'
 #' @references 
 #' Worlsey K.J., (1996) A Unified Statistical Approach for Determining Significant Signals in Images of Cerebral Activation.
 #' @Author Zachary P. Christensen
 #' 
 #' @seealso rftPval, resels
-#' @note: function currently in beta phase
 #' @example
 #'
 #' # generate some data as if we just fitted a linear regression

@@ -1,10 +1,12 @@
+# This file contains developer level functions mainly adapted from SPM12 for use in fitting image models
+
 # To Do:
 # check: .c2tsp, maybe .res
 # I can probably use 'identical()' instead of these other ones
 # .C1inC2
 # .notunique (~unique)
 
-## from spm_sp----
+## from spm_sp.m----
 # set the filtered and whitened design matrix
 # the `nu` and `nv` arguments seem to make the difference between the matlab svd and R svd
 .setx <- function(x) {
@@ -414,7 +416,7 @@
       is.null(x$tol) | is.null(x$rk))
 }
 
-## from spm_SpUtil----
+## from spm_SpUtil.m----
 #test whether weight vectors specify contrast
 .iscon <- function(x, c) {
   if (!.isspc(x))
@@ -668,7 +670,7 @@
   }
 }
 
-## from sp_FcUtil----
+## from sp_FcUtil.m----
 .fconfields <- function() {
   list(name = "",
        fieldType = "",
@@ -1233,4 +1235,66 @@
     dx <- dx[2:nrow(dx), ]
   }
   dx
+}
+
+# Filter 
+#
+# @param Y data matrix
+# @param K filter matrix
+# @param K struct array containing partition specific specifications
+# @param K[[s]]$RT observation interval in seconds
+# @param K[[s]]$row row of Y constituting block/partitions
+# @param K[[s]]$HParams cut-off period in seconds
+# @param K[[s]]$X0 low frequencies to be removed (DCT)
+# @return filtered data
+# 
+# out <- iModelMake(X = z$X, y = z$y[i], data = z$iData)
+#
+# @export iFilter
+.filter <- function(K, Y) {
+  if (missing(Y) && is.data.frame(K)) {
+    # set K$X0
+    out <- list()
+    for (s in seq_len(length(K))) {
+      # create filter index from filter data.frame
+      subout <- list()
+      subout$row <- seq_len(nrow(K))[K$Filter == paste("F", s, sep = "")]
+      subout$RT <- K$RT[subout$row[1]]
+      subout$HParam <- K$HParam[subout$row[1]]
+      
+      # determine low frequencies to be removed
+      nk <- length(subout$row)
+      n <- floor(2 * (nk * subout$RT) / subout$HParam + 1)
+      X0 <- .dctmtx(nk, n)
+      subout$X0 <- X0[, 2:ncol(X0)]
+      out[[i]] <- subout
+    }
+    return(out)
+  } else {
+    if (is.data.frame(K)) {
+      # ensure requisite fields are present
+      if (is.null(K[[1]]$X0))
+        K <- iFilter(K)
+      
+      # apply high pass filter
+      if (length(K) == 1 && length(K[[1]]$row == ncol(Y)))
+        Y <- Y - K[[1]]$X0 %*% crossprod(K[[1]]$X0, Y)
+      else {
+        for (i in seq_len(length(K))) {
+          
+          # select data
+          y <- Y[K[[i]]$row, ]
+          
+          # apply high pass filter
+          y <- y - K[[i]]$X0 %*% crossprod(K[[i]]$X0, y)
+          
+          # reset filtered data in Y
+          Y[K[[i]]$row, ] <- y
+        }
+      }
+    } else {
+      Y <- K * Y
+    }
+    return(Y)
+  }
 }

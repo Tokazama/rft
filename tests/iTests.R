@@ -9,9 +9,8 @@ path2rft <- "Desktop/git/rft/R/"
 source(paste(path2rft, "iClass.R", sep = ""))
 source(paste(path2rft, "iModel.R", sep = ""))
 source(paste(path2rft, "ilm.R", sep = ""))
+source(paste(path2rft, "iREML.R", sep = ""))
 source(paste(path2rft, "iUtils.R", sep = ""))
-source(paste(path2rft, "iContrast.R", sep = ""))
-source(paste(path2rft, "iFilter.R", sep = ""))
 source(paste(path2rft, "rftResults.R", sep = ""))
 source(paste(path2rft, "statFieldThresh.R", sep = ""))
 
@@ -79,6 +78,43 @@ contrastMatrix[5, ] <- c( 1,         -1,           -1,          1)   # the inter
 
 rownames(contrastMatrix) <- c("F > M", " F < M", "OI > TBI", "OI < TBI", "Gender x Injury")
 fit2 <- anova(fit2, contrastMatrix, cthresh = 100, threshType = "cFDR")
+
+# ANCOVA----
+fit3 <- ilm(wb ~ WASI.IQ:Injury, mydat)
+
+cm1 <- matrix(nrow = 2, ncol = 4)
+              # (Intercept) # OI  # TBI
+cm1[1, ] <- c(0,            1,    -1)
+cm1[2, ] <- c(0,           -1,     1)
+rownames(cm1) <- c("OI > TBI", "OI < TBI")
+fit2 <- anova(fit3, cm1, threshType = "cFDR")
+
+cm2 <- matrix(nrow = 4, ncol = 4)
+              # (Intercept) # OI  # TBI
+cm1[1, ] <- c(0,            1,    0)
+cm1[2, ] <- c(0,           -1,    0)
+cm1[3, ] <- c(0,            0,    1)
+cm1[4, ] <- c(0,            0,   -1)
+rownames(cm2) <- c("OI+", "OI-", "TBI+", "TBI-")
+fit2 <- summary(fit3, cm2)
+
+# REML----
+fit_reml <- ilm(wb ~ WASI.IQ, mydata, optim = "REML")
+
+fit_iwls <- ilm(wb ~ WASI.IQ, mydata, optim = "IWLS")
+
+cm3 <- matrix(nrow = 2, ncol = 2)
+cm3[1, ] <- c(0,  1)
+cm3[2, ] <- c(0, -1)
+
+fit_reml <- summary(fit_reml, cm3)
+
+fit_iwls <- summary(fit_iwls, cm3)
+
+
+
+
+
 
 # plot----
 # iData plotting

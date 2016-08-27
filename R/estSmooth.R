@@ -2,22 +2,24 @@
 #'
 #' Estimates smoothness of a single image or image matrix
 #'
-#' @param x may be an image of class "antsImage" or an image matrix
-#' @param mask input mask, must match matrix
-#' @param rdf residual degrees of freedom
-#' @param scaleResid logical. if TRUE residuals are scaled
-#' @param sample number of images to use for estimating smoothing (default uses all images)
-#' @return Outputs the estimated FWHM and RPV image
+#' @param x May be an image of class "antsImage" or an image matrix.
+#' @param mask Input mask, must match matrix.
+#' @param rdf Residual degrees of freedom.
+#' @param scaleResid If \code{TRUE} residuals are scaled.
+#' @param sample Number of images to use for estimating smoothing (default uses all images).
+#' 
+#' @return Outputs the estimated FWHM and resel per voxel image.
+#' 
 #' @details
 #' The partial derivatives of an image in x, y, and z directions are used to
 #' create a covariance matrix which in turn is used to calculate the 
 #' full-widths at half maxima (FWHM). The FWHM is equivalent to the estimated
 #' image smoothness.
 #' 
-#' The resels per voxel image (\code{RPVImg}) represents the estimated resel at
+#' The resels per voxel image (\code{rpvImage}) represents the estimated resel at
 #' each individual voxel throughout the search region. This may be used in 
 #' place of volumetric measurements (or sum voxel measurements) when estimating
-#' the p-value of a cluster using \code{rftPval}. The intent behind using the 
+#' the p-value of a cluster using \code{\link{rftPval}}. The intent behind using the 
 #' RPV image to estimate cluster level statistics is to offset the natural
 #' probability of obtaining significant clusters solely by chance in very 
 #' smooth regions at low thresholds.
@@ -26,8 +28,7 @@
 #' However, it's recommended that FWHM estimates are obtained from the scaled 
 #' residuals of statistical models (Stefan J.K et al., 1999). Therefore, this 
 #' function is optimized to estimate the pooled smoothness of the residual 
-#' images from a fitted model. By default residuals are scaled
-#' (\code{scaleResid = TRUE}).
+#' images from a fitted model.
 #' 
 #' A scaling factor is used to correct for differences when using the 
 #' \code{sample} option. Scaling isn't effective when the number of images is 
@@ -37,6 +38,7 @@
 #' prepare it for smoothness estimation (see Worsley et al., 1999).
 #' 
 #' Any NA values in \code{object} will be set to zero.
+#' 
 #' @references
 #' Hayasaka (2004) Nonstationary cluster-size inference with random field and permutation methods.
 #' 
@@ -47,8 +49,11 @@
 #' Worsley K.J. (1999) Detecting Changes in Nonisotropic Images
 #' 
 #' Stefan J.K. (1999) Robust Smoothness Estimation in Statistical Parametric Maps Using Standardized Residual from the General Linear Model
+#' 
 #' @author Zachary P. Christensen
-#' @seealso resels
+#' 
+#' @seealso \code{\link{resels}}
+#' 
 #' @examples
 #' # estimate individual image
 #' mnit1 <- antsImageRead(getANTsRData('mni'))

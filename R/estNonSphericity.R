@@ -87,12 +87,12 @@ estNonSphericity <- function(object, its) {
       Xp <- lappend(Xp, object@X$K[[i]]$X0)
       
       # ReML
-      reml <- iREML(Cy[q, q], Xp, Qp, its = its)
+      reml <- .reml(Cy[q, q], Xp, Qp, its = its)
       V[q, q] <- V[q, q] + reml$Vp
       h[p] <- reml$hp
     }
   } else {
-    reml <- iREML(Cy, object@X$X, object@xVi$Vi, its = its)
+    reml <- .reml(Cy, object@X$X, object@xVi$Vi, its = its)
     V <- reml$V
     h <- reml$h
   }

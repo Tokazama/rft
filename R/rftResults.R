@@ -40,18 +40,18 @@
 #' @details
 #'
 #' \code{rftPval} is used to compute all family-wise error (FWE) corrected
-#' statistics while \code{p.adjust} is used to compute all false-discovery rate
+#' statistics while \code{\link{p.adjust}} is used to compute all false-discovery rate
 #' based statistics. All statistics herein involve implementation of random
 #' field theory (RFT) to some extent.
 #'
 #' Both cluster-level and peak-level statistics are described by the uncorrected
-#'  p-value along with the FDR and FWE corrected p-values for each cluster.
+#' p-value along with the FDR and FWE corrected p-values for each cluster.
 #' Peak-level statistics are described by the maximum statistical value in each
 #' cluster. The ClusterStats table also contains
 #' coordinates for each cluster and the number of voxels therein. By default
-#' \code{threshType = "pRFT"} and pval=.05. Alternatively, the user may use a
+#' \code{\link{threshType = "pRFT"}} and pval=.05. Alternatively, the user may use a
 #' specific numeric value for thresholding the statistical field.
-#' \code{statFieldThresh} more fully describes using appropriate thresholds
+#' \code{\link{statFieldThresh}} more fully describes using appropriate thresholds
 #' for statistical fields and how \code{pp} plays a role in FDR thresholding.
 #'
 #' @references
@@ -179,10 +179,10 @@ rftResults <- function(x, resels, fwhm, df, fieldType,
     ClusterStats[, 2] <- p.adjust(ClusterStats[, 3], "BH") # FDR (cluster)
     
     # Peak-Level----
-    PeakStats[, 4] <- sapply(labs, function(tmp)(max(x[clust == tmp]))) # max value for each cluster
-    PeakStats[, 1] <- sapply(PeakStats[, 4], function(tmp)(rftPval(D, 1, 0, tmp, n, resels, df, fieldType)$Pcor)) # fwe p-value (peak)
-    PeakStats[, 2] <- sapply(PeakStats[, 4], function(tmp)(p.adjust(rftPval(D, 1, 0, tmp, n, resels, df, fieldType)$Ec / Ez, "BH", n = nclus))) # FDR (peak)
-    PeakStats[, 3] <- sapply(PeakStats[, 4], function(tmp)(
+    PeakStats[, 4] <- sapply(labs, function(tmp) (max(x[clust == tmp]))) # max value for each cluster
+    PeakStats[, 1] <- sapply(PeakStats[, 4], function(tmp) (rftPval(D, 1, 0, tmp, n, resels, df, fieldType)$Pcor)) # fwe p-value (peak)
+    PeakStats[, 2] <- sapply(PeakStats[, 4], function(tmp) (p.adjust(rftPval(D, 1, 0, tmp, n, resels, df, fieldType)$Ec / Ez, "BH", n = nclus))) # FDR (peak)
+    PeakStats[, 3] <- sapply(PeakStats[, 4], function(tmp) (
       if (fieldType == "Z")
         1 - pnorm(tmp)
       else if (fieldType == "T")
