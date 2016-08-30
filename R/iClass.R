@@ -14,6 +14,8 @@
 #' @param rowslist row of iMatrix constituting block/partitions
 #' @param HParam cut-off period in seconds
 #' @param RT observation interval in seconds
+#' @param checkMask logical ensure mask only represents active voxels (default
+#'  = \code{TRUE})
 #' @param filename optional filename to save iGroup object (default = 
 #' \code{tempfile(fileext = ".h5")})
 #' 
@@ -46,7 +48,7 @@ iGroup <- setClass("iGroup",
 
 #' @export
 setMethod("initialize", "iGroup", function(.Object, iMatrix = matrix(1, 1, 1), name, mask,
-                                           modality, rowslist, HParam, RT, filename) {
+                                           modality, rowslist, HParam, RT, checkMask = TRUE, filename) {
   if (!usePkg("h5"))
     stop("Please install package h5 in order to use this function.")
   
@@ -80,6 +82,15 @@ setMethod("initialize", "iGroup", function(.Object, iMatrix = matrix(1, 1, 1), n
     file["name"] <- name
     .Object@name <- name
   }
+  
+    # mask
+    if (!missing(iMatrix) && !missing(mask) && checkMask) {
+      mask_vec <- abs(iMatrix)
+      mask_vec <- colSums(mask_vec)
+      mask_vec[mask_vec != 0] <- 1
+      iMatrix <- iMatrix[, as.logical(mask_vec)]
+      mask <- makeImage(mask, mask_vec)
+    }
   
   ## configure
   if (missing(mask))
@@ -282,9 +293,8 @@ iGroupWrite <- function(x, filename) {
     chunkseq <- chunkseq + chunksize
     imat <- cbind(imat, x@iMatrix[, chunkseq])
   }
-  
-  if (((nvox / chunksize) - nchunk) > 0)
-    imat <- cbind(imat, x@iMatrix[, chunkseq[chunksize]:nvox])
+  if (nvox > chunkseq[chunksize])
+    imat <- cbind(imat, x@iMatrix[, (chunkseq[chunksize] + 1):nvox])
   
   h5close(file)
   return(TRUE)

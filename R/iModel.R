@@ -464,10 +464,10 @@ iModelWrite <- function(x, filename, iData_dirname) {
   }
   
   # fill in any remaining chunkage
-  if (((nvox / chunksize) - nchunk) > 0) {
-    beta <- cbind(beta, x@beta[, chunkseq[chunksize]:nvox])
-    res  <- cbind(res, x@res[, chunkseq[chunksize]:nvox])
-    mrss <- cbind(mrss, x@mrss[, chunkseq[chunksize]:nvox])
+  if (nvox > chunkseq[chunksize]) {
+    beta <- cbind(beta, x@beta[, (chunkseq[chunksize] + 1):nvox])
+    res  <- cbind(res, x@res[, (chunkseq[chunksize] + 1):nvox])
+    mrss <- cbind(mrss, x@mrss[, (chunkseq[chunksize] + 1):nvox])
   }
   #### end big matrices
   
