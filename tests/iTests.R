@@ -5,6 +5,9 @@ library(h5)
 home <- '/Volumes/SANDISK/datasets/ucsd/'
 ucsd <- read.csv(paste(home, 'spreadsheets/ucsdWOna.csv', sep = ""))[, -1]
 
+symnum(cor(na.omit(vars)))
+
+
 path2rft <- "Desktop/git/rft/R/"
 source(paste(path2rft, "iClass.R", sep = ""))
 source(paste(path2rft, "iModel.R", sep = ""))
@@ -13,7 +16,6 @@ source(paste(path2rft, "iREML.R", sep = ""))
 source(paste(path2rft, "iUtils.R", sep = ""))
 source(paste(path2rft, "rftResults.R", sep = ""))
 source(paste(path2rft, "statFieldThresh.R", sep = ""))
-
 
 # Read in VBM----
 wblist <- c()
@@ -101,7 +103,8 @@ fit2 <- summary(fit3, cm2)
 report(fit2)
 
 # REML----
-fit_reml <- ilm(wb ~ WASI.IQ, mydata, optim = "REML")
+fit_none <- ilm(wb ~ Age, mydata)
+fit_reml <- ilm(wb ~ Age, mydata, optim = "REML")
 
 fit_iwls <- ilm(wb ~ WASI.IQ, mydata, optim = "IWLS")
 
@@ -218,7 +221,7 @@ for (i in seq_len(length(vars))) {
   cmt[6, ] <- c(0, 0, 0, -1, 0)
   cmt[7, ] <- c(0, 0, 0, 0,  1)
   cmt[8, ] <- c(0, 0, 0, 0, -1)
-  cmt[9, ]   <- c(0,  .5,  .5, 0, 0)
+  cmt[9, ] <- c(0,  .5,  .5, 0, 0)
   cmt[10, ] <- c(0, -.5, -.5, 0, 0)
   cmt[11, ] <- c(0, 0, 0,  .5,   .5)
   cmt[12, ] <- c(0, 0, 0, -.5, -.5)
@@ -231,9 +234,87 @@ for (i in seq_len(length(vars))) {
   report(fit, paste(home, "reports/Sex/", vars[i], sep = ""))
 }
 
+# iterate over images to make mask
 
- 
+img <- antsImageRead("/Volumes/SANDISK/mybrain/t1.nii.gz")
+
+mask <- as.array(0, dim = dim(img))
+for (i in seq_len(nimg)) {
+  img <- antsImageRead(ilist[i])
+  it <- antsImageIterator(img)
+  while (!antsImageIteratorIsAtEnd(it)) {
+    idx <- antsImageIteratorGetIndex(it)
+    vox <- abs(antsImageIteratorGet(it))
+    mask[idx[1], idx[2], idx[3]] <- mask[idx[1], idx[2], idx[3]] + vox
+    it = antsImageIteratorNext(it)
+  }
+}
+mask[mask != 0] <- 1
+
+mask <- makeImage(mask)
+k = antsSetSpacing(mask, img)
+k = antsSetOrigin(mask, img)
+k = antsSetDirection(mask, img)
 
 
+# new iformula concept
+iFormula <- function(formula, iData, impute) {
+  X <- list(X = c(), iH = c(), iC = c(),
+            iB = c(), iG = c(), name = c())
+  
+  lhs <- formula[[2]]
+  groups <- all.vars(lhs)
+  for (i in seq_len(length(groups))) {
+    if (!any(names(iData) == groups[i]))
+      stop(paste(groups[i], " is not an iGroup found within iData", sep = ""))
+  }
+  
+  # are there any NA values in demog 
+  vars <- all.vars(formula[[3]])
+  vartest <- TRUE
+  for (i in seq_len(length(vars))) {
+    vartest <- !any(is.na(iData@demog[vars[i]]))
+    if (!vartest)
+      break
+  }
+  
+  if (!vartest && !missing(impute)) {
+    iData@demog <- antsrimpute(iData@demog[vars], impute)
+    vartest <- TRUE
+  }
+  
+  # are there any images not common between groups
+  grouptest <- TRUE
+  tmpindex <- iData@index[groups]
+  for (i in seq_len(nrow(tmpindex))) {
+    grouptest <- !any(tmpindex[i, ] == 0)
+    if (!grouptest)
+      break
+  }
+  
+  if (!vartest | !grouptest) # slower but gets rid of missing values
+    iData <- select(iData, groups, vars, na.omit = TRUE)
+  else # quick because should be using same pointers as original iData object
+    iData <- select(iData, groups, vars, na.omit = FALSE)
+  
+  # probably not the most robust way to isolate right hand side
+  rhs <- as.formula(paste("~", as.character(formula)[3], sep = ""))
+  # This method drops out nonvariable terms (i.e. "-1")
+  # tt <- terms(formula)
+  # tt <- delete.response(tt)
+  # rhs <- reformulate(attr(tt, "term.labels"))
+  
+  X$X <- model.matrix(rhs, data = iData@demog)
+  X$Y <- iData@iList[[groups]]@iMatrix
+  X$mask <- iData@iList[[groups]]@mask
+  X$demog <- iData@demog
+  X$npred <- ncol(X$X)
+  X$nimg <- nrow(X$X)
+  
+  X$iC <- seq_len(ncol(xX))
+  X$iB <- seq_len(ncol(Xb)) + ncol(xX)
+  X$name <- c(Xname, Bname)
+  list(y = groups, X = X, iData = iData)
+}
 
 

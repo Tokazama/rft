@@ -190,9 +190,13 @@
 # @export estNonSphericity
 .estNonSphericity <- function(object, its) {
   if (!is.null(object@xVi$Fcontrast))
-    con <- .setcon("usc", "F", "c", object@xVi$Fcontrast, object@X$KWX)
-  else 
-    con <- .setcon("eoi", "F", "iX0", c(object@X$iB, X$iG), object@X$KWX)
+    con <- .setcon("User-specified contrast", "F", "c", object@xVi$Fcontrast, object@X$KWX)
+  else {
+    iX0 <- matrix(0, ncol(object@X$X), 0)
+    #  seq_len(ncol(object@X$X))
+    # iX0[colnames(object@X$X) == "(Intercept)"] <- 0
+    con <- .setcon("Effects of interest", "F", "iX0", iX0, object@X$KWX)
+  }
   
   if ((!is.null(con[[1]]$c)) | length(con[[1]]$c) == 0) {
     X1 <- .X1(con[[1]], object@X$KWX)

@@ -12,8 +12,7 @@
 .setx <- function(x) {
   out <- list()
   if (missing(x)) {
-    out <- list(X = c(), v = c(), u = c(), d = c(), tol = c(), rk = c(),
-                op = c(), opp = c(), ups = c(), sus = c())
+    out <- list(X = c(), v = c(), u = c(), d = c(), tol = c(), rk = c())
   } else {
     out$X <- x
     if (nrow(x) < ncol(x))
@@ -393,8 +392,8 @@
     b <- 1
     fnames <- names(x)
     tmp <- .setx()
-    for (i in seq_len(length(fnames))) {
-      b <- b & any(names(tmp) == names(x)[i])
+    for (i in fnames) {
+      b <- b & any(names(tmp) == i)
       if (!b)
         break
     }
@@ -449,24 +448,30 @@
 
 # check iX0
 .iX0check <- function(i0, sL) {
-  if (any(i0 == 1 | 0) && (length(i0) == sL))
-    i0c <- (seq_len(sL)[i0 != 0])
+  if (all(any(i0 == 1) && any(i0 == 0)) && (length(i0) == sL))
+    i0c <- matrix(seq_len(sL)[i0 != 0])
   else if (all(dim(i0) > 0) && any(floor(i0) != i0) || any(i0 < 1) || any(i0 > sL))
     stop('logical mask or vector of column indices required')
   else
-    i0c= i0
+    i0c <- matrix(i0)
   return(i0c)
 }
 
 # get the estimable parts of C0 and C1'
 .i02c <- function(x, i0) {
+  # argument checks
+  if (!.isspc(x))
+    x <- .setx(x)
+  if (x$rk == 0)
+    stop("i02c null rank x == 0")
   sL <- ncol(x$X)
   i0 <- .iX0check(i0, sL)
   
+  # function
   c0 <- diag(sL)
-  c0 <- c0[, i0]
+  c0 <- matrix(c0[, i0])
   c1 <- diag(sL)
-  c1 <- c1[, setdiff(seq_len(sL), i0)]
+  c1 <- matrix(c1[, sort(setdiff(seq_len(sL), i0))])
   
   if (!.isinspp(x, c0))
     c0 <- .opp(x, c0)
@@ -749,16 +754,15 @@
       suppressWarnings(Fc$X1$ukX1 <- .c2tsp(x, Fc$c, plus = TRUE))
     }
   } else {
-    iX0 <- c
-    iX0 <- .iX0check(iX0, sL)
-    Fc$iX0 <- .iX0check(iX0, sL)
-    suppressWarnings(out$X0$uKX0 <- tcrossprod(.ox(x), x$X[, iX0]))
+    iX0 <- .iX0check(c, sL)
+    Fc$iX0 <- iX0
+    suppressWarnings(Fc$X0$uKX0 <- crossprod(.ox(x), matrix(x$X[, iX0])))
     if (length(iX0) == 0) {
       FC$c <- .xpx(x)
       suppressWarnings(Fc$X1$uKX1 <- .cukx(x))
     } else {
       Fc$c <- .i02c(x, iX0)
-      suppressWarnings(Fc$X1$uKX1 <- .c2tsp(x, out$c, plus = TRUE))
+      suppressWarnings(Fc$X1$uKX1 <- .c2tsp(x, Fc$c, plus = TRUE))
     }
   }
   return(Fc)

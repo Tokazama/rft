@@ -418,6 +418,7 @@ iModelRead <- function(filename, iData_dirname) {
     x@C[[i]]$dims$trMVMV <- file[file.path(cname, "dims", "trMVMV")][]
     x@C[[i]]$dims$idf <- file[file.path(cname, "dims", "idf")][]
   }
+  h5close(file)
   return(x)
 }
 
@@ -552,6 +553,7 @@ iModelWrite <- function(x, filename, iData_dirname) {
     file[file.path(cname, "dims", "trMVMV")] <- x@C[[i]]$dims$trMVMV
     file[file.path(cname, "dims", "idf")] <- x@C[[i]]$dims$idf
   }
+  h5close(file)
   return(TRUE)
 }
 
@@ -743,30 +745,6 @@ getImages <- function(x, contrast, rpv = FALSE, mask = FALSE) {
   
   return(out)
 }
-
-#' @export
-#' @docType methods
-#' @details \strong{plot} Create plot of variables against specific cluster
-#'  within contrast.
-#' @rdname iModel-methods
-setMethod("plot", "iModel", function(x, contrast, cluster) {
-  if (length(contrast) > 1)
-    stop("Contrast must be of length 1.")
-  if (is.null(x@C[[contrast]]$clusterImage)) {
-    warning("No results to plot.")
-    return(0)
-  } else {
-    # create mask for specific cluster
-    clustimg <- antsImageClone(x@C[[contrast]]$clusterImage)
-    if (missing(cluster))
-      clustimg[clustimg != 0] <- 1
-    else {
-      clustimg[clustimg != cluster] <- 0
-      clustimg[clustimg != 0] <- 1
-    }
-    plot(x@iData, x@y, mask = clustimg)
-  }
-})
 
 #' Control parameters for RFT based analyses
 #' 

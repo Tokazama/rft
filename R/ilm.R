@@ -126,7 +126,6 @@ iFormula <- function(formula, iData, impute) {
 #' 
 #' @export ilm
 ilm <- function(formula, iData, weights = NULL, optim = "none", its, control, verbose = TRUE) {
-  cl <- match.call()
   z <- iFormula(formula, iData)
   
   out <- list()
@@ -138,7 +137,7 @@ ilm <- function(formula, iData, weights = NULL, optim = "none", its, control, ve
     if (optim == "REML") {
       if (missing(its))
         its <- 32
-      out[[i]]@xVi <- .estNonSphericity(object, its)
+      out[[i]]@xVi <- .estNonSphericity(out[[i]], its)
       out[[i]] <- iModelUpdate(out[[i]])
       out[[i]] <- iModelSolve(out[[i]])
     } else if (optim == "IWLS") {
@@ -146,41 +145,46 @@ ilm <- function(formula, iData, weights = NULL, optim = "none", its, control, ve
       if (missing(its))
         its <- 200
       H <- diag(out[[i]]@X$X %*% tcrossprod(MASS::ginv(crossprod(out[[i]]@X$X), out[[i]]@X$X)))
+      
       ores <- 1
       nres <- 10
       n <- 0
-      while(max(abs(ores - nres)) > sqrt(1e-8)) {
+      W <- matrix(1, out[[i]]@dims$nimg, out[[i]]@dims$nvox)
+      while(max(abs(ores - nres)) > (1e-4)) {
         ores <- nres
         n <- n + 1
-        
-        if (n == 1) {
-          W <- matrix(1, out[[i]]@dims$nimg, out[[i]]@dims$nvox)
-          W[is.na((out[[i]]@iData@iList[[y]]@iMatrix[]))] <- 0
-        }
-        
-        for (i in seq_len(out[[i]]@dims$nvox))
-          out[[i]]@beta[, i] <- MASS::ginv(crossprod(out[[i]]@X$X, diag(W[, i])) %*% out[[i]]@X$X) %*% crossprod(out[[i]]@X$X, diag(W[, i])) %*% out[[i]]@iData@iList[[y]]@iMatrix[, i]
         
         if (n > its) {
           warning("ilm could not converge. Maximal number of iterations exceeded.");
           break
         }
         
-        restmp <- out[[i]]@iData@iList[[y]]@iMatrix[] - out[[i]]@X$X %*% out[[i]]@beta[]
-        
-        mad <- rowMeans(abs(t(restmp) - colMeans(restmp)))
-        restmp <- t(t(restmp) * (1 / mad))
-        
-        restmp <- restmp %*% H
-        restmp <- abs(restmp) - control$os
-        restmp(restmp < 0) <- 0
-        nres <- sum(restmp(!is.na(restmp))^2)
-        W <- (abs(restmp) < 1) %*% ((1 - restmp^2)^2)
-        W(is.na(out[[i]]@iData@iList[[y]]@iMatrix[])) <- 0
-        W(out[[i]]@iData@iList[[y]]@iMatrix[] == 0) <- 0
+        nres <- 0
+        for (j in seq_len(out[[i]]@dims$nvox)) {
+          if (i == 1)
+            W[, j][is.na(out[[i]]@iData@iList[[out[[i]]@y]]@iMatrix[, j])] <- 0
+          
+          out[[i]]@beta[, j] <- MASS::ginv(crossprod(out[[i]]@X$X, diag(W[, j])) %*% out[[i]]@X$X) %*% crossprod(out[[i]]@X$X, diag(W[, j])) %*% out[[i]]@iData@iList[[out[[i]]@y]]@iMatrix[, j]
+          out[[i]]@res[, j] <- out[[i]]@iData@iList[[out[[i]]@y]]@iMatrix[, j] - out[[i]]@X$X %*% out[[i]]@beta[, j]
+          restmp <- out[[i]]@res[, j]
+          mad <- mean(abs(restmp - mean(restmp)))
+          restmp <- restmp / mad
+          
+          # need to figure this one out
+          restmp <- restmp * H
+          
+          restmp <- abs(restmp) - control$os
+          restmp[restmp < 0] <- 0
+          
+          wtmp <- (abs(restmp) < 1) * ((1 - restmp^2)^2)
+          wtmp[is.na(out[[i]]@iData@iList[[out[[i]]@y]]@iMatrix[, j])] <- 0
+          wtmp[out[[i]]@iData@iList[[out[[i]]@y]]@iMatrix[, j] == 0] <- 0
+          W[, j] <- wtmp
+          nres <- nres + sum(restmp[!is.na(restmp)]^2)
+        }
       }
       
-      out[[i]]@res[] <- out[[i]]@iData@iList[[y]]@iMatrix[] - out[[i]]@X$X %*% out[[i]]@beta[]
+      out[[i]]@res[] <- out[[i]]@iData@iList[[out[[i]]@y]]@iMatrix[] - out[[i]]@X$X %*% out[[i]]@beta[]
       out[[i]]@mrss[1, ] <- colSums(out[[i]]@res[]^2) / out[[i]]@X$trRV
       
       if (verbose)

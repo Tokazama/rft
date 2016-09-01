@@ -1,5 +1,6 @@
 # to do:
-# plot
+# test checkMask and imageToMatrix input
+# select - add antsrimpute, and masking
 
 #' Class iGroup
 #' 
@@ -42,12 +43,11 @@ iGroup <- setClass("iGroup",
                      location = "character",
                      modality = "character",
                      mask = "antsImage",
-                     K = "ANY",
-                     dim = "numeric")
+                     K = "ANY")
                    )
 
 #' @export
-setMethod("initialize", "iGroup", function(.Object, iMatrix = matrix(1, 1, 1), name, mask,
+setMethod("initialize", "iGroup", function(.Object, x = matrix(1, 1, 1), name, mask,
                                            modality, rowslist, HParam, RT, checkMask = TRUE, filename) {
   if (!usePkg("h5"))
     stop("Please install package h5 in order to use this function.")
@@ -55,42 +55,48 @@ setMethod("initialize", "iGroup", function(.Object, iMatrix = matrix(1, 1, 1), n
   # filename
   if (missing(filename)) {
     tmpfile <- tempfile(fileext = ".h5")
-    file <- h5file(tmpfile)
+    .Object@file <- h5file(tmpfile)
     .Object@location <- tmpfile
   } else {
     if (file.exists(filename))
       stop("filename already exists.")
-    file <- h5file(filename)
+    .Object@file <- h5file(filename)
     .Object@location <- filename
   }
-  .Object@file <- file
-  
+
   # modality
   if (missing(modality)) {
-    file["modality"] <- "fMRI"
+    .Object@file["modality"] <- "fMRI"
     .Object@modality <- "fMRI"
   } else {
-    file["modality"] <- modality
+    .Object@file["modality"] <- modality
     .Object@modality <- modality
   }
   
   # name
   if (missing(name)) {
-    file["name"] <- "unnamed"
+    .Object@file["name"] <- "unnamed"
      .Object@name <- "unnamed"
   } else {
-    file["name"] <- name
+    .Object@file["name"] <- name
     .Object@name <- name
   }
   
-    # mask
-    if (!missing(iMatrix) && !missing(mask) && checkMask) {
-      mask_vec <- abs(iMatrix)
+  # mask
+  if (!missing(x) && !missing(mask) && checkMask) {
+    if (class(x) == "matrix") {
+      mask_vec <- abs(x)
       mask_vec <- colSums(mask_vec)
       mask_vec[mask_vec != 0] <- 1
-      iMatrix <- iMatrix[, as.logical(mask_vec)]
+      x <- x[, as.logical(mask_vec)]
       mask <- makeImage(mask, mask_vec)
+    } else if (class(x) == "character") {
+      mask <- abs(antsImageRead(x[1]))
+      for (i in seq_len(length(x)))
+        mask <- mask + abs(antsImageRead(x[i]))
+      mask[mask != 0] <- 1
     }
+  }
   
   ## configure
   if (missing(mask))
@@ -98,10 +104,10 @@ setMethod("initialize", "iGroup", function(.Object, iMatrix = matrix(1, 1, 1), n
   else
     .Object@mask <- antsImageClone(mask)
   ## write
-  file["mask"] <- as.array(.Object@mask)
-  h5attr(file["mask"] , "spacing") <- antsGetSpacing(.Object@mask)
-  h5attr(file["mask"] , "direction") <- antsGetDirection(.Object@mask)
-  h5attr(file["mask"] , "origin") <- antsGetOrigin(.Object@mask)
+  .Object@file["mask"] <- as.array(.Object@mask)
+  h5attr(.Object@file["mask"] , "spacing") <- antsGetSpacing(.Object@mask)
+  h5attr(.Object@file["mask"] , "direction") <- antsGetDirection(.Object@mask)
+  h5attr(.Object@file["mask"] , "origin") <- antsGetOrigin(.Object@mask)
   
   # K
   ## configure
@@ -124,26 +130,62 @@ setMethod("initialize", "iGroup", function(.Object, iMatrix = matrix(1, 1, 1), n
   ## write
   if (class(.Object@K) == "list") {
     nk <- length(.Object@K)
-    file[file.path("K", "Filters")] <- .Object@K$Filters
-    file[file.path("K", "HParam")] <- .Object@K$HParam
-    file[file.path("K", "RT")] <- .Object@K$RT
-  } else {
-    file["K"] <- .Object@K
-  }
+    .Object@file[file.path("K", "Filters")] <- .Object@K$Filters
+    .Object@file[file.path("K", "HParam")] <- .Object@K$HParam
+    .Object@file[file.path("K", "RT")] <- .Object@K$RT
+  } else
+    .Object@file["K"] <- .Object@K
   
-  # iMatrix
-  .Object@dim <- dim(iMatrix)
-  if (missing(iMatrix)) {
-    file["iMatrix"] <- matrix(1, 1, 1)
-  } else {
-    # set chunk size
-    chunk <- ((2^23) / .Object@dim[1])
-    if (chunk < ncol(iMatrix))
-      tmp = createDataSet(file, "iMatrix", iMatrix, chunksize = c(nrow(iMatrix),chunk))
-    else
-      file["iMatrix"] <- iMatrix
+  # create iMatrix----
+  if (class(x) == "matrix") {
+    if (missing(x)) {
+      .Object@file["iMatrix"] <- matrix(1, 1, 1)
+    } else {
+      # set chunk size
+      chunk <- (2^23) / nrow(x)
+      if (chunk < ncol(x))
+        tmp = createDataSet(.Object@file, "iMatrix", x, chunksize = c(nrow(x),chunk))
+      else
+        .Object@file["iMatrix"] <- x
+    }
+    .Object@iMatrix <- .Object@file["iMatrix"]
+  } else if (class(x) == "character") {
+    # load images by mask segments segment
+    chunksize <- (2^23) / length(x)
+    chunkseq <- seq_len(chunksize)
+    nvox <- sum(.Object@mask)
+    idx <- which(as.array(mask) == 1, arr.ind = TRUE)
+    nchunk <- floor(nvox / chunksize)
+    
+    tmpmask <- antsImageClone(mask)
+    tmpmask[tmpmask != 0] <- 0
+    for (i in seq_len(nchunk)) {
+      if (D == 2)
+        tmpmask[idx[1, chunkseq], idx[2, chunkseq]] <- 1
+      else if (D == 3)
+        tmpmask[idx[1, chunkseq], idx[2, chunkseq], idx[3, chunkseq]] <- 1
+      
+      if (i == 1) {
+        .Object@file["iMatrix"] <- imagesToMatrix(x, tmpmask)
+        imat <- .Object@file["iMatrix"]
+      }
+      
+      imat <- cbind(imat, imagesToMatrix(x, tmpmask))
+      
+      if (D == 2)
+        tmpmask[idx[1, chunkseq], idx[2, chunkseq]] <- 0
+      else if (D == 3)
+        tmpmask[idx[1, chunkseq], idx[2, chunkseq], idx[3, chunkseq]] <- 0
+      
+      chunkseq <- chunkseq + chunksize
+    }
+    
+    if (nvox > chunkseq[chunksize]) {
+      chunkseq <- chunkseq[1]:nvox
+      tmpmask[idx[1, chunkseq], idx[2, chunkseq], idx[chunkseq]] <- 1
+      imat <- cbind(imat, imagesToMatrix(x, tmpmask))
+    }
   }
-  .Object@iMatrix <- file["iMatrix"]
   return(.Object)
 })
 
@@ -175,7 +217,7 @@ NULL
 #' @details \strong{dim} Retrieve dimensions of iGroup's iMatrix slot.
 #' @rdname iGroup-methods
 setMethod("dim", "iGroup", function(x) {
-  return(x@dim)
+  return(x@iMatrix@dim)
 })
 
 #' @export
@@ -211,6 +253,45 @@ setMethod("[", "iGroup", function(x, i) {
 
 #' @export
 #' @docType methods
+#' @details 
+#' @rdname iGroup-methods
+iGroupMask <- function(x, mask) {
+  out <- iGroup()
+  out@location <- tempfile(fileext = ".h5")
+  out@file <- h5file(out@location)
+  out@mask <- antsImageClone(mask)
+  
+  maskvec <- as.numeric(mask, x@mask > 1)
+  matseq <- seq_len(ncol(x))[as.logical(maskvec)]
+  
+  
+  chunksize <- (2^23) / length(metseq)
+  chunkseq <- seq_len(chunksize)
+  nvox <- length(matseq)
+  nchunk <- floor(nvox / chunksize)
+  
+  for (i in seq_len(nchunk)) {
+    if (i == 1) {
+      out@file["iMatrix"] <- x@iMatrix[, matseq[chunkseq]]
+      imat <- out@file["iMatrix"]
+    }
+    imat <- cbind(imat, x@iMatrix[, matseq[chunkseq]])
+    chunkseq <- chunkseq + chunksize
+  }
+  
+  if (chunkseq[chunksize] < nvox) {
+    chunkseq <- chunkseq[1]:nvox
+    imat <- cbind(imat, x@iMatrix[, matseq[chunkseq]])
+  }
+  
+  out@name <- x@name
+  out@iMatrix <- imat
+  out@K <- x@K
+  out@modality <- x@modality
+}
+
+#' @export
+#' @docType methods
 #' @details \strong{iGroupRead} Read/load iGroup from h5 file.
 #' @rdname iGroup-methods
 iGroupRead <- function(filename) {
@@ -218,34 +299,32 @@ iGroupRead <- function(filename) {
     stop( "Please install package h5 in order to use this function." )
   if (!file.exists(filename))
     stop("file does not exist")
-  file <- h5file(filename)
   out <- iGroup()
+  out@file <- h5file(filename)
   
   out@location <- filename
-  out@iMatrix <- file["iMatrix"]
-  out@modality <- file["modality"][]
-  out@name <- file["name"][]
+  out@iMatrix <- out@file["iMatrix"]
+  out@modality <- out@file["modality"][]
+  out@name <- out@file["name"][]
   
   # mask
-  mymask <- as.antsImage(file["mask"][])
-  k = antsSetSpacing(mymask, h5attr(file["mask"], "spacing"))
-  k = antsSetOrigin(mymask, h5attr(file["mask"], "origin"))
-  k = antsSetDirection(mymask, h5attr(file["mask"], "direction"))
+  mymask <- as.antsImage(out@file["mask"][])
+  k = antsSetSpacing(mymask, h5attr(out@file["mask"], "spacing"))
+  k = antsSetOrigin(mymask, h5attr(out@file["mask"], "origin"))
+  k = antsSetDirection(mymask, h5attr(out@file["mask"], "direction"))
   out@mask <- mymask
   
   # K
   ## configure
-  if (file["K"][] == 1)
+  if (out@file["K"][] == 1)
     out@K <- 1
   else {
-    knames <- unique(basename(dirname(list.datasets(file[tmpk]))))
-    Filters <- file[file.path("K", "rows")][]
-    HParam <- file[file.path("K", "Hparam")][]
-    RT <- file[file.path("K", "RT")][]
+    knames <- unique(basename(dirname(list.datasets(out@file[tmpk]))))
+    Filters <- out@file[file.path("K", "rows")][]
+    HParam <- out@file[file.path("K", "Hparam")][]
+    RT <- out@file[file.path("K", "RT")][]
     out@K <- data.frame(Filters, HParam, RT)
   }
-  out@dim <- dim(out@iMatrix[])
-    
   return(out)
 }
 
@@ -264,9 +343,6 @@ iGroupWrite <- function(x, filename) {
   # write modality
   file["modality"] <- x@modality
   
-  # write dim
-  file["dim"] <- x@dim
-  
   # write K
   if (class(x@K) == "data.frame") {
     file["K/Filters"] <- x@K$Filters
@@ -284,7 +360,7 @@ iGroupWrite <- function(x, filename) {
   # write iMatrix
   chunksize <- x@iMatrix@chunksize[2]
   chunkseq <- seq_len(chunksize)
-  nvox <- x@dim[2]
+  nvox <- ncol(x)
   nchunk <- floor(nvox / chunksize)
   
   file["iMatrix"] <- x@iMatrix[, chunkseq]
@@ -405,8 +481,8 @@ setMethod("show", "iData", function(object) {
 #' @param x,object Object of class iData.
 #' @param dirname Directory to write iData object to.
 #' @param value Character vector to replace current iGroup names.
-#' @param groups,group Name of iGroup object(s).
-#' @param vars Variables from demographics slot.
+#' @param groups Name of iGroup object(s).
+#' @param vars Name of varaible(s) from demographics slot.
 #' @param bool A vector of TRUE/FALSE values with length equal to the number of
 #'  rows in the demographics data frame and number of TRUE values equal to the 
 #'  number of rows in the image matrix.
@@ -774,37 +850,3 @@ select <- function(x, groups, vars, na.omit = TRUE) {
   }
   return(out)
 }
-
-#' @export
-#' @docType methods
-#' @details \strong{plot} Render plots describing iData contents.
-#' @rdname iData-methods
-setMethod("plot", "iData", function(x, group, vars, mask) {
-  # argument checks
-  if (missing(x))
-    stop("Must specific iData object.")
-  if (missing(group))
-    nogroup <- TRUE
-  else
-    nogroup <- FALSE
-  if (missing(vars))
-    vars <- colnames(x@demog)
-  if (missing(mask) && !nogroup)
-    mask <- antsImageClone(x@iList[[group]]@mask)
-  
-  # actual function
-  if (!nogroup) {
-    matseq <- seq_len(dim(x@iList[[group]])[2])
-    clustvec <- mask[x@iList[[group]]@mask == 1]
-    clustseq <- matseq[clustvec != 0]
-    demog <- getDemog(x, group, vars)
-    
-    df <- matrix(0, 0, 2)
-    for (i in clustseq)
-      df <- rbind(df, cbind(x@iList[[group]]@iMatrix[, i], demog))
-    colnames(df) <- c("Voxel Intensity", var)
-  } else
-    df <- x@demog[[vars]]
-  
-  plot(df)
-})
