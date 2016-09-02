@@ -192,15 +192,14 @@
   if (!is.null(object@xVi$Fcontrast))
     con <- .setcon("User-specified contrast", "F", "c", object@xVi$Fcontrast, object@X$KWX)
   else {
-    iX0 <- matrix(0, ncol(object@X$X), 0)
-    #  seq_len(ncol(object@X$X))
-    # iX0[colnames(object@X$X) == "(Intercept)"] <- 0
+    iX0 <- rep(TRUE, ncol(object@X$X))
+    iX0[colnames(object@X$X) == "(Intercept)"] <- FALSE
     con <- .setcon("Effects of interest", "F", "iX0", iX0, object@X$KWX)
   }
   
-  if ((!is.null(con[[1]]$c)) | length(con[[1]]$c) == 0) {
-    X1 <- .X1(con[[1]], object@X$KWX)
-    hsqr <- .hsqr(con[[1]], object@X$KWX)
+  if ((!is.null(con$c)) | length(con$c) == 0) {
+    X1 <- .X1(con, object@X$KWX)
+    hsqr <- .hsqr(con, object@X$KWX)
     trmv <- .trMV(X1, oneout = TRUE)
   } else {
     trmv <- 1
@@ -213,36 +212,50 @@
   UF <- qf(1 - object@control$cf, trmv, trrv)
   
   
-  end <- object@control$chunksize
-  nchunks <- floor(fit@dims$nvox / end)
-  start <- 1 + end
+  chunksize <- object@iData@iList[[object@y]]@iMatrix@chunksize[2]
+  chunkseq <- seq_len(chunksize)
+  nchunks <- floor(object@dims$nvox / chunksize)
   Cy <- matrix(0, object@dims$nimg, object@dims$nimg)
   s <- 0
   for (j in seq_len(nchunks)) {
-    if (j == nchunks)
-      vrange <- start:fit@dims$nvox
-    else
-      vrange <- start:end
+    KWY <- .filter(object@X$K, object@X$W %*% object@iData@iList[[object@y]]@iMatrix[, chunkseq])
+    object@beta[, chunkseq] <- object@X$pKX %*% KWY
+    object@res[, chunkseq] <- .res(object@X$KWX, KWY)
+    object@mrss[, chunkseq] <- colSums(object@res[, chunkseq]^2) / object@X$trRV
+    if (object@control$scr)
+      object@res[, chunkseq] <- t(t(object@res[, chunkseq]) * (1 / as.numeric(object@mrss[, chunkseq])))
     
-    KWY <- iFilter(object@X$K, object@X$W %*% object@iData[[object@y]]@iMatrix[, vrange])
-    object@beta[, vrange] <- object@X$XX %*% object@KWY
-    object@res[, vrange] <- .res(X$KWX, KWY)
-    object@mrss[, vrange] <- colSums(object@res[, vrange]^2) / object@X$trRV
-    if (sr)
-      object@res[, vrange] <- t(t(object@res[, vrange]) * (1 / as.numeric(object@mrss[, vrange])))
-    
-    start <- start + object@control$chunksize
-    end <- end + object@control$chunksize
-    
-    good <- vrange[(colSums((hsqr %*% object@beta[, vrange])^2) / trmv) > (UF * object@mrss[, vrange])]
+    good <- chunkseq[(colSums((hsqr %*% object@beta[, chunkseq])^2) / trmv) > (UF * object@mrss[, chunkseq])]
     
     if (length(good) > 0) {
-      q <- sqrt(1 / mrss[, good])
-      q <- t(t(object@iData[[object@y]]@imageMatrix[, good]) * q)
+      q <- as.numeric(sqrt(1 / object@mrss[, good]))
+      q <- t(t(object@iData@iList[[object@y]]@iMatrix[, good]) * q)
+      Cy <- tcrossprod(q)
+      s <- s + length(good)
+    }
+    chunkseq <- chunkseq + chunksize
+  }
+  if (chunkseq[1] < object@dims$nvox) {
+    chunkseq <- chunkseq[1]:object@dims$nvox
+    KWY <- .filter(object@X$K, object@X$W %*% object@iData@iList[[object@y]]@iMatrix[, chunkseq])
+    object@beta[, chunkseq] <- object@X$pKX %*% KWY
+    object@res[, chunkseq] <- .res(object@X$KWX, KWY)
+    object@mrss[, chunkseq] <- colSums(object@res[, chunkseq]^2) / object@X$trRV
+    if (object@control$scr)
+      object@res[, chunkseq] <- t(t(object@res[, chunkseq]) * (1 / as.numeric(object@mrss[, chunkseq])))
+    
+    good <- chunkseq[(colSums((hsqr %*% object@beta[, chunkseq])^2) / trmv) > (UF * object@mrss[, chunkseq])]
+    
+    if (length(good) > 0) {
+      q <- as.numeric(sqrt(1 / object@mrss[, good]))
+      q <- t(t(object@iData@iList[[object@y]]@iMatrix[, good]) * q)
       Cy <- tcrossprod(q)
       s <- s + length(good)
     }
   }
+  
+  
+  
   if (s > 0)
     Cy <- Cy / s
   else

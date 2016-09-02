@@ -5,7 +5,7 @@ library(h5)
 home <- '/Volumes/SANDISK/datasets/ucsd/'
 ucsd <- read.csv(paste(home, 'spreadsheets/ucsdWOna.csv', sep = ""))[, -1]
 
-symnum(cor(na.omit(vars)))
+#symnum(cor(na.omit(vars)))
 
 
 path2rft <- "Desktop/git/rft/R/"

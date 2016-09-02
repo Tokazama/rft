@@ -615,32 +615,46 @@
   
   rk <- KWX$rk
   sL <- nrow(KWX$X)
-  
-  u <- KWX$u[, seq_len(rk)]
-  if (oneout) {
-    if (rk == 0)
-      return(0)
-    else
-      trmv <- sum(u * (XV %*% u))
-    return(sum(diag(XV)) - trmv)
-  } else {
-    if (rk == 0) {
-      trmv <- 0
-      tmp <- norm(XV, "f")^2
-      trv <- sum(diag(XV))
-    } else {
-      Vu <- XV %*% u
-      trv <- sum(diag(XV))
-      tmp <- norm(XV, "F")^2
-      tmp <- tmp - 2 * norm(Vu, "f")^2
-      trRVRV <- tmp + norm(crossprod(u, Vu), "f")^2
-      trmv <- sum(u * Vu)
+  if (missing(XV)) {
+    if (oneout) {
+      if (is.null(rk))
+        out <- sL
+      else
+        out <- sL - rk
+    } else{
+      if (is.null(rk))
+        out <- list(trRV = sL, trRVRV = sL)
+      else
+        out <- list(trRV = sL - rk, trRVRV = sL)
     }
-    trRV <- trv - trmv
+
+  } else {
+    u <- KWX$u[, seq_len(rk)]
+    if (oneout) {
+      if (rk == 0)
+        return(0)
+      else
+        trmv <- sum(u * (XV %*% u))
+      return(sum(diag(XV)) - trmv)
+    } else {
+      if (rk == 0) {
+        trmv <- 0
+        tmp <- norm(XV, "f")^2
+        trv <- sum(diag(XV))
+      } else {
+        Vu <- XV %*% u
+        trv <- sum(diag(XV))
+        tmp <- norm(XV, "F")^2
+        tmp <- tmp - 2 * norm(Vu, "f")^2
+        trRVRV <- tmp + norm(crossprod(u, Vu), "f")^2
+        trmv <- sum(u * Vu)
+      }
+      trRV <- trv - trmv
+    }
+    rdf <- (trRV^2) / trRVRV
+    out <- list(trRV = trRV, trRVRV = trRVRV, rdf = rdf)
   }
-  rdf <- (trRV^2) / trRVRV
-  
-  return(list(trRV = trRV, trRVRV = trRVRV, rdf = rdf))
+  return(out)
 }
 
 # compute the traceof MV, MVMV, and find the degrees of interest'
@@ -756,13 +770,13 @@
   } else {
     iX0 <- .iX0check(c, sL)
     Fc$iX0 <- iX0
-    suppressWarnings(Fc$X0$uKX0 <- crossprod(.ox(x), matrix(x$X[, iX0])))
+    suppressWarnings(Fc$X0$ukX0 <- crossprod(.ox(x), matrix(x$X[, iX0])))
     if (length(iX0) == 0) {
       FC$c <- .xpx(x)
-      suppressWarnings(Fc$X1$uKX1 <- .cukx(x))
+      suppressWarnings(Fc$X1$ukX1 <- .cukx(x))
     } else {
       Fc$c <- .i02c(x, iX0)
-      suppressWarnings(Fc$X1$uKX1 <- .c2tsp(x, Fc$c, plus = TRUE))
+      suppressWarnings(Fc$X1$ukX1 <- .c2tsp(x, Fc$c, oneout = TRUE, plus = TRUE))
     }
   }
   return(Fc)
@@ -775,7 +789,7 @@
     x <- .setx(x)
   
   if (is.list(Fc$X0))
-    .ox(x) %*% Fc$X0$uKX0
+    .ox(x) %*% Fc$X0$ukX0
   else
     Fc$X0
 }
@@ -786,12 +800,8 @@
   if (!.isspc(x))
     x <- .setx(x)
   
-  if (is.list(Fc$X0)) {
-    if (class(Fc$X1$ukX1) == "matrix")
-      .ox(x) %*% Fc$X1$ukX1
-    else
-      .ox(x) * Fc$X1$ukX1
-  }
+  if (is.list(Fc$X0))
+    .ox(x) %*% Fc$X1$ukX1
   else
     Fc$X1
 }
@@ -1164,10 +1174,10 @@
   out$c <- matrix(c, ncol = 1)
   
   tmp <- .c2tsp(x, c, plus = TRUE)
-  out$X1$uKX1 <- tmp[[1]]
-  out$X0$uKX0 <- tmp[[2]]
+  out$X1$ukX1 <- tmp[[1]]
+  out$X0$ukX0 <- tmp[[2]]
   
-  X1 <- .ox() %*% out$X1$uKX1
+  X1 <- .ox() %*% out$X1$ukX1
 }
 
 # general utilities----
